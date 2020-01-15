@@ -19,16 +19,6 @@ yarn
 yarn main
 ```
 
-Browse to: [http://localhost:8989](http://localhost:8989)
-
-=== The client build server
-
-Load the http://localhost:9630[build manager UI] (http://localhost:9630)
-There you can kick off the compilation or release builds
-
-//http://localhost:8989[Main App] (http://localhost:8989)
-//http://localhost:8022[Tests] (http://localhost:8022)
-//http://localhost:8023[Workspaces] (http://localhost:8023)
 
 === Backend Server
 
@@ -47,8 +37,19 @@ clj -A:dev
 user=> (start)
 ## After modifications of the backend code:
 user=> (restart)
-## visit http://localhost:8989/
 ```
+
+Browse to: [http://localhost:8989](http://localhost:8989)
+
+
+=== The client build server
+
+Load the http://localhost:9630[client build manager UI] (http://localhost:9630)
+There you can recompile or trigger release builds
+
+//http://localhost:8989[Main App] (http://localhost:8989)
+//http://localhost:8022[Tests] (http://localhost:8022)
+//http://localhost:8023[Workspaces] (http://localhost:8023)
 
 === Clojurescript REPL:
 You can execute CLJS code in a REPL running in the browser environment
@@ -67,7 +68,7 @@ You cannot compile this project until you install the ones it
 depends on already:
 
 ```
-$ yarn install
+$ yarn
 ```
 
 or if you prefer `npm`:
@@ -83,10 +84,11 @@ for more information.
 
 Dependency Aliases:
 
-You will want to enable the `:dev` Clojure dependency while developing this project.  In IntelliJ this is in the
+You will want to enable the `:dev` and `:server` Clojure dependencies while developing the server-side of this project.  In IntelliJ this is in the
 "Clojure Deps" border tab window under "Aliases".
 
-The main project source is in `src/main`.
+The client and common project source is in `src/main`.
+The server project source is in `src/server`.
 
 == Development Mode
 
@@ -124,19 +126,23 @@ You can also run the individual client builds directly
 #### Develop components with cljs ####
 # Workspaces:
 npm run client/workspaces
-# Visit http://localhost:8023
-# Have a look at src/workspaces and https://github.com/nubank/workspaces
+```
+Visit http://localhost:8023
+Have a look at src/workspaces and https://github.com/nubank/workspaces
 
+```
 #### Refreshing tests in the browser ####
 # CLJS Tests:
 npm run client/test
-# Visit http://localhost:8022
+```
+Visit http://localhost:8022
 
-#### full-stack development ####
+```
+#### Full-stack development ####
 # Start the cljs compiler for the main target  (server must be running)
 npm run client/main
-# Visit http://localhost:8989
 ```
+Visit http://localhost:8989
 
 See the server section below for working on the full-stack app itself.
 
