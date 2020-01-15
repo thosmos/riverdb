@@ -8,33 +8,40 @@ ifdef::env-github[]
 :warning-caption: :warning:
 endif::[]
 
-== Quick Start
+== TLDR Quick Start
 
 ```Shell
 # Load all JS deps from package.json.
-yarn install
-(or use npm instead of yarn)
+yarn
+(npm install)
 
-# Start up the client compiler server:
-yarn dev
+# Start up the client UI compiler (watches the code and hot-reloads the browser on changes):
+yarn main
 ```
 
+Browse to: [http://localhost:8989](http://localhost:8989)
+
 === The client build server
-Load the http://localhost:9630[build manager] (http://localhost:9630)
 
-There you can kick off the compilation of the builds and then open their pages in a browser
+Load the http://localhost:9630[build manager UI] (http://localhost:9630)
+There you can kick off the compilation or release builds
 
-http://localhost:8022[Tests] (http://localhost:8022)
-
-http://localhost:8023[Workspaces] (http://localhost:8023)
-
-http://localhost:8989[Main App] (http://localhost:8989)
+//http://localhost:8989[Main App] (http://localhost:8989)
+//http://localhost:8022[Tests] (http://localhost:8022)
+//http://localhost:8023[Workspaces] (http://localhost:8023)
 
 === Backend Server
 
+Install Clojure CLI on Mac OS:
 ```Shell
-## Start the server REPL:
-clojure -A:dev -J-Dguardrails.enabled=true
+brew install clojure
+```
+Other OS see: https://clojure.org/guides/getting_started
+
+Start the backend server in a REPL:
+```Shell
+clj -A:dev
+
 # The ns is defined in src/dev/user
 ## Start the server
 user=> (start)
@@ -43,11 +50,14 @@ user=> (restart)
 ## visit http://localhost:8989/
 ```
 
-=== Connect to the CLJS nREPL:
-1. Open and connect to nREPL at localhost:9000.
-2. Execute `(shadow/repl :main)`. (you can select another target of course)
+=== Clojurescript REPL:
+You can execute CLJS code in a REPL running in the browser environment
+1. Open a remote nREPL to `localhost:9000`
+2. Execute `(shadow/repl :main)`
+3. Test with `(js/alert "Hello from the CLJS REPL")`
 
-== Setting Up
+
+== A More Detailed Setting Up Description ...
 
 The shadow-cljs compiler uses all js dependencies through
 NPM. If we use a library that is in cljsjs we will also have to add

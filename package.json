@@ -1,7 +1,7 @@
 {
   "name": "riverdb-graphql",
   "version": "0.2.0",
-  "description": "",
+  "description": "A River Science Data Management System",
   "private": true,
   "dependencies": {
     "create-react-context": "^0.3.0",
@@ -36,17 +36,13 @@
     "showdown": "^1.8.7"
   },
   "scripts": {
-    "client/main": "npx shadow-cljs watch :main",
+    "main": "npx shadow-cljs watch :main",
+    "dev": "npx shadow-cljs server",
+    "server": "clojure -A:dev -J-Dtrace -J-Dguardrails.enabled=true",
     "client/workspaces": "npx shadow-cljs watch :workspaces",
     "client/test": "npx shadow-cljs watch :test",
     "client/cljs": "shadow-cljs cljs-repl :main",
     "client/clj": "shadow-cljs clj-repl",
-    "client/server": "npx shadow-cljs server",
-    "client/nodejs": "npx shadow-cljs node-repl",
-    "server": "clojure -A:dev -J-Dtrace -J-Dguardrails.enabled=true",
-    "start": "npx run-p client/server server",
-    "main": "npx shadow-cljs -A:dev watch :main",
-    "dev": "npx shadow-cljs server"
   },
   "author": "Thomas Spellman <thomas@thosmos.com>",
   "license": "Eclipse Public License"
