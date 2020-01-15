@@ -1,0 +1,52 @@
+{
+  "name": "riverdb-graphql",
+  "version": "0.2.0",
+  "description": "",
+  "private": true,
+  "dependencies": {
+    "create-react-context": "^0.3.0",
+    "fsevents": "^2.1.2",
+    "highlight.js": "^9.13.1",
+    "js-joda": "^1.11.0",
+    "js-joda-timezone": "^2.1.1",
+    "moment": "^2.22.2",
+    "prop-types": "^15.7.2",
+    "react-datepicker": "^2.10.1",
+    "react-grid-layout": "^0.16.6",
+    "react-icons": "^2.2.7",
+    "react-treeview": "^0.4.7",
+    "react-virtualized": "^9.21.0",
+    "react-virtualized-auto-sizer": "^1.0.2",
+    "reakit": "^0.11.2",
+    "semantic-ui-css": "^2.4.1",
+    "semantic-ui-react": "^0.88.2",
+    "set-value": "^2.0.1",
+    "shortid": "^2.2.15",
+    "socket.io-client": "1.7.4"
+  },
+  "devDependencies": {
+    "intl-messageformat": "^2.2.0",
+    "karma": "^3.1.1",
+    "karma-chrome-launcher": "^2.2.0",
+    "karma-cljs-test": "^0.1.0",
+    "react": "^16.6.8",
+    "react-dom": "^16.6.8",
+    "shadow-cljs": "^2.8.58",
+    "showdown": "^1.8.7"
+  },
+  "scripts": {
+    "client/main": "npx shadow-cljs watch :main",
+    "client/workspaces": "npx shadow-cljs watch :workspaces",
+    "client/test": "npx shadow-cljs watch :test",
+    "client/cljs": "shadow-cljs cljs-repl :main",
+    "client/clj": "shadow-cljs clj-repl",
+    "client/server": "npx shadow-cljs server",
+    "client/nodejs": "npx shadow-cljs node-repl",
+    "server": "clojure -A:dev -J-Dtrace -J-Dguardrails.enabled=true",
+    "start": "npx run-p client/server server",
+    "main": "npx shadow-cljs -A:dev watch :main",
+    "dev": "npx shadow-cljs server"
+  },
+  "author": "Thomas Spellman <thomas@thosmos.com>",
+  "license": "Eclipse Public License"
+}

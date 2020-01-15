@@ -1,0 +1,7 @@
+;; These are attributes that can reside on any entity
+
+[#:attr{:name        "Entity Spec Type",
+        :key         :riverdb.entity/ns,
+        :cardinality :one,
+        :type        :keyword
+        :doc         "matches entity spec's `:entity/ns` value, for example `:entity.ns/sample` - used for bulk lookups by type"}]

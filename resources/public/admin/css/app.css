@@ -1,0 +1,46 @@
+html, body, #app {
+  height: 100vh;
+  width: 100%
+}
+
+a:hover, button:hover, select:hover {
+  cursor:pointer;
+}
+
+.ui.menu {
+    margin-bottom: 0;
+}
+
+.ui.container {
+    width: auto!important;
+    margin-left: 0.5em!important;
+    margin-right: 0.5em!important;
+}
+
+#dataviz thead tr:first-child > th {
+     position: sticky !important;
+     top: 0;
+     z-index: 2;
+}
+
+.tree-view_item {
+    padding: 10px;
+    font-size: 1.4em;
+}
+
+
+.ui.pagination.menu .item {
+    padding: 0 0 0 1.1em;
+}
+
+.ui.pagination.menu .active.item {
+    padding: 0 0 0 1.1em;
+}
+
+#sv-list-menu .item {
+padding: .2em 1em;
+}
+
+.ui.table thead th {
+padding: 0.1em;
+}

@@ -1,0 +1,53 @@
+.ui.container {
+    width: auto!important;
+    margin-left: 1em!important;
+    margin-right: 1em!important;
+}
+
+@media only screen and (max-width: 767px)
+.ui.container {
+    width: auto!important;
+    margin-left: 1em!important;
+    margin-right: 1em!important;
+}
+
+@media only screen and (max-width: 991px) and (min-width: 768px)
+.ui.container {
+    width: auto!important;
+    margin-left: 2em!important;
+    margin-right: 2em!important;
+}
+
+@media only screen and (max-width: 1199px) and (min-width: 992px)
+.ui.container {
+    width: auto!important;
+    margin-left: 2em!important;
+    margin-right: 2em!important;
+}
+
+
+.ui.table thead tr:first-child > th {
+     position: sticky !important;
+     top: 0;
+     z-index: 2;
+}
+
+ul.nav {
+  margin-top: 12px;
+}
+
+.tac-inputs * {
+  margin: 5px;
+}
+
+ul.nav li:hover {
+  background-color: white;
+}
+
+body {
+    display: flex
+}
+
+#app {
+    flex: 0 1 0
+}

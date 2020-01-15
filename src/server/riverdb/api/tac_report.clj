@@ -1,0 +1,1089 @@
+(ns riverdb.api.tac-report
+  (:require
+    [clojure.core.rrb-vector :as fv]
+    [clojure.edn :as edn]
+    [clojure.java.io :as io]
+    [clojure.spec.alpha :as s]
+    [clojure-csv.core :as csv :refer [write-csv parse-csv]]
+    [datomic.api :as d]
+    [java-time :as jt]
+    [riverdb.util :as util]
+    [taoensso.timbre :as log :refer [debug info]]
+    [thosmos.util :as tu])
+  (:import (java.io Writer)
+           (java.time ZonedDateTime)))
+
+;; FIXME pull this from logged in user
+(def report-config
+  {:agency-code "SYRCL"})
+
+(defn time-from-instant [^java.util.Date ins]
+  (-> ins
+    (.getTime)
+    (/ 1000)
+    java.time.Instant/ofEpochSecond
+    (java.time.ZonedDateTime/ofInstant
+      (java.time.ZoneId/of "America/Los_Angeles"))))
+
+(defn year-from-instant [^java.util.Date ins]
+  (.getYear ^ZonedDateTime (time-from-instant ins)))
+
+(defn get-agency-projects
+  ([db agencies]
+   ;(log/debug "get-agency-projects")
+   (let [all? (some #{"ALL"} agencies)
+         pjs  (if all?
+                (d/q '[:find [(pull ?pj [*]) ...]
+                       :where [?pj :projectslookup/AgencyCode]]
+                  db)
+                (d/q '[:find [(pull ?pj [*]) ...]
+                       :in $ [?agency ...]
+                       :where
+                       [?pj :projectslookup/AgencyCode ?agency]]
+                  db agencies))]
+     ;(log/debug "get-agency-projects: " pjs)
+     pjs)))
+
+;; FIXME use sitevisit's timezone
+(defn get-project-years [db project-id]
+  ;(log/debug "get-project-years" project-id)
+  (let [result (d/q '[:find [?year ...]
+                      :in $ ?proj
+                      :where
+                      [?pj :projectslookup/ProjectID ?proj]
+                      [?e :sitevisit/ProjectID ?pj]
+                      [?e :sitevisit/SiteVisitDate ?date]
+                      [(riverdb.api.tac-report/year-from-instant ?date) ?year]]
+                 db project-id)]
+    ;  (log/debug "get-project-years result" result)
+    result))
+
+;(defn get-agency-project-years
+;  ([db agency]
+;   (timbre/info "get-agency-project-years")
+;   (let [pjs  (get-agency-projects db agency)
+;         pjis (vec
+;                (remove nil?
+;                  (for [pj pjs]
+;                    (let [proj-id (:projectslookup/ProjectID pj)
+;                          years   (vec (sort > (get-project-years db proj-id)))]
+;                      (when (seq years)
+;                        {:id    proj-id
+;                         :name  (:projectslookup/Name pj)
+;                         :years years})))))]
+;     (timbre/info "results: " pjis)
+;     pjis)))
+
+(defn get-agency-project-years
+  ([db agencies]
+   ;(log/info "get-agency-project-years")
+   (let [pjs  (get-agency-projects db agencies)
+         pjis (into (sorted-map) (for [pj pjs]
+                                   (let [{:projectslookup/keys [ProjectID AgencyCode Name]
+                                          :db/keys             [id]} pj
+                                         years (vec (map str (sort > (get-project-years db ProjectID))))
+                                         ;_ (log/debug "project" ProjectID "years" years)
+                                         sites (d/q '[:find [(pull ?st [:db/id :stationlookup/StationName :stationlookup/StationID]) ...]
+                                                      :in $ ?pj
+                                                      :where [?st :stationlookup/Project ?pj]]
+                                                 db id)]
+                                     ;_ (log/debug "project" ProjectID "sites" sites)]
+
+                                     (when (seq years)
+                                       [(keyword ProjectID) {:id      ProjectID
+                                                             :agency  AgencyCode
+                                                             :project (tu/walk-modify-k-vals pj :db/id str)
+                                                             :name    Name
+                                                             :years   years
+                                                             :sites   (tu/walk-modify-k-vals sites :db/id str)}]))))]
+     ;(log/info "get-agency-project-years results: " pjis)
+     pjis)))
+
+;#_(d/q '[:find ?pj ?pid ?year
+;         :in $ ?agency
+;         :where
+;         [?pj :projectslookup/AgencyCode ?agency]
+;         [?pj :projectslookup/ProjectID ?pid]
+;         [?e :sitevisit/ProjectID ?pj]
+;         [?e :sitevisit/SiteVisitDate ?date]
+;         [(riverdb.api.tac-report/year-from-instant ?date) ?year]]
+;    db agency)
+
+
+(defn get-sitevisit-years
+  ([db project]
+   (d/q '[:find [?year ...]
+          :in $ ?proj
+          :where
+          [?pj :projectslookup/ProjectID ?proj]
+          [?e :sitevisit/ProjectID ?pj]
+          [?e :sitevisit/SiteVisitDate ?date]
+          [(riverdb.api.tac-report/year-from-instant ?date) ?year]]
+     db project)))
+
+(def default-query
+  [:db/id
+   [:sitevisit/SiteVisitID :as :svid]
+   [:sitevisit/SiteVisitDate :as :date]
+   [:sitevisit/Time :as :time]
+   [:sitevisit/Notes :as :notes]
+   {[:sitevisit/StationID :as :site] [[:stationlookup/StationID :as :id]
+                                      [:stationlookup/RiverFork :as :fork]
+                                      [:stationlookup/ForkTribGroup :as :trib]]}
+   {[:sitevisit/StationFailCode :as :failcode] [[:stationfaillookup/FailureReason :as :reason]]}
+   {:sample/_SiteVisitID
+    [{:fieldresult/_SampleRowID
+      [:db/id :fieldresult/Result :fieldresult/FieldReplicate
+       {:fieldresult/ConstituentRowID
+        [:db/id ;:constituentlookup/HighValue :constituentlookup/LowValue
+         {:constituentlookup/AnalyteCode [:analytelookup/AnalyteShort]}
+         {:constituentlookup/MatrixCode [:matrixlookup/MatrixShort]}
+         {:constituentlookup/UnitCode [:unitlookup/Unit]}]}
+       {[:fieldresult/SamplingDeviceID :as :device]
+        [[:samplingdevice/CommonID :as :id]
+         {[:samplingdevice/DeviceType :as :type] [[:samplingdevicelookup/SampleDevice :as :name]]}]}]}]}])
+
+(defn remap-query
+  [{args :args :as m}]
+  {:query (dissoc m :args)
+   :args  args})
+
+;; one graph query to pull all the data we need at once!
+(defn get-sitevisits
+  ([db]
+   (get-sitevisits db nil nil nil nil nil default-query))
+  ([db agency]
+   (get-sitevisits db agency nil nil nil nil default-query))
+  ([db agency year]
+   (get-sitevisits db agency nil year))
+  ([db agency project year]
+   (let [;_          (debug "YEAR" year (type year))
+         start-time (jt/zoned-date-time year)
+         ;start-time (jt/instant year)
+         end-time   (jt/plus start-time (jt/years 1))]
+     ;end-time   (jt/instant (inc year))]
+     (get-sitevisits db agency start-time end-time project nil default-query)))
+  ([db agency fromDate toDate project station]
+   (get-sitevisits db agency fromDate toDate project station default-query))
+  ([db agency fromDate toDate project station query]
+   (log/debug "GET SITEVISITS" agency fromDate toDate project station)
+   (let [q      {:find  ['[(pull ?sv qu) ...]]
+                 :in    '[$ qu]
+                 :where '[]
+                 :args  [db query]}
+
+
+         q      (cond-> q
+
+                  ;; if station
+                  station
+                  (->
+                    (update :where #(-> %
+                                      (conj '[?st :stationlookup/StationID ?station])
+                                      (conj '[?sv :sitevisit/StationID ?st])))
+                    (update :in conj '?station)
+                    (update :args conj station))
+
+                  agency
+                  (->
+                    (update :where #(-> %
+                                      (conj '[?pj :projectslookup/AgencyCode ?agency])))
+                    (update :in conj '?agency)
+                    (update :args conj agency))
+
+                  project
+                  (->
+                    (update :where #(-> %
+                                      (conj '[?pj :projectslookup/ProjectID ?proj])))
+                    (update :in conj '?proj)
+                    (update :args conj project))
+
+
+                  (or agency project)
+                  (->
+                    (update :where #(-> %
+                                      (conj '[?sv :sitevisit/ProjectID ?pj]))))
+
+
+                  ;; If either from- or to- date were passed, join the `sitevisit` entity
+                  ;; and bind its `SiteVisitDate` attribute to the `?date` variable.
+                  (or fromDate toDate)
+                  (update :where conj
+                    '[?sv :sitevisit/SiteVisitDate ?date])
+
+                  ;; If the `fromDate` filter was passed, do the following:
+                  ;; 1. add a parameter placeholder into the query;
+                  ;; 2. add an actual value to the arguments;
+                  ;; 3. add a proper condition against `?date` variable
+                  ;; (remember, it was bound above).
+                  fromDate
+                  (->
+                    (update :in conj '?fromDate)
+                    (update :args conj (jt/java-date fromDate))
+                    (update :where conj
+                      '[(> ?date ?fromDate)]))
+
+                  ;; similar to ?fromDate
+                  toDate
+                  (->
+                    (update :in conj '?toDate)
+                    (update :args conj (jt/java-date toDate))
+                    (update :where conj
+                      '[(< ?date ?toDate)]))
+
+                  ;; last one, in case there are no conditions, get all sitevisits
+                  (empty? (:where q))
+                  (->
+                    (update :where conj '[?sv :sitevisit/StationID])))
+         q      (remap-query q)
+         ;_ (log/debug "SITEVISITS QUERY" q)
+         result (d/query q)
+         _      (log/debug "SITEVISIT RESULTS" (count result))]
+
+     ;; this query only returns field results due to missing :db/id on sample
+     ;; we can modiy this to handle labresults too, or do it somewhere else
+
+     result)))
+
+
+
+
+(defn filter-sitevisits [svs]
+  (vec (filter #(< (get-in % [:site :id]) 500) svs)))
+
+
+
+;(defn pull-no-results [db eids]
+;  (d/q '[:find [(pull ?eid
+;                  [:db/id :sitevisit/SiteVisitID :sitevisit/SiteVisitDate :sitevisit/QACheck :sitevisit/Notes
+;                   {:sitevisit/StationID [:stationlookup/StationID :stationlookup/RiverFork]}
+;                   {:sitevisit/StationFailCode [:stationfaillookup/FailureReason]}
+;                   {:samplingcrew/_SiteVisitID [{:samplingcrew/PersonID [:person/FName :person/LName]}]}]) ...]
+;         :in $ [?eid ...]
+;         :where [?eid]] db eids))
+
+(defn pull-no-result [db eid]
+  (let [x (d/pull db
+            [:db/id [:sitevisit/SiteVisitDate :as :date] [:sitevisit/Notes :as :notes]
+             {[:sitevisit/StationID :as :site] [[:stationlookup/StationID :as :id]]}
+             {[:sitevisit/StationFailCode :as :reason] [[:stationfaillookup/FailureReason :as :reason]]}
+             {[:samplingcrew/_SiteVisitID :as :crew] [{[:samplingcrew/PersonID :as :person] [[:person/FName :as :fname] [:person/LName :as :lname]]}]}]
+            eid)]
+    (-> x
+      (assoc :site (get-in x [:site :id]))
+      (assoc :reason (get-in x [:reason :reason]))
+      (assoc :crew (clojure.string/join ", "
+                     (map #(let [peep (:person %)]
+                             (str (:fname peep) " " (:lname peep)))
+                       (:crew x)))))))
+
+
+;;;;;; utilities
+
+(defn vec-remove [pos coll]
+  (fv/catvec (fv/subvec coll 0 pos) (fv/subvec coll (inc pos) (count coll))))
+
+(defn round2
+  "Round a double to the given precision (number of significant digits)"
+  [precision d]
+  (let [factor (Math/pow 10 precision)]
+    (/ (Math/round (* d factor)) factor)))
+
+(defn square [n] (* n n))
+
+(defn mean [a] (/ (reduce + a) (count a)))
+
+(defn std-dev
+  [a]
+  (let [mn (mean a)]
+    (Math/sqrt
+      (/ (reduce #(+ %1 (square (- %2 mn))) 0 a)
+        (dec (count a))))))
+
+(defn percent-prec [avg stddev]
+  (* (/ stddev avg) 100))
+
+;; if it's nil, make it 0
+(defn inc! [val]
+  (inc (or val 0)))
+
+;; if it's nil, make it a []
+(defn conjv [coll val]
+  (conj (or coll []) val))
+
+;;;;; data manip
+
+;; run through all values and calc max relative diffs from the others
+(defn calc-diffs [vals]
+  (into []
+    (for [v vals]
+      (apply + (for [w vals]
+                 (round2 10 (Math/abs (- v w))))))))
+
+(defn reduce-outlier-idx [diffs]
+  (:outlier-idx
+    (reduce (fn [{:keys [i outlier outlier-idx] :as init} diff]
+              (let [max         (- diff outlier)
+                    outlier?    (pos? max)
+                    outlier     (if outlier? diff outlier)
+                    outlier-idx (if outlier? i outlier-idx)]
+                {:outlier outlier :outlier-idx outlier-idx :i (inc i)}))
+      {:outlier 0.0 :outlier-idx 0 :i 0} diffs)))
+
+(defn find-outlier-idx [vals]
+  (let [diffs   (calc-diffs vals)
+        ;_       (println "diffs" diffs)
+        outlier (reduce-outlier-idx diffs)]
+    outlier))
+
+(defn remove-outliers
+  "remove values that are the biggest outliers, one at a time"
+  [target vals]
+  (loop [vals vals]
+    (if (> (count vals) target)
+      (recur (vec-remove (find-outlier-idx vals) vals))
+      (vec vals))))
+
+
+
+(defn reduce-fieldresults-to-map
+  "reduce a set of fieldresults into a map of parameter maps indexed by parameter name"
+  [fieldresults]
+  (reduce (fn [init {:keys [fieldresult/Result fieldresult/ConstituentRowID device] :as fieldresult}]
+            (let [c         ConstituentRowID
+                  cid       (get c :db/id)
+                  analyte   (get-in c [:constituentlookup/AnalyteCode :analytelookup/AnalyteShort])
+                  matrix    (get-in c [:constituentlookup/MatrixCode :matrixlookup/MatrixShort])
+                  unit      (get-in c [:constituentlookup/UnitCode :unitlookup/Unit])
+                  device    (str (get-in device [:type :name]) " - " (:id device))
+                  ;device (get-in device [:type :name])
+                  analyte-k (keyword (str matrix "_" analyte))
+                  ;analyte-k (keyword analyte)
+                  init      (if (= nil (get init analyte-k))
+                              (assoc init analyte-k {})
+                              init)
+                  init      (update init analyte-k
+                              (fn [k] (-> k
+                                        (update :vals conjv Result)
+                                        (assoc :device device))))]
+
+
+              init))
+    {} fieldresults))
+
+
+;; FIXME per group
+
+(def qapp-requirements
+  {:include-elided? false
+   :min-samples     3
+   :elide-extra?    true
+   :params          {:H2O_Temp {:precision  {:unit 1.0}
+                                :exceedance {:high 20.0}}
+                     :H2O_Cond {:precision {:unit 10.0}}
+                     :H2O_DO   {:precision  {:percent 10.0}
+                                :exceedance {:low 7.0}}
+                     :H2O_pH   {:precision  {:unit 0.4}
+                                :exceedance {:low  6.5
+                                             :high 8.5}}
+                     :H2O_Turb {:precision {:percent   10.0
+                                            :unit      0.6
+                                            :threshold 10.0}}
+                     :H2O_PO4  {:precision {:percent   20.0
+                                            :unit      0.06
+                                            :threshold 0.1}}
+                     :H2O_NO3  {:precision {:percent   20.0
+                                            :unit      0.06
+                                            :threshold 0.1}}}})
+
+
+;(def params
+;  [:Air_Temp :H2O_Temp :H2O_Cond :H2O_DO :H2O_pH :H2O_Turb])
+
+;; FIXME per group
+
+(def param-config
+  {:Air_Temp     {:order 0 :count 1 :name "Air_Temp"}
+   :H2O_Temp     {:order 1 :count 3 :name "H2O_Temp"}
+   :H2O_Cond     {:order 2 :count 3 :name "Cond"}
+   :H2O_DO       {:order 3 :count 3 :name "DO"}
+   :H2O_pH       {:order 4 :count 3 :name "pH"}
+   :H2O_Turb     {:order 5 :count 3 :name "Turb"}
+   :H2O_NO3      {:order 6 :count 3 :name "NO3" :optional true}
+   :H2O_PO4      {:order 7 :count 3 :name "PO4" :optional true}
+   :H2O_Velocity {:elide? true}})
+
+
+
+(def param-config-ssi
+  {:Air_Temp {:order 0
+              :count 1
+              :name  "Air Temp"}
+   :H2O_Temp {:order      1
+              :count      6
+              :name       "Water Temp"
+              :precision  {:unit 1.0}
+              :exceedance {:high 20.0}}
+   :H2O_Cond {:order     2
+              :count     3
+              :name      "µS Conductivity"
+              :precision {:unit 10.0}}
+   :H2O_DO   {:order      3
+              :count      3
+              :name       "Dissolved Oxygen"
+              :precision  {:percent 10.0}
+              :exceedance {:low 7.0}}
+   :H2O_pH   {:order      4 :count 3 :name "pH"
+              :precision  {:unit 0.4}
+              :exceedance {:low  6.5
+                           :high 8.5}}
+   :H2O_Turb {:order     5 :count 3 :name "Turbidity"
+              :precision {:percent   10.0
+                          :unit      0.6
+                          :threshold 10.0}}
+   :H2O_NO3  {:order     6 :count 3 :name "NO3"
+              :precision {:percent   20.0
+                          :unit      0.06
+                          :threshold 0.1}}
+   :H2O_PO4  {:order     7 :count 3 :name "PO4"
+              :precision {:percent   20.0
+                          :unit      0.06
+                          :threshold 0.1}}})
+
+
+
+
+(defn calc-param-summaries
+  "calculate summaries for each parameter map entry"
+  [fieldresult]
+  (into {}
+    (for [[k {:keys [vals] :as v}] fieldresult]
+      (try
+        (let [;_ (println "CALC " k)
+              ;; calculate sample quantity exceedance
+              qapp            qapp-requirements
+              qapp?           (some? (get-in qapp [:params k]))
+              qapp-samples    (get qapp :min-samples 0)
+              val-count       (count vals)
+              too-many?       (and qapp? (> val-count qapp-samples))
+              incomplete?     (and qapp? (< val-count qapp-samples))
+
+              ;; if too many, do we throw out the outliers?
+              elide?          (and too-many? (:elide-extra? qapp))
+              include-elided? (:include-elided? qapp)
+              ;; save the original set of values before removal
+              orig-vals       vals
+              vals            (if elide?
+                                (remove-outliers qapp-samples vals)
+                                vals)
+              val-count       (count vals)
+              vals?           (seq vals)]
+
+          (if-not vals?
+            (let [v (merge v {:incomplete? true
+                              :invalid?    true
+                              :count       0
+                              :vals        vals})]
+              [k v])
+
+            (let [
+                  ;; calculate
+                  mx           (apply max vals)
+                  mn           (apply min vals)
+                  ;; FIXME clamp range to 4 decimals to eliminate float stragglers - use sig figs?
+                  range        (round2 4 (- mx mn))
+                  stddev       (if (> range 0.0) (std-dev vals) 0.0)
+                  mean         (mean vals)
+                  prec-percent (if (> range 0.0) (percent-prec mean stddev) 0.0)
+                  prec-unit    range
+
+                  ;; calculate precision thresholds * 2 to convert to +- form of requirements
+                  req-percent  (get-in qapp [:params k :precision :percent])
+
+                  req-unit     (get-in qapp [:params k :precision :unit])
+
+                  threshold    (if (and req-percent req-unit)
+                                 (or
+                                   (get-in qapp [:params k :precision :threshold])
+                                   (* (/ 100.0 req-percent) req-unit)))
+                  imprecision? (when (and qapp? (> val-count 1))
+                                 (if threshold
+                                   (if (> mean threshold)
+                                     (if
+                                       (> prec-percent req-percent)
+                                       (do
+                                         ;(println "PRECISION % " k threshold prec-percent req-percent)
+                                         true)
+                                       false)
+                                     (if
+                                       (> prec-unit req-unit)
+                                       (do
+                                         ;(println "PRECISION unit " k threshold prec-unit req-unit)
+                                         true)
+                                       false))
+                                   (if req-percent
+                                     (> prec-percent req-percent)
+                                     (> prec-unit req-unit))))
+
+                  ;;; calculate quality exceedance
+                  high         (get-in qapp [:params k :exceedance :high])
+                  low          (get-in qapp [:params k :exceedance :low])
+                  too-high?    (and qapp? (some? high) (> mean high))
+                  too-low?     (and qapp? (some? low) (< mean low))
+                  invalid?     (and qapp? (or incomplete? imprecision?))
+                  exceedance?  (and qapp? (not invalid?) (or too-low? too-high?))
+
+                  v            (merge v {:invalid?    invalid?
+                                         :exceedance? exceedance?
+                                         :count       val-count
+                                         :max         mx
+                                         :min         mn
+                                         :range       (round2 2 range)
+                                         :stddev      (round2 2 stddev)
+                                         :mean        (round2 2 mean)
+                                         :prec        (if (some? prec-percent) (round2 2 prec-percent) nil)
+                                         :vals        vals})
+
+                  v            (cond-> v
+                                 exceedance?
+                                 (merge {:too-low?  too-low?
+                                         :too-high? too-high?})
+                                 invalid?
+                                 (merge {:incomplete? incomplete?
+                                         :imprecise?  imprecision?})
+                                 (and elide? include-elided?)
+                                 (assoc :orig-vals orig-vals))]
+
+              [k v])))
+
+        (catch Exception ex (println "ERROR in calc-param-summaries" ex fieldresult))))))
+
+(defn calc-sitevisit-stats [sv]
+  (let [frs (:fieldresults sv)
+        sv  (reduce-kv
+              (fn [sv fr-k fr-m]
+                (cond-> sv
+                  (:invalid? fr-m)
+                  (update :count-params-invalid inc!)
+                  (:exceedance? fr-m)
+                  (update :count-params-exceedance inc!)))
+              sv frs)
+        sv  (assoc sv :invalid? (some? (:count-params-invalid sv)))
+        sv  (assoc sv :exceedance? (some? (:count-params-exceedance sv)))]
+    sv))
+
+(defn create-sitevisit-summaries
+  "create summary info per sitevisit"
+  [sitevisits]
+  (for [sv sitevisits]
+    (try
+      (let [
+            ;_        (println "processing SV " (get-in sv [:sitevisit/StationID
+            ;                                    :stationlookup/StationID]))
+
+            ;; remap nested values to root
+            sv  (-> sv
+                  (assoc :trib (get-in sv [:site :trib]))
+                  (assoc :fork (get-in sv [:site :fork]))
+                  (assoc :site (get-in sv [:site :id]))
+                  (assoc :failcode (get-in sv [:failcode :reason])))
+
+            ;; pull out fieldresult list
+            frs (get-in sv [:sample/_SiteVisitID 0 :fieldresult/_SampleRowID])
+            ;; restrict to water samples (no air)
+            ;frs (filter #(= "H2O" (get-in % [:fieldresult/ConstituentRowID
+            ;                                 :constituentlookup/MatrixCode
+            ;                                 :matrixlookup/MatrixShort])) frs)
+
+            ;; toss velocity
+            ;frs (remove #(= "Velocity" (get-in % [:fieldresult/ConstituentRowID
+            ;                                      :constituentlookup/AnalyteCode
+            ;                                      :analytelookup/AnalyteShort])) frs)
+
+            ;_   (println "reduce FRs to param sums")
+            frs (reduce-fieldresults-to-map frs)
+            ;_   (println "calc param sums")
+            frs (calc-param-summaries frs)
+            ;; remove the list of samples and add the new param map
+            ;_   (println "move FRS")
+            sv  (-> sv
+                  (dissoc :sample/_SiteVisitID)
+                  (assoc :fieldresults frs))
+            ;_   (println "count valid params")
+            ;; count valid params
+
+            sv  (calc-sitevisit-stats sv)]
+
+        sv)
+      (catch Exception ex (println "Error in create-param-summaries" ex)))))
+
+
+(defn read-csv [filename]
+  (with-open
+    [^java.io.Reader r (clojure.java.io/reader filename)]
+    (let [csv    (parse-csv r)
+          header (first csv)
+          hidx   (into {} (for [i (range (count header))]
+                            [(get header i) i]))
+          csv    (rest csv)]
+      (doall
+        (for [row csv]
+          (let [sv  {:site (get row (get hidx "Site"))
+                     :svid (get row (get hidx "SiteVisitID"))
+                     :date (get row (get hidx "Date"))
+                     :time (get row (get hidx "Time"))}
+                ;_ (println "DAtE" (type (get row (get hidx "Date"))))
+                frs (into {}
+                      (for [[k v] (:params qapp-requirements)]
+                        (let [sample-count (get-in param-config [k :count])]
+                          [k {:vals (vec (remove nil?
+                                           (for [i (range 1 (+ sample-count 1))]
+                                             (let [csv_field (str (name k) "_" i)
+                                                   csv_idx   (get hidx csv_field)]
+                                               (when csv_idx
+                                                 (let [field_val (get row csv_idx)]
+                                                   (edn/read-string field_val)))))))}])))
+                ;frs (calc-param-summaries frs)
+                sv  (assoc sv :results frs)]
+            ;sv (calc-sitevisit-stats sv)
+
+
+            sv))))))
+
+
+(defn csv-sitevisit-summaries
+  "import csv dat into the same format as the reduce-fieldresults-to-map function"
+  [filename]
+  (with-open
+    [^java.io.Reader r (clojure.java.io/reader filename)]
+    (let [csv    (parse-csv r)
+          header (first csv)
+          hidx   (into {} (for [i (range (count header))]
+                            [(get header i) i]))
+          csv    (rest csv)]
+      (doall
+        (for [row csv]
+          (let [sv  {:site (get row (get hidx "Site"))
+                     :svid (get row (get hidx "SiteVisitID"))
+                     :date (get row (get hidx "Date"))
+                     :time (get row (get hidx "Time"))}
+                ;_ (println "DAtE" (type (get row (get hidx "Date"))))
+                frs (into {}
+                      (for [[k v] (:params qapp-requirements)]
+                        (let [sample-count (get-in param-config [k :count])]
+                          [k {:vals (vec (remove nil?
+                                           (for [i (range 1 (+ sample-count 1))]
+                                             (let [csv_field (str (name k) "_" i)
+                                                   csv_idx   (get hidx csv_field)]
+                                               (when csv_idx
+                                                 (let [field_val (get row csv_idx)]
+                                                   (edn/read-string field_val)))))))}])))
+                frs (calc-param-summaries frs)
+                sv  (assoc sv :fieldresults frs)
+                sv  (calc-sitevisit-stats sv)]
+            sv))))))
+
+
+(defn simplify-sv [sv param]
+  (assoc sv :fieldresults (get-in sv [:fieldresults param])))
+
+(defn report-reducer
+  "generate a map with summary info over whole time period, including details for each parameter in :z-params"
+  [db sitevisits]
+  (reduce
+    (fn [r {:keys [fieldresults] :as sv}]
+      (try (let [param-keys (keys (:params qapp-requirements))
+
+                 ;_        (println "SV " (get-in sv [:sitevisit/StationID
+                 ;                                    :stationlookup/StationID]))
+
+                 ;; count all sitevisits
+                 r          (update r :count-sitevisits inc!)
+
+                 r          (cond-> r
+                              ;; if the sitevisit has no fieldresults, add it to a :no-results list
+                              (empty? fieldresults)
+                              (->
+                                ;(update :no-results-rs conjv sv-ident)
+                                ;#(do
+                                ;   (println "EMPTY" sv)
+                                ;   %)
+                                (update :count-no-results inc!)
+                                (update :no-results-rs conjv (when db (pull-no-result db (:db/id sv)))))
+                              ;; otherwise add it to :results list
+                              (seq fieldresults)
+                              (->
+                                (update :count-results inc!)))
+
+
+
+                 ;;_ (println "reduce FRs")
+                 ;; reduce the fieldresults to summarize
+
+                 r          (reduce-kv
+                              (fn [r fr-k fr-m]
+                                (if (some #(= fr-k %) param-keys)
+                                  (-> r
+                                    ;; total count of results
+                                    (update :count-params inc!)
+                                    ;; count each param
+                                    (update-in [:z-params fr-k :count] inc!)
+
+                                    ;; count all exceedances
+                                    (cond->
+
+                                      ;; too few
+                                      (:incomplete? fr-m)
+                                      (->
+                                        (update :invalid-incomplete inc!)
+                                        ;(update :exceeds-total inc!)
+                                        ;(update-in [:z-params fr-k :too-few-rs] conjv sv-ident)
+                                        (update-in [:z-params fr-k :invalid-incomplete] inc!))
+
+                                      ;; precision exceedance
+                                      (:imprecise? fr-m)
+                                      (->
+                                        ;(update :qapp-rs conjv sv-ident)
+                                        ;(update :exceeds-total inc!)
+                                        (update :invalid-imprecise inc!)
+                                        ;(update-in [:z-params fr-k :prec-exceeds-rs] conjv sv-ident)
+                                        (update-in [:z-params fr-k :invalid-imprecise] inc!))
+
+                                      ;; water quality
+                                      (:too-high? fr-m)
+                                      (->
+                                        ;(update :qual-rs conjv sv-ident)
+                                        ;(update :exceeds-total inc!)
+                                        (update :exceed-high inc!)
+                                        (update-in [:z-params fr-k :exceed-high] inc!))
+
+                                      ;; water quality
+                                      (:too-low? fr-m)
+                                      (->
+                                        ;(update :qual-rs conjv sv-ident)
+                                        ;(update :exceeds-total inc!)
+                                        (update :exceed-low inc!)
+                                        (update-in [:z-params fr-k :exceed-low] inc!))
+
+                                      ;; valid
+                                      (:invalid? fr-m)
+                                      (->
+                                        (update :count-params-invalid inc!)
+                                        (update-in [:z-params fr-k :invalid] inc!)
+                                        (update-in [:z-params fr-k :invalid-rs] conjv (simplify-sv sv fr-k)))
+
+                                      ;; valid
+                                      (not (:invalid? fr-m))
+                                      (->
+                                        (update :count-params-valid inc!)
+                                        (update-in [:z-params fr-k :valid] inc!))
+
+                                      ;; exceedance
+                                      (and (not (:invalid? fr-m)) (:exceedance? fr-m))
+                                      (->
+                                        (update :count-params-exceedance inc!)
+                                        (update-in [:z-params fr-k :exceedance] inc!)
+                                        (update-in [:z-params fr-k :exceedance-rs] conjv (simplify-sv sv fr-k)))))
+                                  r))
+                              r fieldresults)
+
+                 r          (reduce-kv
+                              (fn [r k m]
+                                (let [total          (:count m)
+                                      valid          (get m :valid 0)
+                                      valid-percent  (when (> valid 0)
+                                                       (round2 2 (* 100 (/ valid total))))
+                                      exceedance     (get m :exceedance 0)
+                                      non-exceed     (- valid exceedance)
+                                      exceed-percent (when (> valid 0)
+                                                       (round2 2 (* 100 (/ non-exceed valid))))]
+
+                                  (-> r
+                                    (assoc-in [:z-params k :percent-valid] valid-percent)
+                                    (assoc-in [:z-params k :percent-exceedance] exceed-percent))))
+
+                              r (:z-params r))]
+
+
+             r)
+           (catch Exception ex (println ex sv))))
+    {} sitevisits))
+
+;(defn calc-params-exceedance [qapp-requirements z-params report]
+;  (for [[p-nm p] z-params]
+;    ))
+
+(defn report-stats [report]
+  (let [count-svs                 (get report :count-sitevisits 0)
+        noresults                 (get report :count-no-results 0)
+        results                   (get report :count-results 0)
+        count-z-params            (count (:z-params report))
+        count-params-planned      (* count-z-params count-svs)
+        count-params-possible     (* count-z-params results)
+        count-params              (get report :count-params 0)
+        count-params-invalid      (get report :count-params-invalid 0)
+        count-params-valid        (get report :count-params-valid 0)
+        percent-params-valid      (round2 2 (* (/ count-params-valid count-params) 100))
+        count-params-exceedance   (get report :count-params-exceedance 0)
+        ;count-params-exceedable   ()
+        percent-params-exceedance (round2 2 (* (/ count-params-exceedance count-params-valid) 100))
+        results                   (get report :count-results 0)
+        percent                   (round2 2 (* (/ results count-svs) 100))
+
+        report                    (reduce-kv
+                                    (fn [r k m]
+                                      (let [order        (get-in param-config [k :order] 0)
+                                            sample-count (get-in param-config [k :count] 3)]
+                                        (-> r
+                                          (assoc-in [:z-params k :display-order] order)
+                                          (assoc-in [:z-params k :sample-count] sample-count))))
+                                    report (:z-params report))]
+
+    ;order          (get-in param-config [k :order] 0)
+    ;sample-count   (get-in param-config [k :count] 3)
+    ;(assoc-in [:z-params k :display-order] order)
+    ;(assoc-in [:z-params k :sample-count] sample-count)
+
+
+    ;count-sv-valid       (or (:count-sitevisits-valid report) 0)
+    ;percent-sv-valid     (round2 2 (* 100 (/ count-sv-valid count-svs)))
+
+    (-> report
+      (assoc :percent-complete percent)
+      ;(assoc :percent-valid percent-sv-valid)
+      ;(assoc :count-params-valid count-params-valid)
+      (assoc :count-params-planned count-params-planned)
+      (assoc :count-params-possible count-params-possible)
+      (assoc :percent-params-valid percent-params-valid)
+      (assoc :count-params-exceedance count-params-exceedance)
+      (assoc :percent-params-exceedance percent-params-exceedance))))
+
+(defn print-report [report]
+  (println (-> (pr-str report)
+             (.replace ":" "\n") (.replace "{" "\n") (.replace "}" "\n")
+             (.replace "," "") (.replace "z-params" ""))))
+
+
+(s/def ::report-year (s/or :year integer? :all nil?))
+
+(defn check [type data]
+  (if (s/valid? type data)
+    true
+    (throw (AssertionError. (s/explain type data)))))
+
+(defn get-project-name [db projCode]
+  (d/q '[:find ?pjnm .
+         :in $ ?pj
+         :where
+         [?e :projectslookup/ProjectID ?pj]
+         [?e :projectslookup/Name ?pjnm]]
+    db projCode))
+
+(defn get-annual-report [db agency project year]
+  ;{:pre [true (check ::report-year year)]}
+  (let [year       (if (= year "") nil (Long/parseLong year))
+        _          (check ::report-year year)
+        ;agency     (or agency "SYRCL")
+        done?      false
+        _          (log/info "BEGINNING TAC REPORT" agency project year)
+        ;start-time (jt/zoned-date-time year)
+        ;end-time   (jt/plus start-time (jt/years 1))
+        sitevisits (if year
+                     (get-sitevisits db agency project year)
+                     (get-sitevisits db agency))
+        _          (debug "svs" (first sitevisits))
+        sitevisits (filter-sitevisits sitevisits)
+        sitevisits (create-sitevisit-summaries sitevisits)
+        _          (println "report reducer")
+        ;param-keys (reduce #(apply conj %1 (map first (get-in %2 [:fieldresults]))) #{} sitevisits)
+        report     (report-reducer db sitevisits)
+        _          (println "REPORT: "
+                     (select-keys report
+                       [:count-sitevisits :count-params-valid :count-params-exceedance]))
+        report     (report-stats report)
+        report     (-> report
+                     (assoc :report-year year)
+                     (assoc :qapp-requirements qapp-requirements)
+                     (assoc :param-config param-config)
+                     (assoc :project (get-project-name db project))
+                     (assoc :agency agency))
+        _          (log/info "TAC REPORT COMPLETE")]
+    report))
+
+(defn filter-empty-fieldresults [svs]
+  (remove #(and
+             (empty? (:fieldresults %))
+             (= (:failcode %) "None")) svs))
+
+
+(defn get-dataviz-data
+  [db agency project year]
+  (try
+    (let [;_            (log/info "GET-DATAVIZ!" year project)
+          year         (if (= year "") nil (Long/parseLong year))
+          ;_            (check ::report-year year)
+          param-config (into {} (remove #(:elide? (val %)) param-config))
+          svs          (get-sitevisits db nil project year)
+          ;_            (debug "sitevisits" (count svs))
+          svs          (filter-empty-fieldresults svs)
+          ;_            (debug "sitevisits filtered" (count svs))
+          svs          (create-sitevisit-summaries svs)
+          ;_            (debug "sitevisits summaries" (count svs))
+          svs          (sort-by :date svs)
+          ;_            (debug "sitevisits first" (first svs))
+          ;_            (debug "sitevisits last" (last svs))
+          result       {:results-rs        svs
+                        :param-config      param-config
+                        :qapp-requirements qapp-requirements
+                        :report-year       year
+                        :agency            agency
+                        :project           (get-project-name db project)}]
+      result)
+    (catch Exception ex (log/error "DATAVIZ ERROR" (.getMessage ex)))))
+
+(defn get-annual-report-csv [filename]
+  ;{:pre [true (check ::report-year year)]}
+  (let [_      (log/info "BEGINNING CSV TAC REPORT")
+        svs    (csv-sitevisit-summaries filename)
+        report (report-reducer nil svs)
+        report (report-stats report)
+        report (-> report
+                 (assoc :report-year nil)
+                 (assoc :qapp-requirements qapp-requirements)
+                 (assoc :param-config param-config))
+        _      (log/info "CSV TAC REPORT COMPLETE")]
+    report))
+
+
+;(defn get-dataviz [db year]
+;  (let [sitevisits (take 1 (get-sitevisits db year))
+;        sitevisits (filter-sitevisits sitevisits)
+;        sitevisits (create-sitevisit-summaries sitevisits)]
+;    sitevisits
+;    ))
+
+;(defn q-all-years [db agency]
+;  (d/q '[:find [(pull ?sv [:db/id
+;                           [:sitevisit/SiteVisitID :as :svid]
+;                           [:sitevisit/SiteVisitDate :as :date]
+;                           [:sitevisit/Time :as :time]
+;                           [:sitevisit/Notes :as :notes]
+;                           {[:sitevisit/StationID :as :site] [[:stationlookup/StationID :as :id]
+;                                                              [:stationlookup/RiverFork :as :fork]
+;                                                              [:stationlookup/ForkTribGroup :as :trib]]}
+;                           {[:sitevisit/StationFailCode :as :failcode] [[:stationfaillookup/FailureReason :as :reason]]}
+;                           {:sample/_SiteVisitID
+;                            [{:fieldresult/_SampleRowID
+;                              [:db/id :fieldresult/Result :fieldresult/FieldReplicate
+;                               {:fieldresult/ConstituentRowID
+;                                [:db/id ;:constituentlookup/HighValue :constituentlookup/LowValue
+;                                 {:constituentlookup/AnalyteCode [:analytelookup/AnalyteShort]}
+;                                 {:constituentlookup/MatrixCode [:matrixlookup/MatrixShort]}
+;                                 {:constituentlookup/UnitCode [:unitlookup/Unit]}]}
+;                               {[:fieldresult/SamplingDeviceID :as :device]
+;                                [[:samplingdevice/CommonID :as :id]
+;                                 {[:samplingdevice/DeviceType :as :type] [[:samplingdevicelookup/SampleDevice :as :name]]}]}]}]}]) ...]
+;         :in $ ?agency
+;         :where
+;         [?pj :projectslookup/AgencyCode ?agency]
+;         [?sv :sitevisit/ProjectID ?pj]
+;         ]
+;    db agency))
+
+(defn sitevisit->csv [sv param-config]
+  (let [date-val   [(jt/format "YYYY-MM-dd" (time-from-instant (:date sv)))]
+        head-vals  (for [p [:site :time :fork :trib]]
+                     (str (get sv p)))
+        tail-vals  (for [p [:count-params-invalid :count-params-exceedance :db/id :svid :failcode :notes]]
+                     (str (get sv p)))
+        param-vals (map str
+                     (flatten
+                       (doall (for [[p-name p] param-config]
+                                (let [rs           (get-in sv [:fieldresults p-name])
+                                      vals         (:vals rs)
+                                      no-vals?     (not vals)
+                                      sample-count (:count p)
+                                      {:keys [mean stddev prec range count device invalid? exceedance? incomplete? too-low? too-high? imprecise?]} rs]
+                                  (if (= sample-count 1)
+                                    [mean device]
+                                    [(get vals 0) (get vals 1) (get vals 2)
+                                     mean stddev prec
+                                     range count device
+                                     (when invalid? "1")
+                                     (when exceedance? "1")]))))))]
+
+    (write-csv [(concat date-val head-vals param-vals tail-vals)] :force-quote true)))
+
+(defn sitevisits->csv
+  ([svs p-cfg]
+   (sitevisits->csv *out* svs p-cfg))
+  ([^Writer writer sitevisits param-config]
+   ;(println "sitevisits->csv" (map #(clojure.string/capitalize (name %)) (keys (first sitevisits))))
+   (let [heads      ["Date" "Site" "Time" "Fork" "Trib"]
+         body-1     ["1" "Device"]
+         body-3     ["1" "2" "3" "Mean" "StDev" "Prec" "Range" "Count" "Device" "Invalid" "Exceed"]
+         tails      ["Invalid_Total" "Exceed_Total" "ID" "SVID" "Failcode" "Notes"]
+         ps         (flatten
+                      (for [[p-nm p] param-config]
+                        (let [sample-count (:count p)
+                              fields       (if (= sample-count 1)
+                                             body-1
+                                             body-3)]
+                          (for [field fields]
+                            (let [name (str (:name p) "_" field)]
+                              name)))))
+         head-coll  [(concat heads ps tails)]
+         csv-header (write-csv head-coll)]
+
+     (.write writer csv-header)
+     (doseq [sv sitevisits]
+       (.write writer (sitevisit->csv sv param-config)))
+     (.flush writer))))
+
+
+(defn csv-all-years
+  ([db agency]
+   (csv-all-years *out* db agency))
+  ([^Writer writer db agency]
+   (let [_            (log/info "CSV-ALL-YEARS" agency)
+         param-config (remove #(:elide? (val %)) param-config)
+         sitevisits   (get-sitevisits db agency)
+         sitevisit    (filter-empty-fieldresults sitevisits)
+         sitevisits   (create-sitevisit-summaries sitevisits)
+         sitevisits   (util/sort-maps-by sitevisits [:date :site])]
+     (sitevisits->csv writer sitevisits param-config))))
+
+
+
+
+
+
+
+
+;(comment
+;  (require
+;    '[datomic.api :as d]
+;    '[java-time :as jt]
+;    '[clojure.core.rrb-vector :as fv])
+;
+;
+;  (in-ns 'riverdb.api.tac-report)
+;  (def cx (:cx (:datomic @user/system)))
+;  (print-report (get-annual-report (d/db cx) 2016))
+;
+;  (d/q '[:find [(pull ?e [*]) ...]
+;         :where [?e :stationlookup/StationID]] (d/db cx))
+;
+;  (def uri-test1 "datomic:mem://migrate-test-1")
+;
+;
+;  (d/q '[:find [(pull ?e [* {:constituentlookup/DeviceType [*]}])]
+;         :where [?e :constituentlookup/Active true]
+;         [?e :constituentlookup/DeviceType]] (d/db cx))
+;
+;  (d/q '[:find [(pull ?e [:db/id :samplingdevicelookup/SampleDevice :samplingdevicelookup/DeviceMax :samplingdevicelookup/DeviceMin
+;                          :samplingdevicelookup/QAmax :samplingdevicelookup/QAmin]) ...]
+;         :where [?e :samplingdevicelookup/Active true]] (d/db cx))
+;
+;
+;  (let [t (jt/local-date-time #inst "2004-03-06T08:00:00.000-00:00")]))

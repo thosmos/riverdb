@@ -1,0 +1,16 @@
+(d/q '[:find ?e .
+       :where [?e :sitevisit/SiteVisitID]]
+  (db))
+
+(d/q '[:find [(pull ?sv [* {:sitevisit/QAPerson [*]}]) ...]
+       :in $ ?sv
+       :where
+       [?sv :sitevisit/QAPerson ?pid]
+       [?p :person/PersonID ?pid]]
+  (db) 17592186213031)
+
+:sitevisit/DataEntryPersonRef :sitevisit/CheckPersonRef :sitevisit/QAPersonRef
+
+[[:sitevisit/QAPersonRef :one :ref "Who did QA for this sitevisit?"]
+ [:sitevisit/CheckPersonRef :one :ref "Who Checked this sitevisit?"]
+ [:sitevisit/DataEntryPersonRef :one :ref "Who did the data entry for this sitevisit?"]]
