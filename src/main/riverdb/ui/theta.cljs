@@ -132,16 +132,17 @@
          {:keys [text type] :as data} (comp/get-state this :drag-state)
          instate     (state-k (comp/get-state this :drop-state))
          isover      (and (isType type) instate)
+         _           (debug "UPDATING DROPPABLE STATE" state-k "TYPE" type "INSTATE" instate "ISOVER" isover "ISTYPE" (isType type))
 
          onDragEnter (fn [e fn]
                        (let [] ;{:keys [text type] :as data} @dragging]
-                         (debug "DRAG ENTER ATOM" state-k type text)
+                         (debug "DRAG ENTER ATOM" state-k type text "ISOVER" isover "ISTYPE" (isType type))
                          (when (isType type)
                            (set-state! {state-k true})
                            (when fn (fn data)))))
          onDragOver  (fn [e fn]
                        (let []
-                         (debug "DRAG OVER ATOM" state-k type text)
+                         (debug "DRAG OVER ATOM" state-k type text "ISOVER" isover "ISTYPE" (isType type))
                          (cancelEvs e)
                          (when (isType type)
                            (when (not instate)
@@ -149,15 +150,16 @@
                            (when fn (fn data)))))
          onDragLeave (fn [e fn]
                        (let []
-                         (debug "DRAG LEAVE ATOM" state-k type text)
+                         (debug "DRAG LEAVE ATOM" state-k type text "ISOVER" isover "ISTYPE" (isType type))
                          (cancelEvs e)
                          (when isover
                            (set-state! {state-k nil})
                            (when fn (fn data)))))
          onDrop      (fn [e fn]
                        (let []
-                         (debug "DROP ATOM" state-k type text)
-                         (cancelEvs e)
+                         (debug "DROP ATOM" state-k type text "ISOVER" isover "ISTYPE" (isType type))
+                         ;(cancelEvs e)
+                         (-> e (.stopPropagation))
                          (when isover
                            (set-state! {state-k nil})
                            (when fn (fn data)))))]
@@ -172,11 +174,10 @@
                      (-> ev .-dataTransfer (.setData "text/plain" (:text data)))
                      (set-state! data))
         dragEnd    (fn [ev]
-                     (cancelEvs ev)
+                     ;(cancelEvs ev)
                      (let [data (comp/get-state this :drag-state)]
-                       (debug "DRAG END" (:text data))
-                       (when data
-                         (set-state! nil))))]
+                       (debug "DRAG END" data)
+                       (set-state! nil)))]
     {:onDragStart dragStart :onDragEnd dragEnd}))
 
 (defsc ChooseColumns [this props {:ui/keys [show]}]
@@ -218,7 +219,7 @@
            :entity/prKeys
            {:entity/attrs (comp/get-query Attribute)}]})
 
-(defsc Filter [this props]
+(defsc Filter [this {:keys [key text filt attr]}]
   {:query         [:key
                    :text
                    :filt
@@ -227,7 +228,14 @@
                     {:key  key
                      :text text
                      :filt filt
-                     :attr (comp/get-initial-state Attribute attr)})})
+                     :attr attr})}
+  (let [{:attr/keys [type ref]} attr]
+    (debug "RENDER FILTER" key text type attr)
+    (cond
+      (= type :boolean)
+      (ui-checkbox {})
+      :else
+      (ui-input {:style {:width 100}}))))
 (def ui-filter (comp/factory Filter))
 
 
@@ -238,7 +246,6 @@
                         :ui/ready
                         :ui/showChooseCols
                         :ui/prKeys
-                        {:spec/entity (comp/get-query Entity)}
                         {:ui/filters (comp/get-query Filter)}
                         {:thetas (comp/get-query ThetaRow)}]
    :componentDidUpdate (fn [this prev-props prev-state])
@@ -275,7 +282,6 @@
                                     userFilters  (get userPrefs :ui/filters [])]
                                 ;; save state where this component is about to load: [:riverdb.theta.list/ns ident-val]
                                 (rm/merge-ident! route-ident {:riverdb.entity/ns ident-val
-                                                              :spec/entity       theta-spec
                                                               :ui/ready          false
                                                               :ui/filters        userFilters
                                                               :ui/prKeys         userPrKeys})
@@ -284,8 +290,7 @@
                          :.blue {:backgroundColor "blue"}]]}
   (let [theta-k    (:riverdb.entity/ns props)
         theta-nm   (name theta-k)
-        ;theta-spec (get look/specs-map theta-k)
-        theta-spec (:spec/entity props)
+        theta-spec (get look/specs-map theta-k)
         attrs      (:entity/attrs theta-spec)
         ;; select visible attrs
         prAttrs    (select-keys attrs prKeys)
@@ -309,21 +314,23 @@
 
             ;; FIXME droppable FILTERS
             (let [{:keys [onDragEnter onDragOver onDragLeave onDrop isOver]} (useDroppable this :filters :header)]
+              (debug "RENDER FILTERS" filters "ISOVER" isOver)
               (dom/div :.item.droppable
-                {:style       {:backgroundColor (if isOver "lightblue" "default")}
+                {:style       {:backgroundColor (if isOver "lightblue" "white")}
                  :onDragOver  onDragOver
                  :onDragLeave onDragLeave
                  :onDragEnter onDragEnter
                  :onDrop      (fn [e]
                                 (onDrop e
-                                  (fn [{:keys [key text] :as data}]
+                                  (fn [{:keys [text] :as data}]
                                     (debug "FILTER DROP" data)
-                                    ;; if the key is in our list of visible fields
-                                    (let [attr (key attrs)]
-                                      (when (empty (filter #(= (:key %) key) filters))
+                                    (let [k        (:key data)
+                                          attr     (k attrs)
+                                          filtered (filter #(= (:key %) k) filters)]
+                                      (when (empty? filtered)
                                         (fm/set-value! this :ui/filters
                                           (conj (or filters [])
-                                            (comp/get-initial-state Filter {:key key :text text :attr attr}))))))))}
+                                            (comp/get-initial-state Filter {:key k :text text :attr attr}))))))))}
 
                 ;{:onDragOver  (fn [ev]
                 ;                (cancelEvs ev)
@@ -344,14 +351,15 @@
                 ;                  (comp/set-state! this {:isOverFilters false}))
                 ;                (debug "DRAG LEAVE Filters"))
 
+
                 "Filters"
                 (doall
-                  (for [[k {:keys [text] :as filt}] filters]
+                  (for [{:keys [key text] :as filt} filters]
                     ;; FIXME draggable filter
                     (let [{:keys [onDragStart onDragEnd]} (useDraggable this)]
-                      (div :.item {:key         k
+                      (div :.item {:key         key
                                    :draggable   true
-                                   :onDragStart #(onDragStart % {:type :filter :text text :key k})
+                                   :onDragStart #(onDragStart % {:type :filter :text text :key key})
                                    :onDragEnd   onDragEnd}
                         text (ui-filter filt)))))))
 
@@ -369,7 +377,26 @@
                  :totalPages    1})))
 
           (div :.ui.segment
-            (table :.ui.very.compact.mini.table {:key "wqtab"}
+            (div {:style {:padding   0
+                          :margin    0
+                          :marginTop 1
+                          :float     "right"
+                          :position  "absolute"
+                          :width     20
+                          :height    20
+                          :right     15}}
+              (button :.ui.small.secondary.basic.icon.button
+                {:key     "button"
+                 :style   {:padding     0
+                           :margin      0
+                           :paddingTop  3
+                           :paddingLeft 1
+                           :width       20
+                           :height      20}
+                 :onClick #(fm/toggle! this :ui/showChooseCols)}
+                (dom/i :.pointer.small.plus.icon {:style {}}))
+              (ui-choos-cols (comp/computed theta-spec {:ui/show showChooseCols})))
+            (table :.ui.very.compact.mini.table {:key "wqtab" :style {:marginTop 0}}
               (thead {:key 1}
 
                 (let [] ;{:keys [isOver onDragOver onDragLeave onDrop]} (useDroppable this :headers :column)]
@@ -386,7 +413,7 @@
                       (for [prKey prKeys]
                         (let [{:attr/keys [name]} (prKey prAttrs)]
 
-                          (debug "HEADER" prKey name)
+                          ;(debug "HEADER" prKey name)
                           ;; FIXME draggable header
                           (th {:key prKey}
                             (let [{:keys [onDragStart onDragEnd]} (useDraggable this)]
@@ -394,28 +421,8 @@
                                 {:draggable   true
                                  :onDragStart #(onDragStart % {:type :header :text name :key prKey})
                                  :onDragEnd   onDragEnd}
-                                ;:onDragStart #(dragStart % {:text (name prKey) :type :header})
-                                ;:onDragEnd   dragEnd}
-                                name))))))
+                                name)))))))))
 
-                    (div {:style {:padding   0
-                                  :margin    0
-                                  :marginTop 1
-                                  :position  "absolute"
-                                  :width     20
-                                  :height    20
-                                  :right     15}}
-                      (button :.ui.small.secondary.basic.icon.button
-                        {:key     "button"
-                         :style   {:padding     0
-                                   :margin      0
-                                   :paddingTop  3
-                                   :paddingLeft 1
-                                   :width       20
-                                   :height      20}
-                         :onClick #(fm/toggle! this :ui/showChooseCols)}
-                        (dom/i :.pointer.small.plus.icon {:style {}}))
-                      (ui-choos-cols (comp/computed theta-spec {:ui/show showChooseCols}))))))
 
 
 
