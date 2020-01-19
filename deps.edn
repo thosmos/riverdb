@@ -16,7 +16,7 @@
                      :jvm-opts    ["-XX:-OmitStackTraceInFastThrow" "-Dguardrails.enabled=true"]
                      :extra-deps  {expound                     {:mvn/version "0.7.2"}
                                    org.clojure/tools.namespace {:mvn/version "0.3.1"}}}
-         :cljs      {:extra-paths ["src/test" "src/workspaces"]
+         :cljsbuild {:extra-paths ["src/test" "src/workspaces"]
                      :extra-deps  {org.clojure/clojurescript   {:mvn/version "1.10.597"}
                                    thheller/shadow-cljs        {:mvn/version "2.8.83"}
                                    fulcrologic/fulcro-spec     {:mvn/version "3.1.4"}
@@ -49,12 +49,12 @@
                                    hiccup                           {:mvn/version "1.0.5"}
                                    clj-time/clj-time                {:mvn/version "0.15.2"}
                                    clojure.java-time                {:mvn/version "0.3.2"}}}
-         :import {:extra-paths ["src/import"]
-                  :extra-deps {;; geotools
-                               org.geotools/gt-shapefile        {:mvn/version "22.2"}
-                               org.geotools/gt-epsg-hsql        {:mvn/version "22.2"}
-                               org.geotools/gt-main             {:mvn/version "22.2"}
-                               com.vividsolutions/jts           {:mvn/version "1.13"}}}
+         :import    {:extra-paths ["src/import"]
+                     :extra-deps  {;; geotools
+                                   org.geotools/gt-shapefile {:mvn/version "22.2"}
+                                   org.geotools/gt-epsg-hsql {:mvn/version "22.2"}
+                                   org.geotools/gt-main      {:mvn/version "22.2"}
+                                   com.vividsolutions/jts    {:mvn/version "1.13"}}}
 
 
 
@@ -62,8 +62,8 @@
  :deps
         {org.clojure/clojure                 {:mvn/version "1.10.1"}
 
-         ;thosmos/util                        {:local/root "../../clojure/thosmos.util"}
-         thosmos/util                        {:mvn/version "0.1.8" :exclusions [com.datomic/datomic-free]}
+         thosmos/util                        {:local/root "../../clojure/thosmos.util"}
+         ;thosmos/util                        {:mvn/version "0.1.8" :exclusions [com.datomic/datomic-free]}
 
          ;; time
          tick                                {:mvn/version "0.4.21-alpha"}
@@ -91,6 +91,6 @@
 
 
  :mvn/repos
-        {"boundlessgeo"   {:url "https://repo.boundlessgeo.com/main/"}
-         "geotoolkit"     {:url "https://maven.geotoolkit.org"}
-         "osgeo"          {:url "https://download.osgeo.org/webdav/geotools"}}}
+        {"boundlessgeo" {:url "https://repo.boundlessgeo.com/main/"}
+         "geotoolkit"   {:url "https://maven.geotoolkit.org"}
+         "osgeo"        {:url "https://download.osgeo.org/webdav/geotools"}}}

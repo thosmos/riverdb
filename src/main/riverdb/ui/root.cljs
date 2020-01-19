@@ -13,6 +13,7 @@
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
     [com.fulcrologic.fulcro-css.css :as css]
+    [com.fulcrologic.fulcro-css.css-injection :as inj]
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
     [com.fulcrologic.semantic-ui.elements.loader.ui-loader :refer [ui-loader]]
     [com.fulcrologic.semantic-ui.modules.dimmer.ui-dimmer :refer [ui-dimmer]]
@@ -308,4 +309,5 @@
 (defsc Root [this {:root/keys [top-chrome]}]
   {:query         [{:root/top-chrome (comp/get-query TopChrome)}]
    :initial-state {:root/top-chrome {}}}
+  (inj/style-element {:component Root})
   (ui-top-chrome top-chrome))

@@ -288,7 +288,14 @@
   :entity/ns     :entity.ns/constituentlookup,
   :entity/lookup :constituentlookup/ConstituentCode
   :entity/pks    [:constituentlookup/ConstituentRowID],
-  :entity/prKeys [:constituentlookup/ConstituentRowID],
+  :entity/prKeys [:constituentlookup/Name
+                  :constituentlookup/Active
+                  :constituentlookup/AnalyteCode
+                  :constituentlookup/ConstituentCode
+                  :constituentlookup/FractionCode
+                  :constituentlookup/MatrixCode
+                  :constituentlookup/MethodCode
+                  :constituentlookup/UnitCode],
   :entity/attrs
                  [#:attr{:name        "Active",
                          :key         :constituentlookup/Active,
@@ -300,7 +307,8 @@
                          :position    5,
                          :cardinality :one,
                          :type        :ref,
-                         :ref         #:entity{:ns :entity.ns/analytelookup}}
+                         :ref         #:entity{:ns :entity.ns/analytelookup}
+                         :refPrKey    :analytelookup/AnalyteName}
                   #:attr{:name        "ConstituentCode",
                          :key         :constituentlookup/ConstituentCode,
                          :position    12,
@@ -320,13 +328,15 @@
                          :position    9,
                          :cardinality :one,
                          :type        :ref,
-                         :ref         #:entity{:ns :entity.ns/samplingdevicelookup}}
+                         :ref         #:entity{:ns :entity.ns/samplingdevicelookup}
+                         :refPrKey    :samplingdevicelookup/SampleDevice}
                   #:attr{:name        "FractionCode",
                          :key         :constituentlookup/FractionCode,
                          :position    6,
                          :cardinality :one,
                          :type        :ref,
-                         :ref         #:entity{:ns :entity.ns/fractionlookup}}
+                         :ref         #:entity{:ns :entity.ns/fractionlookup}
+                         :refPrKey    :fractionlookup/FractionName}
                   #:attr{:name        "HighValue",
                          :key         :constituentlookup/HighValue,
                          :position    12,
@@ -342,7 +352,8 @@
                          :position    3,
                          :cardinality :one,
                          :type        :ref,
-                         :ref         #:entity{:ns :entity.ns/matrixlookup}}
+                         :ref         #:entity{:ns :entity.ns/matrixlookup}
+                         :refPrKey    :matrixlookup/MatrixName}
                   #:attr{:name        "MaxValue",
                          :key         :constituentlookup/MaxValue,
                          :position    10,
@@ -353,7 +364,8 @@
                          :position    4,
                          :cardinality :one,
                          :type        :ref,
-                         :ref         #:entity{:ns :entity.ns/methodlookup}}
+                         :ref         #:entity{:ns :entity.ns/methodlookup}
+                         :refPrKey    :methodlookup/MethodName}
                   #:attr{:name        "MinValue",
                          :key         :constituentlookup/MinValue,
                          :position    11,
@@ -369,7 +381,8 @@
                          :position    7,
                          :cardinality :one,
                          :type        :ref,
-                         :ref         #:entity{:ns :entity.ns/unitlookup}}]}
+                         :ref         #:entity{:ns :entity.ns/unitlookup}
+                         :refPrKey    :unitlookup/Unit}]}
  {:db/id         "corrections",
   :entity/name   "corrections",
   :entity/ns     :entity.ns/corrections,

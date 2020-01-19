@@ -3,7 +3,7 @@
             [com.fulcrologic.guardrails.core :refer [>defn => | ?]]
             [com.wsscode.pathom.connect :as pc :refer [defresolver defmutation]]
             [datomic.api :as d]
-            [riverdb.state :as st :refer [db state cx uri uri-dbf]]
+            [riverdb.state :as st :refer [db state cx uri ]]
             [buddy.sign.jwt :as jwt]
             [buddy.core.hash :as hash]
             [buddy.hashers :as hashers]

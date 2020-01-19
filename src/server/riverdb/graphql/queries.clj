@@ -10,7 +10,7 @@
             [java-time :as jt]
             [riverdb.db :refer [limit-fn remap-query]]
             [riverdb.graphql.schema :as schema :refer [table-specs-ds spec-spec-keys spec-specs-ds]]
-            [riverdb.state :as st :refer [db state cx uri uri-dbf]]
+            [riverdb.state :as st :refer [db state cx uri ]]
             [riverdb.station]
             [riverdb.model.user :as user]
             [riverdb.api.riverdb :as riverdb]

@@ -1,6 +1,7 @@
 { ;; Legal Origins for API request.
  :legal-origins #{"riverdb.org" "gql.riverdb.org" "admin.riverdb.org" "localhost"}
 
+ :taoensso.timbre/logging-config {:level :info}
  ;; You probably want these set to true in real production:
  :ring.middleware/defaults-config
                 {:proxy    true

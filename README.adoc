@@ -26,11 +26,20 @@ Install Clojure CLI on Mac OS:
 ```Shell
 brew install clojure
 ```
-Other OS see: https://clojure.org/guides/getting_started
+Other OS: https://clojure.org/guides/getting_started
+
+Install and run Datomic: https://docs.datomic.com/on-prem/dev-setup.html
+
+Set some environment variables like `Datomic_URI` in `.env` or in the shell
+```
+APP_ENV=dev
+DATOMIC_URI=datomic:free://localhost:4334/test-db
+PORT=8989
+```
 
 Start the backend server in a REPL:
 ```Shell
-clj -A:dev
+clj -A:dev:server
 
 # The ns is defined in src/dev/user
 ## Start the server
@@ -176,7 +185,7 @@ Start a LOCAL clj nREPL in IntelliJ (using IntelliJ's classpath with
 the `dev` alias selected in the Clojure Deps tab), or from the command line:
 
 ```bash
-$ clj -A:dev
+$ clj -A:dev:server
 user=> (start)
 user=> (stop)
 ...

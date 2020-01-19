@@ -10,7 +10,7 @@
             [datomic.api :as d]
             [dotenv]
             [riverdb.model.user :as user]
-            [riverdb.state :as st :refer [db state cx uri uri-dbf]]
+            [riverdb.state :as st :refer [db state cx uri]]
             [thosmos.util :as tu :refer [check]]))
 
 (def email-regex #"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,63}$")

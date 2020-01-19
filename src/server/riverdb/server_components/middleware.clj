@@ -67,6 +67,8 @@
       [:meta {:charset "utf-8"}]
       [:meta {:name "viewport" :content "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"}]
       [:link {:href "/admin/css/semantic.min.css" :rel "stylesheet"}]
+      ;[:link {:href "https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.4.2/semantic.min.css"
+      ;        :rel  "stylesheet"}]
       [:link {:href "/admin/css/app.css" :rel "stylesheet"}]
       [:link {:href "/admin/css/treeview.css" :rel "stylesheet"}]
       [:link {:href "/admin/css/react-datepicker.min.css" :rel "stylesheet"}]

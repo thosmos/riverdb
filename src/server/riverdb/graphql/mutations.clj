@@ -9,7 +9,7 @@
             [datomic.api :as d]
             [clojure.walk :as walk]
 
-            [riverdb.state :as st :refer [db state cx uri uri-dbf]]
+            [riverdb.state :as st :refer [db state cx uri ]]
             [riverdb.auth :as auth]
             [riverdb.roles :as roles]
             [riverdb.model.user :as user]))

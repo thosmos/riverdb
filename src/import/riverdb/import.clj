@@ -19,6 +19,9 @@
             [clojure.string :as str])
   (:import (java.util Date)))
 
+(def uri-dbf (or (dotenv/env :DATOMIC_URI_DBF) "datomic:free://localhost:4334/test-dbf"))
+
+
 (defn parse-date [date-str]
   (when date-str
     (when-let [daten (try

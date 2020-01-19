@@ -14,3 +14,60 @@
 [[:sitevisit/QAPersonRef :one :ref "Who did QA for this sitevisit?"]
  [:sitevisit/CheckPersonRef :one :ref "Who Checked this sitevisit?"]
  [:sitevisit/DataEntryPersonRef :one :ref "Who did the data entry for this sitevisit?"]]
+
+(defn useDroppable
+  ([this state-k] (useDroppable this state-k nil))
+  ([this state-k type-k]
+   (let [set-state!  (fn [new-state] (set-dnd-state! this new-state))
+         inState     (fn []
+                       (let [state (comp/get-state this :dnd-state)
+                             state' (state-k state)]
+                         (debug "inState" state' state)
+                         state'))
+
+         isType      (fn [type] (if type-k (= type type-k) true))
+         isOver      (fn [] (and (isType (:type @dragging)) (inState)))
+         onDragOver  (fn [e fn]
+                       (let [{:keys [text type] :as data} @dragging]
+                         (debug "DRAG OVER ATOM" state-k type text (isType type) (inState))
+                         (cancelEvs e)
+                         (when (and (isType type) (not (inState)))
+                           (set-state! {state-k true})
+                           (when fn (fn data)))))
+         onDragLeave (fn [e fn]
+                       (let [{:keys [text type] :as data} @dragging]
+                         (debug "DRAG LEAVE ATOM" state-k type text)
+                         (cancelEvs e)
+                         (when (isOver)
+                           (set-state! {state-k nil})
+                           (when fn (fn data)))))
+         onDrop      (fn [e fn]
+                       (let [{:keys [text type] :as data} @dragging]
+                         (debug "DROP ATOM" state-k type text (isType type) (inState))
+                         (cancelEvs e)
+                         (when (isOver)
+                           (set-state! {state-k nil})
+                           (when fn (fn data)))))]
+     {:isOver isOver :onDragOver onDragOver :onDragLeave onDragLeave :onDrop onDrop})))
+
+
+
+
+;let counterHook = () => {
+;                         let count = atom(0);
+;                             let incCount = () => swap(count, inc);
+;                         return [count, incCount]};
+;
+;
+;let C = () => {
+;               let [count, incCount] = counterHook();
+;                   return () => <div onClick={incCount}>{deref(count)}</div>};
+
+
+(defn useCounter [this]
+  (let [count (or (comp/get-state this :count) 0)]
+    {:count count :incCount #(comp/update-state! this assoc :count (inc count))}))
+
+(div
+  (let [{:keys [count incCount]} (useCounter this)]
+    (button {:onClick incCount} count)))

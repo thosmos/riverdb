@@ -4,11 +4,8 @@
     dotenv))
 
 (def uri (or (dotenv/env :DATOMIC_URI) "datomic:free://localhost:4334/test-db"))
-(def uri-dbf (or (dotenv/env :DATOMIC_URI_DBF) "datomic:free://localhost:4334/test-dbf"))
 
-(defonce state (atom {:tables  nil
-                      :datomic nil
-                      :pks     nil}))
+(defonce state (atom {}))
 
 (defn db []
   (d/db (:cx @state)))

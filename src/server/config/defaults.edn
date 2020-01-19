@@ -1,5 +1,4 @@
-{:http-kit      {:port 3000}
- ;; Legal Origins for API request.
+{;; Legal Origins for API request.
  :legal-origins #{"localhost" "dev.lvh.me"}
 
  ;; The ssl-redirect defaulted to off, but for security should probably be on in production.
@@ -20,4 +19,18 @@
                              :ssl-redirect   false
                              :frame-options  :sameorigin
                              :xss-protection {:enable? true
-                                              :mode    :block}}}}
+                                              :mode    :block}}}
+
+ :taoensso.timbre/logging-config
+                {:level        :info
+                 :ns-whitelist []
+                 :ns-blacklist ["datomic.kv-cluster"
+                                "datomic.process-monitor"
+                                "datomic.reconnector2"
+                                "datomic.common"
+                                "datomic.peer"
+                                "datomic.log"
+                                "datomic.db"
+                                "datomic.slf4j"
+                                "org.projectodd.wunderboss.web.Web"
+                                "shadow.cljs.devtools.server.worker.impl"]}}

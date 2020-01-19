@@ -12,7 +12,7 @@
             clojure.edn
             dotenv
             [domain-spec.core :as ds]
-            [riverdb.state :as st :refer [db state cx uri uri-dbf]]
+            [riverdb.state :as st :refer [db state cx uri ]]
             [riverdb.auth :as auth]))
 
 

@@ -31,15 +31,12 @@
     [riverdb.ui.routes :as routes]
     [riverdb.ui.session :refer [Session]]
     [riverdb.ui.project-years :refer [ProjectYears ui-project-years]]
+    [riverdb.ui.util :refer [make-tempid]]
     [riverdb.util :refer [paginate]]
     [theta.log :as log :refer [debug info]]
     [tick.alpha.api :as t]
     [com.fulcrologic.fulcro.application :as app]
-    [goog.object :as gobj]
-    ["shortid" :as shortid]))
-
-(defn make-id []
-  (tempid/tempid (str "t" (.generate shortid))))
+    [goog.object :as gobj]))
 
 (defn merge-form-config! [app class props & named-params]
   (let [props-with-config (fs/add-form-config class props)]
@@ -136,7 +133,7 @@
                    {:sitevisit/Visitors (comp/get-query looks/person)}
                    {:sitevisit/Samples (comp/get-query Sample)}]
 
-   :initial-state (fn [params] {:db/id                       (make-id)
+   :initial-state (fn [params] {:db/id                       (make-tempid)
                                 :riverdb.entity/ns           :entity.ns/sitevisit
                                 :sitevisit/CreationTimestamp (js/Date.)
                                 :sitevisit/Visitors          []

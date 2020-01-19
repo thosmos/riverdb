@@ -12,7 +12,9 @@
     "mem": "^6.0.1",
     "moment": "^2.22.2",
     "prop-types": "^15.7.2",
+    "react-beautiful-dnd": "^12.2.0",
     "react-datepicker": "^2.10.1",
+    "react-dropzone": "^10.2.1",
     "react-grid-layout": "^0.16.6",
     "react-icons": "^2.2.7",
     "react-treeview": "^0.4.7",
@@ -42,7 +44,7 @@
     "client/workspaces": "npx shadow-cljs watch :workspaces",
     "client/test": "npx shadow-cljs watch :test",
     "client/cljs": "shadow-cljs cljs-repl :main",
-    "client/clj": "shadow-cljs clj-repl",
+    "client/clj": "shadow-cljs clj-repl"
   },
   "author": "Thomas Spellman <thomas@thosmos.com>",
   "license": "Eclipse Public License"

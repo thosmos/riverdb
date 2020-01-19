@@ -1,5 +1,6 @@
-{:deps   {:aliases [:cljs]}
+{:deps   {:aliases [:cljsbuild]}
  :nrepl  {:port 9000}
+ :jvm-opts ["-Xmx2G"]
  :builds {:main       {:target     :browser
                        :output-dir "resources/public/admin/js/main"
                        :asset-path "/admin/js/main"
@@ -14,6 +15,24 @@
                                     :preloads   [com.fulcrologic.fulcro.inspect.preload
                                                  riverdb.development-preload]
                                     :watch-dir "resources/public/admin/css"}}
+
+          :native
+                      {:target     :react-native
+                       :init-fn    riverdb.client-native/init
+                       :output-dir "mobile/app"
+                       :dev        {:closure-defines {riverdb.client-native/SERVER_URL "http://localhost:8989/api"}}
+                       :release    {:compiler-options {:optimizations     :simple
+                                                       :infer-externs     :auto
+                                                       :variable-renaming :off
+                                                       :property-renaming :off
+                                                       :pretty-print      true
+                                                       :source-map        true}}
+                       :js-options {:node-modules-dir "mobile/node_modules"}
+                       :devtools   {:autoload   true
+                                    :after-load riverdb.client-native/start
+                                    :preloads   [shadow.expo.keep-awake]}}
+;; Uncomment the following line if you're running Fulcro Inspect Electron
+;com.fulcrologic.fulcro.inspect.websocket-preload
 
           :test       {:target           :browser-test
                        :test-dir         "resources/public/js/test"

@@ -33,7 +33,7 @@
             [riverdb.server-components.config]
             [riverdb.server-components.crux-service]
             [riverdb.server-components.middleware :refer [middleware]]
-            [riverdb.state :as st :refer [db state cx uri uri-dbf start-dbs]]
+            [riverdb.state :as st :refer [db state cx uri start-dbs]]
             [thosmos.util :as tu]
             [ring.util.response :as ring-response]))
 
@@ -309,7 +309,7 @@
   (let [options   {:graphiql      true
                    :ide-path      "/graphiql"
                    :subscriptions false
-                   :port          (or (Long/parseLong (dotenv/env :PORT)) 8888)
+                   :port          (or (Long/parseLong (dotenv/env :PORT)) 8989)
                    :env           (or (keyword dotenv/app-env) :dev)}
         inceptors (lacinia/default-interceptors #(process-schemas) options)
         inceptors (-> inceptors
