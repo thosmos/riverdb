@@ -4,6 +4,7 @@
     <exclude-output />
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$/resources" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src/dev" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/main" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/server" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/workspaces" isTestSource="false" />
@@ -84,6 +85,7 @@
     <orderEntry type="library" name="Deps: spec-coerce:1.0.0-alpha6" level="project" />
     <orderEntry type="library" name="Deps: commons-io:2.6" level="project" />
     <orderEntry type="library" name="Deps: clj-mailgun:0.2.0" level="project" />
+    <orderEntry type="library" name="Deps: org.clojure/tools.namespace:0.3.1" level="project" />
     <orderEntry type="library" name="Deps: com.google.jsinterop/jsinterop-annotations:1.0.2" level="project" />
     <orderEntry type="library" name="Deps: org.eclipse.jetty.http2/http2-hpack:9.4.18.v20190429" level="project" />
     <orderEntry type="library" name="Deps: fipp:0.6.18" level="project" />
@@ -125,6 +127,7 @@
     <orderEntry type="library" name="Deps: com.google.javascript/closure-compiler-externs:v20191027" level="project" />
     <orderEntry type="library" name="Deps: org.javassist/javassist:3.18.1-GA" level="project" />
     <orderEntry type="library" name="Deps: org.jboss.xnio/xnio-nio:3.7.3.Final" level="project" />
+    <orderEntry type="library" name="Deps: org.clojure/java.classpath:0.3.0" level="project" />
     <orderEntry type="library" name="Deps: com.google.guava/guava:25.1-jre" level="project" />
     <orderEntry type="library" name="Deps: lynxeyes/dotenv:1.0.2" level="project" />
     <orderEntry type="library" name="Deps: com.github.awkay/workspaces:1.0.0-RC2" level="project" />

@@ -71,3 +71,34 @@
 (div
   (let [{:keys [count incCount]} (useCounter this)]
     (button {:onClick incCount} count)))
+
+
+
+(defsc Attribute [this props]
+  {:ident :attr/key
+   :query [:attr/key
+           :attr/name
+           :attr/type
+           :attr/cardinality
+           :attr/ref
+           :attr/refkey]})
+
+(defsc Entity [this props]
+  {:ident :entity/ns
+   :query [:entity/ns
+           :entity/name
+           :entity/lookup
+           :entity/prKeys
+           {:entity/attrs (comp/get-query Attribute)}]})
+
+(defsc Filter [this props]
+  {:query         [:key
+                   :text
+                   :filt
+                   {:attr (comp/get-query Attribute)}]
+   :initial-state (fn [{:keys [key text filt attr]}]
+                    {:key  key
+                     :text text
+                     :filt filt
+                     :attr (comp/get-initial-state Attribute attr)})})
+(def ui-filter (comp/factory Filter))

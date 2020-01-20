@@ -1,12 +1,15 @@
 (ns user
   (:require
+    [clojure.edn :as edn]
     [clojure.tools.namespace.repl :as tools-ns :refer [set-refresh-dirs]]
     [clojure.tools.logging :as log]
+    [datascript.core :as ds]
+    [datomic.api :as d]
+    [domain-spec.core :as dspec]
     [mount.core :as mount]
     [riverdb.server]
-    [datomic.api :as d]
-    [datascript.core :as ds]
-    [riverdb.state :refer [db cx]]))
+    [riverdb.state :refer [db cx]]
+    [thosmos.util :as tu]))
 
 
 ;; ==================== SERVER ====================
@@ -36,6 +39,12 @@
   (stop)
   (tools-ns/refresh :after 'user/start))
 
+(defn format-specs []
+  (tu/spitpp "resources/specs-save.edn"
+    (dspec/sort-specs
+      (edn/read-string
+        (slurp "resources/specs.edn")))))
+
 ;; Run (start-server-tests) in a REPL to start a runner that can render results in a browser
 ;; See fulcro-spec documentation for more information. NOTE: `specification` is really just
 ;; a `deftest` underneath, so you can use "Run all tests in this namespace" with your
@@ -57,26 +66,26 @@
 ;(defmacro functionize [macro]
 ;  `(fn [& args#] (eval (cons '~macro args#))))
 
-(defn cljs?
- "A CLJ macro helper. `env` is the macro's `&env` value. Returns true when expanding a macro while compiling CLJS."
-  [env]
-  (boolean (:ns env)))
-
-(defmacro functionize [macro]
-  `(fn [& args#] (eval (cons '~macro args#))))
-
-(defmacro deflogmacro [f]
-  `(defn ~f [& msgs#]
-     (eval (apply list (symbol (str "log/" '~f)) msgs#))))
-
-
-(defn call [this & that]
-  (let [this-sym (symbol this)
-        this-resolved (ns-resolve 'resolver-clj.core this-sym)]
-    (.println System/out (str "current-ns: " *ns*))
-    (.println System/out (str "this-sym: " this-sym))
-    (.println System/out (str "this-resolved: " this-resolved))
-    (apply this-resolved that)))
+;(defn cljs?
+; "A CLJ macro helper. `env` is the macro's `&env` value. Returns true when expanding a macro while compiling CLJS."
+;  [env]
+;  (boolean (:ns env)))
+;
+;(defmacro functionize [macro]
+;  `(fn [& args#] (eval (cons '~macro args#))))
+;
+;(defmacro deflogmacro [f]
+;  `(defn ~f [& msgs#]
+;     (eval (apply list (symbol (str "log/" '~f)) msgs#))))
+;
+;
+;(defn call [this & that]
+;  (let [this-sym (symbol this)
+;        this-resolved (ns-resolve 'resolver-clj.core this-sym)]
+;    (.println System/out (str "current-ns: " *ns*))
+;    (.println System/out (str "this-sym: " this-sym))
+;    (.println System/out (str "this-resolved: " this-resolved))
+;    (apply this-resolved that)))
 
 ;(clojure.tools.logging/debug ~msg#))))
     ;`(defn ~f
@@ -97,6 +106,8 @@
 ;; logging in noisy libraries, etc.:
 ;:ns-whitelist  [] #_["my-app.foo-ns"]
 ;:ns-blacklist  [] ["taoensso.*"]})
+
+
 
 (comment)
 ;(require '[clojure.tools.deps.alpha :as deps])

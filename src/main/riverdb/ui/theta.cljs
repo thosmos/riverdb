@@ -124,7 +124,7 @@
 (defn useDroppable
   ([this state-k] (useDroppable this state-k nil))
   ([this state-k type-k]
-   (debug "USE DROPPABLE")
+   ;(debug "USE DROPPABLE")
    (let [set-state!  (fn [new-state] (comp/update-state! this update :drop-state merge new-state))
          isType      (fn [type] (if type-k (= type type-k) true))
 
@@ -166,7 +166,7 @@
      {:isOver isover :onDragEnter onDragEnter :onDragOver onDragOver :onDragLeave onDragLeave :onDrop onDrop})))
 
 (defn useDraggable [this]
-  (debug "USE DRAGGABLE")
+  ;(debug "USE DRAGGABLE")
   (let [set-state! (fn [new-state] (comp/update-state! this update :drag-state merge new-state))
         dragStart  (fn [ev data]
                      (debug "DRAG START" data)
@@ -219,26 +219,54 @@
            :entity/prKeys
            {:entity/attrs (comp/get-query Attribute)}]})
 
-(defsc Filter [this {:keys [key text filt attr]}]
+
+(defn ref-input [value options setRef]
+  (ui-dropdown {:search       true
+                :selection    true
+                :tabIndex     -1
+                :value        (or value "")
+                :options      options
+                :autoComplete "off"
+                :style        {:width 100}
+                :onChange     (fn [_ d]
+                                (when-let [value (-> d .-value)]
+                                  (log/debug "RefInput change" value)
+                                  (setRef value)))}))
+
+(defsc Filter [this {:keys [key text filt filt-opts attr]} {:keys [onChange]}]
   {:query         [:key
                    :text
                    :filt
+                   :filt-opts
                    {:attr (comp/get-query Attribute)}]
-   :initial-state (fn [{:keys [key text filt attr]}]
+   :initial-state (fn [{:keys [key text filt filt-opts attr]}]
                     {:key  key
                      :text text
                      :filt filt
+                     :filt-opts filt-opts
                      :attr attr})}
   (let [{:attr/keys [type ref]} attr]
     (debug "RENDER FILTER" key text type attr)
-    (cond
-      (= type :boolean)
-      (ui-checkbox {})
+    (case type
+      :boolean
+      (ui-checkbox {:checked  (or filt false)
+                    :onChange #(onChange (not filt))})
+      :ref
+      (ref-input filt filt-opts (fn [new-value] (onChange new-value)))
+      :string
+      (ui-input {:style    {:width 100}
+                 :value    (or filt "")
+                 :onChange #(onChange (-> % .-target .-value))})
       :else
       (ui-input {:style {:width 100}}))))
 (def ui-filter (comp/factory Filter))
 
 
+(def filters-ex [{:text "Site Visit" :key :sitevisit/SiteVisitDate :filt {:< #inst "2007-01-01"
+                                                                          :> #inst "2001-01-01"}}
+                 {:text "Name" :key :constituentlookup/Name :filt "hsdgf"}
+                 {:text "Active" :key :constituentlookup/Active :filt true}
+                 {:text "Analyte" :key :constituentlookup/Analyte :filt "12312423524"}])
 
 (defsc ThetaList [this {:keys [thetas] :ui/keys [ready filters showChooseCols prKeys] :as props}]
   {:ident              [:riverdb.theta.list/ns :riverdb.entity/ns]
@@ -324,10 +352,10 @@
                                 (onDrop e
                                   (fn [{:keys [text] :as data}]
                                     (debug "FILTER DROP" data)
-                                    (let [k        (:key data)
-                                          attr     (k attrs)
-                                          filtered (filter #(= (:key %) k) filters)]
-                                      (when (empty? filtered)
+                                    (let [k     (:key data)
+                                          attr  (k attrs)
+                                          dupe? (filter #(= (:key %) k) filters)]
+                                      (when (empty? dupe?)
                                         (fm/set-value! this :ui/filters
                                           (conj (or filters [])
                                             (comp/get-initial-state Filter {:key k :text text :attr attr}))))))))}
