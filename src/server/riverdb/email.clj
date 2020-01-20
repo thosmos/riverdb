@@ -3,7 +3,7 @@
             [thosmos.util :as tu]
             [datomic.api :as d]
             dotenv
-            [riverdb.state :as st :refer [db state cx uri]]))
+            [riverdb.state :as st :refer [db cx]]))
 
 
 (defn create-msg [to subject body]

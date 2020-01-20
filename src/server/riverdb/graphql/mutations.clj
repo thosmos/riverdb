@@ -8,8 +8,7 @@
             [thosmos.util :as tu]
             [datomic.api :as d]
             [clojure.walk :as walk]
-
-            [riverdb.state :as st :refer [db state cx uri ]]
+            [riverdb.state :as st :refer [db cx]]
             [riverdb.auth :as auth]
             [riverdb.roles :as roles]
             [riverdb.model.user :as user]))

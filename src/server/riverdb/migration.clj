@@ -1,7 +1,7 @@
 (ns riverdb.migration
   (:require [clojure.tools.logging :as log :refer [debug info warn error]]
             [datomic.api :as d]
-            [riverdb.state :as st :refer [db state cx uri ]]
+            [riverdb.state :as st :refer [db cx]]
             [buddy.sign.jwt :as jwt]
             [buddy.core.hash :as hash]
             [buddy.hashers :as hashers]

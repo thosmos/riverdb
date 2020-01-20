@@ -33,7 +33,7 @@
             [riverdb.server-components.config]
             [riverdb.server-components.crux-service]
             [riverdb.server-components.middleware :refer [middleware]]
-            [riverdb.state :as st :refer [db state cx uri start-dbs]]
+            [riverdb.state :as st :refer [db cx start-dbs]]
             [thosmos.util :as tu]
             [ring.util.response :as ring-response]))
 
@@ -48,10 +48,10 @@
      :resolve-sitevisit        q/resolve-sitevisits
      :resolve-rimdb            q/resolve-rimdb
      :resolve-rimdb-fk         q/resolve-rimdb-fk
-     :resolve-rimdb-rk         q/resolve-rimdb-rk
+     ;:resolve-rimdb-rk         q/resolve-rimdb-rk
      :resolve-spec-query       q/resolve-spec
      :resolve-spec-fk          q/resolve-rimdb-fk
-     :resolve-spec-rk          q/resolve-rimdb-rk
+     ;:resolve-spec-rk          q/resolve-rimdb-rk
      :resolve-stationdetail    q/resolve-stations
      :resolve-agency-ref       q/resolve-agency-ref
      :resolve-specs            q/resolve-specs
@@ -334,7 +334,7 @@
 
 
 (defn start-service []
-  (start-dbs state)
+  (start-dbs)
   (let [sm               (create-service-map)
         sm               (merge sm
                            {::http/not-found-interceptor (app-interceptor)

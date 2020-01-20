@@ -3,20 +3,30 @@
     [datomic.api :as d]
     dotenv))
 
-(def uri (or (dotenv/env :DATOMIC_URI) "datomic:free://localhost:4334/test-db"))
+;(def uri (or (dotenv/env :DATOMIC_URI) "datomic:free://localhost:4334/test-db"))
+
+(def default-uri "datomic:free://localhost:4334/test-db")
+
+;(defn get-mysql-uri [db-name sql-user sql-password]
+;  (str "datomic:sql://" db-name "?jdbc:mysql://localhost:3306/datomic?user=" sql-user "&password=" sql-password "&useSSL=false"))
+
+(def uris {:base (or (dotenv/env :DATOMIC_URI) default-uri)
+           :model (or (dotenv/env :DATOMIC_MODEL_URI) (dotenv/env :DATOMIC_URI) default-uri)
+           :users (or (dotenv/env :DATOMIC_USERS_URI) (dotenv/env :DATOMIC_URI) default-uri)})
 
 (defonce state (atom {}))
 
-(defn db []
-  (d/db (:cx @state)))
+(defn db
+  ([] (db :base))
+  ([k] (d/db (k @state))))
 
-(defn cx []
-  (:cx @state))
+(defn cx
+  ([] (cx :base))
+  ([k] (k @state)))
 
-(defn start-dbs [state]
-  (do
-    (d/create-database uri)
-    (swap! state assoc :cx (d/connect uri))))
-
-(defn start-db []
-  (start-dbs state))
+(defn start-dbs
+  ([] (start-dbs state))
+  ([st]
+   (doseq [[k uri] uris]
+     (d/create-database uri)
+     (swap! st assoc k (d/connect uri)))))

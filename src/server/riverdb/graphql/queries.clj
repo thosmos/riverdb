@@ -10,7 +10,7 @@
             [java-time :as jt]
             [riverdb.db :refer [limit-fn remap-query]]
             [riverdb.graphql.schema :as schema :refer [table-specs-ds spec-spec-keys spec-specs-ds]]
-            [riverdb.state :as st :refer [db state cx uri ]]
+            [riverdb.state :as st :refer [db cx]]
             [riverdb.station]
             [riverdb.model.user :as user]
             [riverdb.api.riverdb :as riverdb]
@@ -614,59 +614,59 @@
 
           result)))))
 
-
-
-(defn resolve-rimdb-rk [spec-ns]
-  (fn [context args value]
-    (debug "RESOLVE RK" spec-ns args value)
-    (let [selection     (:com.walmartlabs.lacinia/selection context)
-          ;_             (debug "RK SELECTION:")
-          ;_ (pprint selection)
-
-          pk-table      (get-in selection [:field-definition :type-name])
-          ;pk-table-name (name pk-table)
-          fk-table      (-> selection :selections first :field-definition :type-name)
-          fk-table-name (name fk-table)
-          fk-info       (get-in @state [:tables pk-table :rev-keys fk-table])
-          pk-field      (:pkcolumn_name fk-info)
-          ;pk-field-val  (get value (keyword pk-field))
-          pk-field-val  (:db/id value)
-          fk-field      (:fkcolumn_name fk-info)
-          fk            (nskw fk-table fk-field)
-
-          ;_             (debug "fk-table: " fk-table ", fk-field: " fk-field ", value: " value)
-          ;_             (debug "pk-table: " pk-table ", pk-field: " pk-field ", pk-field-val: " pk-field-val)
-
-          tree          (executor/selections-tree context)
-          keys          (keys tree)
-
-          id?           (some #{"id"} (map name keys))
-          keys          (if id?
-                          (remove #(= (name %) "id") keys)
-                          keys)
-
-          db-keys       (vec
-                          (concat
-                            [:db/id]
-                            (for [k keys]
-                              [k :as (keyword (name k))])))
-
-          ;_             (debug "KEYS" keys ", DB KEYS" db-keys)
-
-          rez           (d/q '[:find [(pull ?e qu) ...]
-                               :in $ ?id ?fk qu
-                               :where [?e ?fk ?id]] (db) pk-field-val fk db-keys)
-
-          rez           (if id?
-                          (for [r rez]
-                            (assoc r :id (:db/id r)))
-                          rez)]
-
-      ;_             (debug "DB RESULTS" rez)
-
-
-
-      rez)))
+;
+;
+;(defn resolve-rimdb-rk [spec-ns]
+;  (fn [context args value]
+;    (debug "RESOLVE RK" spec-ns args value)
+;    (let [selection     (:com.walmartlabs.lacinia/selection context)
+;          ;_             (debug "RK SELECTION:")
+;          ;_ (pprint selection)
+;
+;          pk-table      (get-in selection [:field-definition :type-name])
+;          ;pk-table-name (name pk-table)
+;          fk-table      (-> selection :selections first :field-definition :type-name)
+;          fk-table-name (name fk-table)
+;          fk-info       (get-in @state [:tables pk-table :rev-keys fk-table])
+;          pk-field      (:pkcolumn_name fk-info)
+;          ;pk-field-val  (get value (keyword pk-field))
+;          pk-field-val  (:db/id value)
+;          fk-field      (:fkcolumn_name fk-info)
+;          fk            (nskw fk-table fk-field)
+;
+;          ;_             (debug "fk-table: " fk-table ", fk-field: " fk-field ", value: " value)
+;          ;_             (debug "pk-table: " pk-table ", pk-field: " pk-field ", pk-field-val: " pk-field-val)
+;
+;          tree          (executor/selections-tree context)
+;          keys          (keys tree)
+;
+;          id?           (some #{"id"} (map name keys))
+;          keys          (if id?
+;                          (remove #(= (name %) "id") keys)
+;                          keys)
+;
+;          db-keys       (vec
+;                          (concat
+;                            [:db/id]
+;                            (for [k keys]
+;                              [k :as (keyword (name k))])))
+;
+;          ;_             (debug "KEYS" keys ", DB KEYS" db-keys)
+;
+;          rez           (d/q '[:find [(pull ?e qu) ...]
+;                               :in $ ?id ?fk qu
+;                               :where [?e ?fk ?id]] (db) pk-field-val fk db-keys)
+;
+;          rez           (if id?
+;                          (for [r rez]
+;                            (assoc r :id (:db/id r)))
+;                          rez)]
+;
+;      ;_             (debug "DB RESULTS" rez)
+;
+;
+;
+;      rez)))
 
 
 (defn resolve-spec [spec-ns]

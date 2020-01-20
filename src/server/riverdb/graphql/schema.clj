@@ -1,7 +1,7 @@
 (ns riverdb.graphql.schema
   (:require [clojure.tools.logging :as log :refer [debug info warn error]]
             [clojure.pprint :refer [pprint]]
-            [riverdb.state :as st :refer [db state cx uri ]]
+            [riverdb.state :as st :refer [db cx]]
             [riverdb.db :refer [limit-fn remap-query]]
             [riverdb.station]
             [clojure.edn :as edn]
