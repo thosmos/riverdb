@@ -2292,9 +2292,9 @@
           :key :sitevisit/Visitors,
           :cardinality :many,
           :type :ref,
-          :ref [:entity/ns :entity.ns/person],
+          :ref {:entity/ns :entity.ns/person},
           :doc "Who were the ones who visited the site?",
-          :refKey nil}
+          :refKey :entity.ns/person}
    #:attr{:name "SeasonCode",
           :key :sitevisit/SeasonCode,
           :position 35,

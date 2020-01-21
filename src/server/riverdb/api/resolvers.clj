@@ -82,6 +82,7 @@
     #(compare %1 %2)))
 
 (defn lookup-resolve [env input]
+  (debug "LOOKUP RESOLVER" input)
   (try
     (let [params        (-> env :ast :params)
           query         (:query env)
@@ -158,7 +159,7 @@
           ;  (update :where conj
           ;    '[(< ?date ?toDate)]))
 
-          _ (debug "ADDING FILTERS ...")
+          _             (debug "ADDING FILTERS ...")
           ;; add the filter conditions first.
           ;; TODO we can probably skip this if we have IDs, but leaving for now
           filter        (:filter params)
@@ -166,7 +167,7 @@
                           (add-filters '?e find filter)
                           find)
 
-          _ (log/debug "POST FILTERS" find)
+          _             (log/debug "POST FILTERS" find)
 
           ;; add the type condition because filters are *probably* more restrictive than the type?
           find          (cond
@@ -239,21 +240,23 @@
 (def lookup-resolvers
   (vec
     (for [spec specs-sorted]
-      (let [{:entity/keys [ns name pks attrs]} spec
+      (let [{:entity/keys [ns attrs]} spec
+            nm  (name ns)
             aks (mapv :attr/key attrs)]
         ;gid-key (keyword (str "riverdb.entity.ns." name) "gid")]
-        {::pc/sym     (symbol name)
-         ::pc/output  [{(keyword (str "org.riverdb.db." name))
+        {::pc/sym     (symbol nm)
+         ::pc/output  [{(keyword (str "org.riverdb.db." nm))
                         (into [:db/id :riverdb.entity/ns :org.riverdb.meta/query-count] aks)}]
          ::pc/resolve lookup-resolve}))))
 
 (def meta-resolvers
   (vec
     (for [spec specs-sorted]
-      (let [{:entity/keys [ns name pks attrs]} spec
+      (let [{:entity/keys [ns attrs]} spec
+            nm  (name ns)
             aks (mapv :attr/key attrs)]
-        {::pc/sym     (symbol (str name "-meta"))
-         ::pc/output  [{(keyword (str "org.riverdb.db." name "-meta"))
+        {::pc/sym     (symbol (str nm "-meta"))
+         ::pc/output  [{(keyword (str "org.riverdb.db." nm "-meta"))
                         (into [:db/id :riverdb.entity/ns :org.riverdb.meta/query-count] aks)}]
          ::pc/resolve lookup-resolve}))))
 
@@ -281,10 +284,11 @@
 (def id-resolvers
   (vec
     (for [spec specs-sorted]
-      (let [{:entity/keys [ns name pks attrs]} spec
+      (let [{:entity/keys [ns attrs]} spec
             aks   (mapv :attr/key attrs)
-            gid-k (keyword (str "org.riverdb.db." name) "gid")]
-        {::pc/sym       (symbol (str name "GID"))
+            nm    (name ns)
+            gid-k (keyword (str "org.riverdb.db." nm) "gid")]
+        {::pc/sym       (symbol (str nm "GID"))
          ::pc/input     #{gid-k}
          ::pc/output    (into [:db/id :riverdb.entity/ns] aks)
          ::pc/resolve   (id-resolve-factory gid-k)
