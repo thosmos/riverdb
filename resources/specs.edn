@@ -1,5 +1,5 @@
 [{:db/id "agencylookup",
-  :entity/name "agencylookup",
+  :entity/name "Agency",
   :entity/ns :entity.ns/agencylookup,
   :entity/pks [:agencylookup/AgencyCode],
   :entity/prKeys
@@ -110,7 +110,7 @@
           :type :string,
           :strlen 10}]}
  {:db/id "analytelookup",
-  :entity/name "analytelookup",
+  :entity/name "Analyte",
   :entity/ns :entity.ns/analytelookup,
   :entity/pks [:analytelookup/AnalyteCode],
   :entity/prKeys [:analytelookup/AnalyteCode],
@@ -196,7 +196,7 @@
           :type :string,
           :strlen 25}]}
  {:db/id "batchquallookup",
-  :entity/name "batchquallookup",
+  :entity/name "Batch Qualifier",
   :entity/ns :entity.ns/batchquallookup,
   :entity/pks [:batchquallookup/BatchQualRowID],
   :entity/prKeys [:batchquallookup/BatchQualRowID],
@@ -226,7 +226,7 @@
           :type :string,
           :strlen 150}]}
  {:db/id "batchvallookup",
-  :entity/name "batchvallookup",
+  :entity/name "Batch Val",
   :entity/ns :entity.ns/batchvallookup,
   :entity/pks [:batchvallookup/BatchVerRowID],
   :entity/prKeys [:batchvallookup/BatchVerRowID],
@@ -256,7 +256,7 @@
           :type :string,
           :strlen 100}]}
  {:db/id "compliancelevellookup",
-  :entity/name "compliancelevellookup",
+  :entity/name "Compliance Level",
   :entity/ns :entity.ns/compliancelevellookup,
   :entity/pks [:compliancelevellookup/ComplianceLevelRowID],
   :entity/prKeys [:compliancelevellookup/ComplianceLevelRowID],
@@ -286,7 +286,7 @@
           :cardinality :one,
           :type :long}]}
  {:db/id "constituentlookup",
-  :entity/name "constituentlookup",
+  :entity/name "Constituent",
   :entity/ns :entity.ns/constituentlookup,
   :entity/lookup :constituentlookup/ConstituentCode,
   :entity/pks [:constituentlookup/ConstituentRowID],
@@ -311,7 +311,8 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/analytelookup},
-          :refPrKey :analytelookup/AnalyteName}
+          :refPrKey :analytelookup/AnalyteName,
+          :refKey :entity.ns/analytelookup}
    #:attr{:name "ConstituentCode",
           :key :constituentlookup/ConstituentCode,
           :position 12,
@@ -332,14 +333,16 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/samplingdevicelookup},
-          :refPrKey :samplingdevicelookup/SampleDevice}
+          :refPrKey :samplingdevicelookup/SampleDevice,
+          :refKey :entity.ns/samplingdevicelookup}
    #:attr{:name "FractionCode",
           :key :constituentlookup/FractionCode,
           :position 6,
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/fractionlookup},
-          :refPrKey :fractionlookup/FractionName}
+          :refPrKey :fractionlookup/FractionName,
+          :refKey :entity.ns/fractionlookup}
    #:attr{:name "HighValue",
           :key :constituentlookup/HighValue,
           :position 12,
@@ -356,7 +359,8 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/matrixlookup},
-          :refPrKey :matrixlookup/MatrixName}
+          :refPrKey :matrixlookup/MatrixName,
+          :refKey :entity.ns/matrixlookup}
    #:attr{:name "MaxValue",
           :key :constituentlookup/MaxValue,
           :position 10,
@@ -368,7 +372,8 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/methodlookup},
-          :refPrKey :methodlookup/MethodName}
+          :refPrKey :methodlookup/MethodName,
+          :refKey :entity.ns/methodlookup}
    #:attr{:name "MinValue",
           :key :constituentlookup/MinValue,
           :position 11,
@@ -385,9 +390,10 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/unitlookup},
-          :refPrKey :unitlookup/Unit}]}
+          :refPrKey :unitlookup/Unit,
+          :refKey :entity.ns/unitlookup}]}
  {:db/id "corrections",
-  :entity/name "corrections",
+  :entity/name "Corrections",
   :entity/ns :entity.ns/corrections,
   :entity/pks [:corrections/CorrectionsRowID],
   :entity/prKeys [:corrections/CorrectionsRowID],
@@ -452,7 +458,7 @@
           :type :string,
           :strlen 50}]}
  {:db/id "digestextractlookup",
-  :entity/name "digestextractlookup",
+  :entity/name "Digest Extract",
   :entity/ns :entity.ns/digestextractlookup,
   :entity/pks [:digestextractlookup/DigestExtractRowID],
   :entity/prKeys [:digestextractlookup/DigestExtractRowID],
@@ -505,7 +511,7 @@
           :type :string,
           :strlen 50}]}
  {:db/id "eventtypelookup",
-  :entity/name "eventtypelookup",
+  :entity/name "Event Type",
   :entity/ns :entity.ns/eventtypelookup,
   :entity/pks [:eventtypelookup/EventType],
   :entity/prKeys [:eventtypelookup/EventType],
@@ -530,7 +536,7 @@
           :type :string,
           :strlen 20}]}
  {:db/id "fieldobsresult",
-  :entity/name "fieldobsresult",
+  :entity/name "Field Obs Result",
   :entity/ns :entity.ns/fieldobsresult,
   :entity/pks [:fieldobsresult/FieldObsResultRowID],
   :entity/prKeys [:fieldobsresult/FieldObsResultRowID],
@@ -540,7 +546,8 @@
           :position 3,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/constituentlookup}}
+          :ref #:entity{:ns :entity.ns/constituentlookup},
+          :refKey :entity.ns/constituentlookup}
    #:attr{:name "FieldObsResultComments",
           :key :fieldobsresult/FieldObsResultComments,
           :position 5,
@@ -564,7 +571,8 @@
           :position 2,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/sample}}
+          :ref #:entity{:ns :entity.ns/sample},
+          :refKey :entity.ns/sample}
    #:attr{:name "TextResult",
           :key :fieldobsresult/TextResult,
           :position 4,
@@ -572,7 +580,7 @@
           :type :string,
           :strlen 80}]}
  {:db/id "fieldobsvarlookup",
-  :entity/name "fieldobsvarlookup",
+  :entity/name "Field Obs Var",
   :entity/ns :entity.ns/fieldobsvarlookup,
   :entity/pks [:fieldobsvarlookup/FieldObsVarRowId],
   :entity/prKeys [:fieldobsvarlookup/FieldObsVarRowId],
@@ -608,7 +616,7 @@
           :type :string,
           :strlen 100}]}
  {:db/id "fieldresequiplookup",
-  :entity/name "fieldresequiplookup",
+  :entity/name "Field Res Equip",
   :entity/ns :entity.ns/fieldresequiplookup,
   :entity/pks [:fieldresequiplookup/FieldResEquipRowID],
   :entity/prKeys [:fieldresequiplookup/FieldResEquipRowID],
@@ -624,7 +632,8 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/analytelookup},
-          :strlen 125}
+          :strlen 125,
+          :refKey :entity.ns/analytelookup}
    #:attr{:name "FieldResEquipRowID",
           :key :fieldresequiplookup/FieldResEquipRowID,
           :position 1,
@@ -638,9 +647,10 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/samplingdevicelookup},
-          :strlen 50}]}
+          :strlen 50,
+          :refKey :entity.ns/samplingdevicelookup}]}
  {:db/id "fieldresult",
-  :entity/name "fieldresult",
+  :entity/name "Field Result",
   :entity/ns :entity.ns/fieldresult,
   :entity/lookup :fieldresult/SampleRowID,
   :entity/pks [:fieldresult/FieldResultRowID],
@@ -657,13 +667,15 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/compliancelevellookup},
-          :strlen 5}
+          :strlen 5,
+          :refKey :entity.ns/compliancelevellookup}
    #:attr{:name "ConstituentRowID",
           :key :fieldresult/ConstituentRowID,
           :position 3,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/constituentlookup}}
+          :ref #:entity{:ns :entity.ns/constituentlookup},
+          :refKey :entity.ns/constituentlookup}
    #:attr{:name "FieldReplicate",
           :key :fieldresult/FieldReplicate,
           :position 4,
@@ -688,7 +700,8 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/qalookup},
-          :strlen 25}
+          :strlen 25,
+          :refKey :entity.ns/qalookup}
    #:attr{:name "QAFlag",
           :key :fieldresult/QAFlag,
           :position 14,
@@ -700,7 +713,8 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/resquallookup},
-          :strlen 10}
+          :strlen 10,
+          :refKey :entity.ns/resquallookup}
    #:attr{:name "Result",
           :key :fieldresult/Result,
           :position 5,
@@ -718,26 +732,29 @@
           :position 2,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/sample}}
+          :ref #:entity{:ns :entity.ns/sample},
+          :refKey :entity.ns/sample}
    #:attr{:name "SamplingDeviceCode",
           :key :fieldresult/SamplingDeviceCode,
           :position 8,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/samplingdevicelookup}}
+          :ref #:entity{:ns :entity.ns/samplingdevicelookup},
+          :refKey :entity.ns/samplingdevicelookup}
    #:attr{:name "SamplingDeviceID",
           :key :fieldresult/SamplingDeviceID,
           :position 13,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/samplingdevice}}
+          :ref #:entity{:ns :entity.ns/samplingdevice},
+          :refKey :entity.ns/samplingdevice}
    #:attr{:name "SigFig",
           :key :fieldresult/SigFig,
           :position 7,
           :cardinality :one,
           :type :long}]}
  {:db/id "fractionlookup",
-  :entity/name "fractionlookup",
+  :entity/name "Fraction",
   :entity/ns :entity.ns/fractionlookup,
   :entity/pks [:fractionlookup/FractionCode],
   :entity/prKeys [:fractionlookup/FractionCode],
@@ -768,7 +785,7 @@
           :type :string,
           :strlen 50}]}
  {:db/id "gpsdevicelookup",
-  :entity/name "gpsdevicelookup",
+  :entity/name "GPS Device",
   :entity/ns :entity.ns/gpsdevicelookup,
   :entity/pks [:gpsdevicelookup/GPSDeviceRowID],
   :entity/prKeys [:gpsdevicelookup/GPSDeviceRowID],
@@ -803,7 +820,7 @@
           :cardinality :one,
           :type :long}]}
  {:db/id "labbatch",
-  :entity/name "labbatch",
+  :entity/name "Lab Batch",
   :entity/ns :entity.ns/labbatch,
   :entity/pks [:labbatch/LabBatchRowID],
   :entity/prKeys [:labbatch/LabBatchRowID],
@@ -814,21 +831,24 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/agencylookup},
-          :strlen 20}
+          :strlen 20,
+          :refKey :entity.ns/agencylookup}
    #:attr{:name "BatchQualCode",
           :key :labbatch/BatchQualCode,
           :position 5,
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/batchquallookup},
-          :strlen 10}
+          :strlen 10,
+          :refKey :entity.ns/batchquallookup}
    #:attr{:name "BatchValCode",
           :key :labbatch/BatchValCode,
           :position 6,
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/batchvallookup},
-          :strlen 10}
+          :strlen 10,
+          :refKey :entity.ns/batchvallookup}
    #:attr{:name "LabBatch",
           :key :labbatch/LabBatch,
           :position 2,
@@ -855,7 +875,7 @@
           :type :string,
           :strlen 20}]}
  {:db/id "labresult",
-  :entity/name "labresult",
+  :entity/name "Lab Result",
   :entity/ns :entity.ns/labresult,
   :entity/lookup :labresult/LabResultRowID,
   :entity/pks [:labresult/LabResultRowID],
@@ -878,19 +898,22 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/compliancelevellookup},
-          :strlen 5}
+          :strlen 5,
+          :refKey :entity.ns/compliancelevellookup}
    #:attr{:name "ConstituentRowID",
           :key :labresult/ConstituentRowID,
           :position 10,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/constituentlookup}}
+          :ref #:entity{:ns :entity.ns/constituentlookup},
+          :refKey :entity.ns/constituentlookup}
    #:attr{:name "DigestExtractCode",
           :key :labresult/DigestExtractCode,
           :position 6,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/digestextractlookup}}
+          :ref #:entity{:ns :entity.ns/digestextractlookup},
+          :refKey :entity.ns/digestextractlookup}
    #:attr{:name "DigestExtractDate",
           :key :labresult/DigestExtractDate,
           :position 7,
@@ -908,7 +931,8 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/labbatch},
-          :strlen 35}
+          :strlen 35,
+          :refKey :entity.ns/labbatch}
    #:attr{:name "LabReplicate",
           :key :labresult/LabReplicate,
           :position 11,
@@ -944,7 +968,8 @@
           :position 4,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/preplookup}}
+          :ref #:entity{:ns :entity.ns/preplookup},
+          :refKey :entity.ns/preplookup}
    #:attr{:name "PrepDate",
           :key :labresult/PrepDate,
           :position 5,
@@ -956,7 +981,8 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/qalookup},
-          :strlen 25}
+          :strlen 25,
+          :refKey :entity.ns/qalookup}
    #:attr{:name "QAFlag",
           :key :labresult/QAFlag,
           :position 23,
@@ -974,7 +1000,8 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/resquallookup},
-          :strlen 10}
+          :strlen 10,
+          :refKey :entity.ns/resquallookup}
    #:attr{:name "Result",
           :key :labresult/Result,
           :position 13,
@@ -992,14 +1019,15 @@
           :position 2,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/sample}}
+          :ref #:entity{:ns :entity.ns/sample},
+          :refKey :entity.ns/sample}
    #:attr{:name "SigFig",
           :key :labresult/SigFig,
           :position 15,
           :cardinality :one,
           :type :long}]}
  {:db/id "matrixlookup",
-  :entity/name "matrixlookup",
+  :entity/name "Matrix",
   :entity/ns :entity.ns/matrixlookup,
   :entity/pks [:matrixlookup/MatrixCode],
   :entity/prKeys [:matrixlookup/MatrixCode],
@@ -1037,7 +1065,7 @@
           :type :string,
           :strlen 10}]}
  {:db/id "methodlookup",
-  :entity/name "methodlookup",
+  :entity/name "Method",
   :entity/ns :entity.ns/methodlookup,
   :entity/pks [:methodlookup/MethodCode],
   :entity/prKeys [:methodlookup/MethodCode],
@@ -1099,7 +1127,7 @@
           :type :string,
           :strlen 15}]}
  {:db/id "missingvaluelookup",
-  :entity/name "missingvaluelookup",
+  :entity/name "Missing Value",
   :entity/ns :entity.ns/missingvaluelookup,
   :entity/pks [:missingvaluelookup/MissingValueRowID],
   :entity/prKeys [:missingvaluelookup/MissingValueRowID],
@@ -1141,7 +1169,7 @@
           :cardinality :one,
           :type :long}]}
  {:db/id "parameter",
-  :entity/name "parameter",
+  :entity/name "Parameter",
   :entity/ns :entity.ns/parameter,
   :entity/pks [:parameter/uuid],
   :entity/prKeys [:parameter/active],
@@ -1160,13 +1188,15 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/constituentlookup},
-          :doc "the constituent that this describes"}
+          :doc "the constituent that this describes",
+          :refKey :entity.ns/constituentlookup}
    #:attr{:name "Device Type",
           :key :parameter/samplingdevicelookupRef,
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/samplingdevicelookup},
-          :doc "The default device type to use in the data entry form"}
+          :doc "The default device type to use in the data entry form",
+          :refKey :entity.ns/samplingdevicelookup}
    #:attr{:name "High",
           :key :parameter/high,
           :cardinality :one,
@@ -1177,7 +1207,8 @@
           :type :ref,
           :component true,
           :ref #:entity{:ns :entity.ns/paramline},
-          :doc "Lines to describe quality thresholds on charts"}
+          :doc "Lines to describe quality thresholds on charts",
+          :refKey :entity.ns/paramline}
    #:attr{:name "Low",
           :key :parameter/low,
           :cardinality :one,
@@ -1198,7 +1229,7 @@
           :identity true,
           :type :uuid}]}
  {:db/id "paramline",
-  :entity/name "paramline",
+  :entity/name "Param Line",
   :entity/ns :entity.ns/paramline,
   :entity/pks [:paramline/uuid],
   :entity/prKeys [:paramline/label],
@@ -1228,7 +1259,7 @@
           :cardinality :one,
           :type :bigdec}]}
  {:db/id "parentprojectlookup",
-  :entity/name "parentprojectlookup",
+  :entity/name "Parent Project",
   :entity/ns :entity.ns/parentprojectlookup,
   :entity/pks [:parentprojectlookup/ParentProjectRowID],
   :entity/prKeys [:parentprojectlookup/ParentProjectRowID],
@@ -1354,18 +1385,21 @@
           :type :string,
           :strlen 15}]}
  {:db/id "person",
-  :entity/name "person",
+  :entity/name "Person",
   :entity/ns :entity.ns/person,
   :entity/pks [:person/PersonID],
-  :entity/prKeys [:person/PersonID :person/FName :person/LName :person/IsStaff],
-  :entity/prnFn "(fn [{:person/keys [LName FName]}] (str LName \", \" FName))"
-  :entity/nameKey :person/Name
+  :entity/prKeys
+  [:person/PersonID :person/FName :person/LName :person/IsStaff],
+  :entity/prnFn
+  "(fn [{:person/keys [LName FName]}] (str LName \", \" FName))",
+  :entity/nameKey :person/Name,
   :entity/attrs
   [#:attr{:name "Agency",
           :key :person/Agency,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/agencylookup}}
+          :ref #:entity{:ns :entity.ns/agencylookup},
+          :refKey :entity.ns/agencylookup}
    #:attr{:name "FName",
           :key :person/FName,
           :position 4,
@@ -1383,15 +1417,16 @@
           :cardinality :one,
           :type :string,
           :strlen 45}
-   #:attr{:name "Name",
+   #:attr{:strlen 100,
           :key :person/Name,
-          :position 2,
-          :cardinality :one,
+          :name "Name",
+          :deriveAttrs [:person/FName :person/LName],
           :type :string,
-          :derived true
-          :deriveFn "(fn [{:person/keys [LName FName]}] (str LName \", \" FName))"
-          :deriveAttrs [:person/FName :person/LName]
-          :strlen 100}
+          :derived true,
+          :position 2,
+          :deriveFn
+          "(fn [{:person/keys [LName FName]}] (str LName \", \" FName))",
+          :cardinality :one}
    #:attr{:name "PersonID",
           :key :person/PersonID,
           :position 1,
@@ -1400,7 +1435,7 @@
           :cardinality :one,
           :type :long}]}
  {:db/id "preplookup",
-  :entity/name "preplookup",
+  :entity/name "Prep",
   :entity/ns :entity.ns/preplookup,
   :entity/pks [:preplookup/PrepRowID],
   :entity/prKeys [:preplookup/PrepRowID],
@@ -1434,7 +1469,7 @@
           :type :string,
           :strlen 30}]}
  {:db/id "projectslookup",
-  :entity/name "projectslookup",
+  :entity/name "Projects",
   :entity/ns :entity.ns/projectslookup,
   :entity/pks [:projectslookup/ProjectID],
   :entity/prKeys
@@ -1460,14 +1495,16 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/agencylookup},
-          :doc "a ref to the Agency entity"}
+          :doc "a ref to the Agency entity",
+          :refKey :entity.ns/agencylookup}
    #:attr{:name "FieldVerCode",
           :key :projectslookup/FieldVerCode,
           :position 4,
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/batchvallookup},
-          :strlen 10}
+          :strlen 10,
+          :refKey :entity.ns/batchvallookup}
    #:attr{:name "FieldVerComm",
           :key :projectslookup/FieldVerComm,
           :position 5,
@@ -1486,14 +1523,16 @@
           :type :ref,
           :ref #:entity{:ns :entity.ns/parameter},
           :doc
-          "Each project has a set of its active parameters (Constituents in SWAMP naming)"}
+          "Each project has a set of its active parameters (Constituents in SWAMP naming)",
+          :refKey :entity.ns/parameter}
    #:attr{:name "ParentProjectID",
           :key :projectslookup/ParentProjectID,
           :position 3,
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/parentprojectlookup},
-          :strlen 25}
+          :strlen 25,
+          :refKey :entity.ns/parentprojectlookup}
    #:attr{:name "ProjectID",
           :key :projectslookup/ProjectID,
           :position 1,
@@ -1525,7 +1564,7 @@
           :type :ref,
           :doc "Each project has a set of stations"}]}
  {:db/id "qalookup",
-  :entity/name "qalookup",
+  :entity/name "QA",
   :entity/ns :entity.ns/qalookup,
   :entity/pks [:qalookup/QARowID],
   :entity/prKeys [:qalookup/QARowID],
@@ -1573,7 +1612,7 @@
           :type :string,
           :strlen 25}]}
  {:db/id "resquallookup",
-  :entity/name "resquallookup",
+  :entity/name "Res Qual",
   :entity/ns :entity.ns/resquallookup,
   :entity/pks [:resquallookup/ResQualCode],
   :entity/prKeys [:resquallookup/ResQualCode],
@@ -1616,7 +1655,7 @@
           :type :string,
           :strlen 25}]}
  {:db/id "sample",
-  :entity/name "sample",
+  :entity/name "Sample",
   :entity/lookup :sample/SampleTypeCode,
   :entity/ns :entity.ns/sample,
   :entity/pks [:sample/SampleRowID],
@@ -1633,28 +1672,32 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/eventtypelookup},
-          :strlen 20}
+          :strlen 20,
+          :refKey :entity.ns/eventtypelookup}
    #:attr{:name "FieldObsResults",
           :key :sample/FieldObsResults,
           :type :ref,
           :ref #:entity{:ns :entity.ns/fieldobsresult},
           :component true,
           :cardinality :many,
-          :doc "Field Observations"}
+          :doc "Field Observations",
+          :refKey :entity.ns/fieldobsresult}
    #:attr{:name "FieldResults",
           :key :sample/FieldResults,
           :type :ref,
           :ref #:entity{:ns :entity.ns/fieldresult},
           :component true,
           :cardinality :many,
-          :doc "Results acquired in the field"}
+          :doc "Results acquired in the field",
+          :refKey :entity.ns/fieldresult}
    #:attr{:name "LabResults",
           :key :sample/LabResults,
           :type :ref,
           :ref #:entity{:ns :entity.ns/labresult},
           :component true,
           :cardinality :many,
-          :doc "Results acquired from a lab"}
+          :doc "Results acquired from a lab",
+          :refKey :entity.ns/labresult}
    #:attr{:name "QCCheck",
           :key :sample/QCCheck,
           :position 12,
@@ -1699,13 +1742,15 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/sampletypelookup},
-          :strlen 20}
+          :strlen 20,
+          :refKey :entity.ns/sampletypelookup}
    #:attr{:name "SiteVisitID",
           :key :sample/SiteVisitID,
           :position 11,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/sitevisit}}
+          :ref #:entity{:ns :entity.ns/sitevisit},
+          :refKey :entity.ns/sitevisit}
    #:attr{:name "Unit",
           :key :sample/Unit,
           :position 8,
@@ -1713,7 +1758,7 @@
           :type :string,
           :strlen 2}]}
  {:db/id "sampledetail",
-  :entity/name "sampledetail",
+  :entity/name "Sample Detail",
   :entity/ns :entity.ns/sampledetail,
   :entity/pks [:sampledetail/SampleDetailRowID],
   :entity/prKeys [:sampledetail/SampleDetailRowID],
@@ -1753,7 +1798,8 @@
           :position 19,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/gpsdevicelookup}}
+          :ref #:entity{:ns :entity.ns/gpsdevicelookup},
+          :refKey :entity.ns/gpsdevicelookup}
    #:attr{:name "Hydromod",
           :key :sampledetail/Hydromod,
           :position 9,
@@ -1802,7 +1848,8 @@
           :position 2,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/sample}}
+          :ref #:entity{:ns :entity.ns/sample},
+          :refKey :entity.ns/sample}
    #:attr{:name "SamplingCrew",
           :key :sampledetail/SamplingCrew,
           :position 3,
@@ -1814,7 +1861,8 @@
           :position 4,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/samplingdevicelookup}}
+          :ref #:entity{:ns :entity.ns/samplingdevicelookup},
+          :refKey :entity.ns/samplingdevicelookup}
    #:attr{:name "StartingBank",
           :key :sampledetail/StartingBank,
           :position 5,
@@ -1858,7 +1906,7 @@
           :type :string,
           :strlen 20}]}
  {:db/id "sampletypelookup",
-  :entity/name "sampletypelookup",
+  :entity/name "Sample Type",
   :entity/ns :entity.ns/sampletypelookup,
   :entity/pks [:sampletypelookup/SampleTypeCode],
   :entity/prKeys [:sampletypelookup/SampleTypeCode],
@@ -1913,7 +1961,7 @@
           :type :string,
           :strlen 150}]}
  {:db/id "samplingdevice",
-  :entity/name "samplingdevice",
+  :entity/name "Sampling Device",
   :entity/ns :entity.ns/samplingdevice,
   :entity/pks [:samplingdevice/SamplingDeviceID],
   :entity/prKeys [:samplingdevice/SamplingDeviceID],
@@ -1930,7 +1978,8 @@
           :position 3,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/samplingdevicelookup}}
+          :ref #:entity{:ns :entity.ns/samplingdevicelookup},
+          :refKey :entity.ns/samplingdevicelookup}
    #:attr{:name "SamplingDeviceID",
           :key :samplingdevice/SamplingDeviceID,
           :position 1,
@@ -1939,7 +1988,7 @@
           :cardinality :one,
           :type :long}]}
  {:db/id "samplingdevicelookup",
-  :entity/name "samplingdevicelookup",
+  :entity/name "Device Type",
   :entity/ns :entity.ns/samplingdevicelookup,
   :entity/pks [:samplingdevicelookup/SamplingDeviceCode],
   :entity/prKeys [:samplingdevicelookup/SamplingDeviceCode],
@@ -1955,7 +2004,8 @@
           :position 11,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/constituentlookup}}
+          :ref #:entity{:ns :entity.ns/constituentlookup},
+          :refKey :entity.ns/constituentlookup}
    #:attr{:name "DeviceMax",
           :key :samplingdevicelookup/DeviceMax,
           :position 9,
@@ -2008,7 +2058,7 @@
           :type :string,
           :strlen 30}]}
  {:db/id "seasondetaillookup",
-  :entity/name "seasondetaillookup",
+  :entity/name "Season Detail",
   :entity/ns :entity.ns/seasondetaillookup,
   :entity/pks [:seasondetaillookup/SeasonRowID],
   :entity/prKeys
@@ -2030,7 +2080,8 @@
           :position 2,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/seasonlookup}}
+          :ref #:entity{:ns :entity.ns/seasonlookup},
+          :refKey :entity.ns/seasonlookup}
    #:attr{:name "SeasonDescr",
           :key :seasondetaillookup/SeasonDescr,
           :position 3,
@@ -2045,7 +2096,7 @@
           :cardinality :one,
           :type :long}]}
  {:db/id "seasonlookup",
-  :entity/name "seasonlookup",
+  :entity/name "Season",
   :entity/ns :entity.ns/seasonlookup,
   :entity/pks [:seasonlookup/SeasonCode],
   :entity/prKeys
@@ -2070,7 +2121,7 @@
           :cardinality :one,
           :type :long}]}
  {:db/id "sitevisit",
-  :entity/name "sitevisit",
+  :entity/name "Site Visit",
   :entity/ns :entity.ns/sitevisit,
   :entity/lookup :sitevisit/SiteVisitDate,
   :entity/pks [:sitevisit/SiteVisitID],
@@ -2089,7 +2140,8 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/agencylookup},
-          :strlen 20}
+          :strlen 20,
+          :refKey :entity.ns/agencylookup}
    #:attr{:name "BacteriaCollected",
           :key :sitevisit/BacteriaCollected,
           :position 24,
@@ -2111,7 +2163,8 @@
           :cardinality :one,
           :type :ref,
           :doc "Who Checked this sitevisit?",
-          :ref #:entity{:ns :entity.ns/person}}
+          :ref #:entity{:ns :entity.ns/person},
+          :refKey :entity.ns/person}
    #:attr{:name "CreationTimestamp",
           :key :sitevisit/CreationTimestamp,
           :position 8,
@@ -2136,7 +2189,8 @@
           :cardinality :one,
           :type :ref,
           :doc "Who did the data entry for this sitevisit?",
-          :ref #:entity{:ns :entity.ns/person}}
+          :ref #:entity{:ns :entity.ns/person},
+          :refKey :entity.ns/person}
    #:attr{:name "Datum",
           :key :sitevisit/Datum,
           :position 16,
@@ -2203,7 +2257,8 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/projectslookup},
-          :strlen 8}
+          :strlen 8,
+          :refKey :entity.ns/projectslookup}
    #:attr{:name "QACheck",
           :key :sitevisit/QACheck,
           :position 19,
@@ -2224,25 +2279,29 @@
           :cardinality :one,
           :type :ref,
           :doc "Who did QA for this sitevisit?",
-          :ref #:entity{:ns :entity.ns/person}}
+          :ref #:entity{:ns :entity.ns/person},
+          :refKey :entity.ns/person}
    #:attr{:name "Samples",
           :key :sitevisit/Samples,
           :type :ref,
           :ref #:entity{:ns :entity.ns/sample},
           :component true,
-          :cardinality :many}
+          :cardinality :many,
+          :refKey :entity.ns/sample}
    #:attr{:name "Sampling Crew",
           :key :sitevisit/Visitors,
           :cardinality :many,
           :type :ref,
           :ref [:entity/ns :entity.ns/person],
-          :doc "Who were the ones who visited the site?"}
+          :doc "Who were the ones who visited the site?",
+          :refKey nil}
    #:attr{:name "SeasonCode",
           :key :sitevisit/SeasonCode,
           :position 35,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/seasonlookup}}
+          :ref #:entity{:ns :entity.ns/seasonlookup},
+          :refKey :entity.ns/seasonlookup}
    #:attr{:name "SiteVisitDate",
           :key :sitevisit/SiteVisitDate,
           :position 2,
@@ -2260,13 +2319,15 @@
           :position 37,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/stationfaillookup}}
+          :ref #:entity{:ns :entity.ns/stationfaillookup},
+          :refKey :entity.ns/stationfaillookup}
    #:attr{:name "StationID",
           :key :sitevisit/StationID,
           :position 22,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/stationlookup}}
+          :ref #:entity{:ns :entity.ns/stationlookup},
+          :refKey :entity.ns/stationlookup}
    #:attr{:name "StreamWidth",
           :key :sitevisit/StreamWidth,
           :position 13,
@@ -2317,7 +2378,8 @@
           :position 23,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/sitevisittype}}
+          :ref #:entity{:ns :entity.ns/sitevisittype},
+          :refKey :entity.ns/sitevisittype}
    #:attr{:name "WaterDepth",
           :key :sitevisit/WaterDepth,
           :position 11,
@@ -2334,7 +2396,7 @@
           :type :uuid,
           :identity true}]}
  {:db/id "sitevisitgroup",
-  :entity/name "sitevisitgroup",
+  :entity/name "Sitevisit Group",
   :entity/ns :entity.ns/sitevisitgroup,
   :entity/pks [:sitevisitgroup/GroupID],
   :entity/prKeys [:sitevisitgroup/GroupID],
@@ -2353,12 +2415,12 @@
           :type :string,
           :strlen 45}]}
  {:db/id "sitevisittype",
-  :entity/name "sitevisittype",
+  :entity/name "Visit Type",
   :entity/ns :entity.ns/sitevisittype,
   :entity/pks [:sitevisittype/name],
   :entity/prKeys [:sitevisittype/name],
   :entity/enumField :sitevisittype/name,
-  :entity/nameKey :sitevisittype/name
+  :entity/nameKey :sitevisittype/name,
   :entity/attrs
   [#:attr{:name "name",
           :key :sitevisittype/name,
@@ -2368,14 +2430,14 @@
           :type :string,
           :strlen 45}]}
  {:db/id "stationfaillookup",
-  :entity/name "stationfaillookup",
+  :entity/name "Station Fail",
   :entity/nameKey :stationfaillookup/FailureReason,
   :entity/ns :entity.ns/stationfaillookup,
   :entity/pks [:stationfaillookup/StationFailCode],
   :entity/prKeys
   [:stationfaillookup/Active
    :stationfaillookup/StationFailCode
-   :stationfaillookup/FailureReason]
+   :stationfaillookup/FailureReason],
   :entity/attrs
   [#:attr{:name "Active",
           :key :stationfaillookup/Active,
@@ -2395,220 +2457,225 @@
           :identity true,
           :cardinality :one,
           :type :long}]}
- {:db/id "stationlookup",
-  :entity/name "stationlookup",
-  :entity/ns :entity.ns/stationlookup,
-  :entity/pks [:stationlookup/StationCode],
-  :entity/prKeys
-  [:stationlookup/Active
-   :stationlookup/StationID
-   :stationlookup/StationName
-   :stationlookup/Agency
-   :stationlookup/Project
-   :stationlookup/TargetLong
-   :stationlookup/TargetLat
-   :stationlookup/RiverFork],
+ {:entity/prKeys
+                  [:stationlookup/Active
+                   :stationlookup/StationID
+                   :stationlookup/StationName
+                   :stationlookup/Agency
+                   :stationlookup/Project
+                   :stationlookup/TargetLong
+                   :stationlookup/TargetLat
+                   :stationlookup/RiverFork],
   :entity/sortKeys
-  [:stationlookup/StationID :stationlookup/StationName],
-  :entity/prnFn
-  "(fn [{:stationlookup/keys [StationID StationName]}] (str StationID \": \" StationName))",
-  :entity/nameKey :stationlookup/Name
+                  [:stationlookup/StationID :stationlookup/StationName],
+  :entity/nameKey :stationlookup/Name,
+  :entity/ns :entity.ns/stationlookup,
+  :entity/name "Station",
+  :entity/pks [:stationlookup/StationCode],
   :entity/attrs
-  [#:attr{:name "Active",
-          :key :stationlookup/Active,
-          :cardinality :one,
-          :type :boolean}
-   #:attr{:name "AddDate",
-          :key :stationlookup/AddDate,
-          :cardinality :one,
-          :type :instant}
-   #:attr{:name "Agency",
-          :key :stationlookup/Agency,
-          :cardinality :one,
-          :type :ref,
-          :ref #:entity{:ns :entity.ns/agencylookup}}
-   #:attr{:name "AlternativeStationCode1",
-          :key :stationlookup/AlternativeStationCode1,
-          :cardinality :one,
-          :type :string,
-          :strlen 50}
-   #:attr{:name "AlternativeStationCode2",
-          :key :stationlookup/AlternativeStationCode2,
-          :cardinality :one,
-          :type :string,
-          :strlen 50}
-   #:attr{:name "AlternativeStationCode3",
-          :key :stationlookup/AlternativeStationCode3,
-          :cardinality :one,
-          :type :string,
-          :strlen 50}
-   #:attr{:name "CalWNum221",
-          :key :stationlookup/CalWNum221,
-          :cardinality :one,
-          :type :bigdec}
-   #:attr{:name "County",
-          :key :stationlookup/County,
-          :cardinality :one,
-          :type :string,
-          :strlen 50}
-   #:attr{:name "DOcorrection",
-          :key :stationlookup/DOcorrection,
-          :cardinality :one,
-          :type :bigdec}
-   #:attr{:name "Datum",
-          :key :stationlookup/Datum,
-          :cardinality :one,
-          :type :string,
-          :strlen 10}
-   #:attr{:name "Description",
-          :key :stationlookup/Description,
-          :cardinality :one,
-          :type :string}
-   #:attr{:name "Elevation",
-          :key :stationlookup/Elevation,
-          :cardinality :one,
-          :type :bigdec}
-   #:attr{:name "ForkTribGroup",
-          :key :stationlookup/ForkTribGroup,
-          :cardinality :one,
-          :type :string,
-          :strlen 3}
-   #:attr{:name "GIS_latlon",
-          :key :stationlookup/GIS_latlon,
-          :cardinality :one,
-          :type :string,
-          :strlen 45}
-   #:attr{:name "GageStationID",
-          :key :stationlookup/GageStationID,
-          :cardinality :one,
-          :type :string,
-          :strlen 50}
-   #:attr{:name "GeoID",
-          :key :stationlookup/GeoID,
-          :cardinality :one,
-          :type :string,
-          :strlen 5}
-   #:attr{:name "HBASA2",
-          :key :stationlookup/HBASA2,
-          :cardinality :one,
-          :type :bigdec}
-   #:attr{:name "HydrologicUnit",
-          :key :stationlookup/HydrologicUnit,
-          :cardinality :one,
-          :type :string,
-          :strlen 50}
-   #:attr{:name "LocalWaterbody",
-          :key :stationlookup/LocalWaterbody,
-          :cardinality :one,
-          :type :string,
-          :strlen 50}
-   #:attr{:name "LocalWatershed",
-          :key :stationlookup/LocalWatershed,
-          :cardinality :one,
-          :type :string,
-          :strlen 50}
-   #:attr{:name "NHDRiverMile",
-          :key :stationlookup/NHDRiverMile,
-          :cardinality :one,
-          :type :string,
-          :strlen 50}
-   #:attr{:name "NHDWaterbody",
-          :key :stationlookup/NHDWaterbody,
-          :cardinality :one,
-          :type :string,
-          :strlen 50}
-   #:attr{:name "NationalHydrographyDataReach",
-          :key :stationlookup/NationalHydrographyDataReach,
-          :cardinality :one,
-          :type :bigdec}
-   #:attr{:name "Project",
-          :key :stationlookup/Project,
-          :cardinality :one,
-          :type :ref,
-          :ref #:entity{:ns :entity.ns/projectslookup}}
-   #:attr{:name "RiverFork",
-          :key :stationlookup/RiverFork,
-          :cardinality :one,
-          :type :string,
-          :strlen 10}
-   #:attr{:name "SWRCBNum221",
-          :key :stationlookup/SWRCBNum221,
-          :cardinality :one,
-          :type :bigdec}
-   #:attr{:name "SWRCBRegion",
-          :key :stationlookup/SWRCBRegion,
-          :cardinality :one,
-          :type :string,
-          :strlen 5}
-   #:attr{:name "StationCode",
-          :key :stationlookup/StationCode,
-          :identity true,
-          :primary true,
-          :cardinality :one,
-          :type :string,
-          :strlen 9}
-   #:attr{:name "StationCodeVer",
-          :key :stationlookup/StationCodeVer,
-          :cardinality :one,
-          :type :string,
-          :strlen 50}
-   #:attr{:name "StationCodeVerComm",
-          :key :stationlookup/StationCodeVerComm,
-          :cardinality :one,
-          :type :string,
-          :strlen 255}
-   #:attr{:name "StationComments",
-          :key :stationlookup/StationComments,
-          :cardinality :one,
-          :type :string,
-          :strlen 255}
-   #:attr{:name "StationID",
-          :key :stationlookup/StationID,
-          :cardinality :one,
-          :type :long}
-   #:attr{:name "StationName",
-          :key :stationlookup/StationName,
-          :cardinality :one,
-          :type :string,
-          :strlen 100}
-   #:attr{:name "Name"
-          :key :stationlookup/Name
-          :cardinality :one
-          :type :string
-          :derived true
-          :deriveFn "(fn [{:stationlookup/keys [StationID StationName]}] (str StationID \": \" StationName))"
-          :deriveAttrs [:stationlookup/StationID :stationlookup/StationName]}
-   #:attr{:name "StationsRowID",
-          :key :stationlookup/StationsRowID,
-          :identity true,
-          :cardinality :one,
-          :type :long}
-   #:attr{:name "StreamSubsystem",
-          :key :stationlookup/StreamSubsystem,
-          :cardinality :one,
-          :type :string,
-          :strlen 50}
-   #:attr{:name "TargetLat",
-          :key :stationlookup/TargetLat,
-          :cardinality :one,
-          :type :bigdec}
-   #:attr{:name "TargetLong",
-          :key :stationlookup/TargetLong,
-          :cardinality :one,
-          :type :bigdec}
-   #:attr{:name "Unit",
-          :key :stationlookup/Unit,
-          :cardinality :one,
-          :type :string,
-          :strlen 2}
-   #:attr{:name "WBType",
-          :key :stationlookup/WBType,
-          :cardinality :one,
-          :type :ref,
-          :ref #:entity{:ns :entity.ns/wbtypelookup},
-          :strlen 5}]}
+                  [#:attr{:name "Active",
+                          :key :stationlookup/Active,
+                          :cardinality :one,
+                          :type :boolean}
+                   #:attr{:name "AddDate",
+                          :key :stationlookup/AddDate,
+                          :cardinality :one,
+                          :type :instant}
+                   #:attr{:name "Agency",
+                          :key :stationlookup/Agency,
+                          :cardinality :one,
+                          :type :ref,
+                          :ref #:entity{:ns :entity.ns/agencylookup},
+                          :refKey :entity.ns/agencylookup}
+                   #:attr{:name "AlternativeStationCode1",
+                          :key :stationlookup/AlternativeStationCode1,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 50}
+                   #:attr{:name "AlternativeStationCode2",
+                          :key :stationlookup/AlternativeStationCode2,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 50}
+                   #:attr{:name "AlternativeStationCode3",
+                          :key :stationlookup/AlternativeStationCode3,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 50}
+                   #:attr{:name "CalWNum221",
+                          :key :stationlookup/CalWNum221,
+                          :cardinality :one,
+                          :type :bigdec}
+                   #:attr{:name "County",
+                          :key :stationlookup/County,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 50}
+                   #:attr{:name "DOcorrection",
+                          :key :stationlookup/DOcorrection,
+                          :cardinality :one,
+                          :type :bigdec}
+                   #:attr{:name "Datum",
+                          :key :stationlookup/Datum,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 10}
+                   #:attr{:name "Description",
+                          :key :stationlookup/Description,
+                          :cardinality :one,
+                          :type :string}
+                   #:attr{:name "Elevation",
+                          :key :stationlookup/Elevation,
+                          :cardinality :one,
+                          :type :bigdec}
+                   #:attr{:name "ForkTribGroup",
+                          :key :stationlookup/ForkTribGroup,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 3}
+                   #:attr{:name "GIS_latlon",
+                          :key :stationlookup/GIS_latlon,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 45}
+                   #:attr{:name "GageStationID",
+                          :key :stationlookup/GageStationID,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 50}
+                   #:attr{:name "GeoID",
+                          :key :stationlookup/GeoID,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 5}
+                   #:attr{:name "HBASA2",
+                          :key :stationlookup/HBASA2,
+                          :cardinality :one,
+                          :type :bigdec}
+                   #:attr{:name "HydrologicUnit",
+                          :key :stationlookup/HydrologicUnit,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 50}
+                   #:attr{:name "LocalWaterbody",
+                          :key :stationlookup/LocalWaterbody,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 50}
+                   #:attr{:name "LocalWatershed",
+                          :key :stationlookup/LocalWatershed,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 50}
+                   #:attr{:name "NHDRiverMile",
+                          :key :stationlookup/NHDRiverMile,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 50}
+                   #:attr{:name "NHDWaterbody",
+                          :key :stationlookup/NHDWaterbody,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 50}
+                   #:attr{:name "Name",
+                          :key :stationlookup/Name,
+                          :cardinality :one,
+                          :type :string,
+                          :derived true,
+                          :deriveFn
+                          "(fn [{:stationlookup/keys [StationID StationName]}] (str StationID \": \" StationName))",
+                          :deriveAttrs
+                          [:stationlookup/StationID :stationlookup/StationName]}
+                   #:attr{:name "NationalHydrographyDataReach",
+                          :key :stationlookup/NationalHydrographyDataReach,
+                          :cardinality :one,
+                          :type :bigdec}
+                   #:attr{:name "Project",
+                          :key :stationlookup/Project,
+                          :cardinality :one,
+                          :type :ref,
+                          :ref #:entity{:ns :entity.ns/projectslookup},
+                          :refKey :entity.ns/projectslookup}
+                   #:attr{:name "RiverFork",
+                          :key :stationlookup/RiverFork,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 10}
+                   #:attr{:name "SWRCBNum221",
+                          :key :stationlookup/SWRCBNum221,
+                          :cardinality :one,
+                          :type :bigdec}
+                   #:attr{:name "SWRCBRegion",
+                          :key :stationlookup/SWRCBRegion,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 5}
+                   #:attr{:name "StationCode",
+                          :key :stationlookup/StationCode,
+                          :identity true,
+                          :primary true,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 9}
+                   #:attr{:name "StationCodeVer",
+                          :key :stationlookup/StationCodeVer,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 50}
+                   #:attr{:name "StationCodeVerComm",
+                          :key :stationlookup/StationCodeVerComm,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 255}
+                   #:attr{:name "StationComments",
+                          :key :stationlookup/StationComments,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 255}
+                   #:attr{:name "StationID",
+                          :key :stationlookup/StationID,
+                          :cardinality :one,
+                          :type :long}
+                   #:attr{:name "StationName",
+                          :key :stationlookup/StationName,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 100}
+                   #:attr{:name "StationsRowID",
+                          :key :stationlookup/StationsRowID,
+                          :identity true,
+                          :cardinality :one,
+                          :type :long}
+                   #:attr{:name "StreamSubsystem",
+                          :key :stationlookup/StreamSubsystem,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 50}
+                   #:attr{:name "TargetLat",
+                          :key :stationlookup/TargetLat,
+                          :cardinality :one,
+                          :type :bigdec}
+                   #:attr{:name "TargetLong",
+                          :key :stationlookup/TargetLong,
+                          :cardinality :one,
+                          :type :bigdec}
+                   #:attr{:name "Unit",
+                          :key :stationlookup/Unit,
+                          :cardinality :one,
+                          :type :string,
+                          :strlen 2}
+                   #:attr{:name "WBType",
+                          :key :stationlookup/WBType,
+                          :cardinality :one,
+                          :type :ref,
+                          :ref #:entity{:ns :entity.ns/wbtypelookup},
+                          :strlen 5,
+                          :refKey :entity.ns/wbtypelookup}],
+  :db/id "stationlookup",
+  :entity/prnFn
+                  "(fn [{:stationlookup/keys [StationID StationName]}] (str StationID \": \" StationName))"}
  {:db/id "statmethlookup",
-  :entity/name "statmethlookup",
+  :entity/name "Stat Method",
   :entity/ns :entity.ns/statmethlookup,
   :entity/pks [:statmethlookup/StatMethodRowID],
   :entity/prKeys [:statmethlookup/StatMethodRowID],
@@ -2638,7 +2705,7 @@
           :cardinality :one,
           :type :long}]}
  {:db/id "timepointlookup",
-  :entity/name "timepointlookup",
+  :entity/name "Time Point",
   :entity/ns :entity.ns/timepointlookup,
   :entity/pks [:timepointlookup/TimePointRowID],
   :entity/prKeys [:timepointlookup/TimePointRowID],
@@ -2668,7 +2735,7 @@
           :cardinality :one,
           :type :long}]}
  {:db/id "toxbatch",
-  :entity/name "toxbatch",
+  :entity/name "Tox Batch",
   :entity/ns :entity.ns/toxbatch,
   :entity/pks [:toxbatch/ToxBatchRowID],
   :entity/prKeys [:toxbatch/ToxBatchRowID],
@@ -2679,21 +2746,24 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/agencylookup},
-          :strlen 20}
+          :strlen 20,
+          :refKey :entity.ns/agencylookup}
    #:attr{:name "BatchQualCode",
           :key :toxbatch/BatchQualCode,
           :position 10,
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/batchquallookup},
-          :strlen 10}
+          :strlen 10,
+          :refKey :entity.ns/batchquallookup}
    #:attr{:name "BatchValCode",
           :key :toxbatch/BatchValCode,
           :position 11,
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/batchvallookup},
-          :strlen 10}
+          :strlen 10,
+          :refKey :entity.ns/batchvallookup}
    #:attr{:name "OrganismAgeAtTestStart",
           :key :toxbatch/OrganismAgeAtTestStart,
           :position 8,
@@ -2748,7 +2818,7 @@
           :type :string,
           :strlen 6}]}
  {:db/id "toxconclookup",
-  :entity/name "toxconclookup",
+  :entity/name "Tox Conc",
   :entity/ns :entity.ns/toxconclookup,
   :entity/pks [:toxconclookup/ToxConcRowID],
   :entity/prKeys [:toxconclookup/ToxConcRowID],
@@ -2778,7 +2848,7 @@
           :cardinality :one,
           :type :long}]}
  {:db/id "toxconstituentlookup",
-  :entity/name "toxconstituentlookup",
+  :entity/name "Tox Constituent",
   :entity/ns :entity.ns/toxconstituentlookup,
   :entity/pks [:toxconstituentlookup/ToxConstituentRowID],
   :entity/prKeys [:toxconstituentlookup/ToxConstituentRowID],
@@ -2793,13 +2863,15 @@
           :position 3,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/matrixlookup}}
+          :ref #:entity{:ns :entity.ns/matrixlookup},
+          :refKey :entity.ns/matrixlookup}
    #:attr{:name "MethodCode",
           :key :toxconstituentlookup/MethodCode,
           :position 4,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/methodlookup}}
+          :ref #:entity{:ns :entity.ns/methodlookup},
+          :refKey :entity.ns/methodlookup}
    #:attr{:name "ToxConstituentCode",
           :key :toxconstituentlookup/ToxConstituentCode,
           :position 2,
@@ -2819,20 +2891,22 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/toxspecieslookup},
-          :strlen 5}
+          :strlen 5,
+          :refKey :entity.ns/toxspecieslookup}
    #:attr{:name "ToxTestDur",
           :key :toxconstituentlookup/ToxTestDur,
           :position 5,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/toxtestdurlookup}}
+          :ref #:entity{:ns :entity.ns/toxtestdurlookup},
+          :refKey :entity.ns/toxtestdurlookup}
    #:attr{:name "UnitCode",
           :key :toxconstituentlookup/UnitCode,
           :position 6,
           :cardinality :one,
           :type :long}]}
  {:db/id "toxeffort",
-  :entity/name "toxeffort",
+  :entity/name "Tox Effort",
   :entity/ns :entity.ns/toxeffort,
   :entity/pks [:toxeffort/ToxEffortRowID],
   :entity/prKeys [:toxeffort/ToxEffortRowID],
@@ -2849,7 +2923,8 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/toxconclookup},
-          :decimals 5}
+          :decimals 5,
+          :refKey :entity.ns/toxconclookup}
    #:attr{:name "ToxEffortComments",
           :key :toxeffort/ToxEffortComments,
           :position 6,
@@ -2868,15 +2943,17 @@
           :position 5,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/toxresconstituentlookup}}
+          :ref #:entity{:ns :entity.ns/toxresconstituentlookup},
+          :refKey :entity.ns/toxresconstituentlookup}
    #:attr{:name "ToxTestRowID",
           :key :toxeffort/ToxTestRowID,
           :position 2,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/toxtest}}]}
+          :ref #:entity{:ns :entity.ns/toxtest},
+          :refKey :entity.ns/toxtest}]}
  {:db/id "toxefforttypelookup",
-  :entity/name "toxefforttypelookup",
+  :entity/name "Tox Effort Type",
   :entity/ns :entity.ns/toxefforttypelookup,
   :entity/pks [:toxefforttypelookup/ToxEffortTypeRowID],
   :entity/prKeys [:toxefforttypelookup/ToxEffortTypeRowID],
@@ -2906,7 +2983,7 @@
           :cardinality :one,
           :type :long}]}
  {:db/id "toxendpointlookup",
-  :entity/name "toxendpointlookup",
+  :entity/name "Tox Endpoint",
   :entity/ns :entity.ns/toxendpointlookup,
   :entity/pks [:toxendpointlookup/ToxEndPointRowID],
   :entity/prKeys [:toxendpointlookup/ToxEndPointRowID],
@@ -2922,7 +2999,8 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/toxefforttypelookup},
-          :strlen 20}
+          :strlen 20,
+          :refKey :entity.ns/toxefforttypelookup}
    #:attr{:name "ToxEndPoint",
           :key :toxendpointlookup/ToxEndPoint,
           :position 3,
@@ -2943,7 +3021,7 @@
           :cardinality :one,
           :type :long}]}
  {:db/id "toxresconstituentlookup",
-  :entity/name "toxresconstituentlookup",
+  :entity/name "Tox Result Constituent",
   :entity/ns :entity.ns/toxresconstituentlookup,
   :entity/pks [:toxresconstituentlookup/ToxResConstituentRowID],
   :entity/prKeys [:toxresconstituentlookup/ToxResConstituentRowID],
@@ -2959,7 +3037,8 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/timepointlookup},
-          :strlen 10}
+          :strlen 10,
+          :refKey :entity.ns/timepointlookup}
    #:attr{:name "TimePointUnit",
           :key :toxresconstituentlookup/TimePointUnit,
           :position 6,
@@ -2972,7 +3051,8 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/toxendpointlookup},
-          :strlen 15}
+          :strlen 15,
+          :refKey :entity.ns/toxendpointlookup}
    #:attr{:name "ToxResConstituentCode",
           :key :toxresconstituentlookup/ToxResConstituentCode,
           :position 2,
@@ -2991,7 +3071,8 @@
           :position 7,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/unitlookup}}
+          :ref #:entity{:ns :entity.ns/unitlookup},
+          :refKey :entity.ns/unitlookup}
    #:attr{:name "WQSource",
           :key :toxresconstituentlookup/WQSource,
           :position 4,
@@ -2999,7 +3080,7 @@
           :type :string,
           :strlen 25}]}
  {:db/id "toxresult",
-  :entity/name "toxresult",
+  :entity/name "Tox Result",
   :entity/ns :entity.ns/toxresult,
   :entity/pks [:toxresult/ToxResultsRowID],
   :entity/prKeys [:toxresult/ToxResultsRowID],
@@ -3010,7 +3091,8 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/resquallookup},
-          :strlen 10}
+          :strlen 10,
+          :refKey :entity.ns/resquallookup}
    #:attr{:name "Result",
           :key :toxresult/Result,
           :position 4,
@@ -3027,7 +3109,8 @@
           :position 2,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/toxeffort}}
+          :ref #:entity{:ns :entity.ns/toxeffort},
+          :refKey :entity.ns/toxeffort}
    #:attr{:name "ToxReplicate",
           :key :toxresult/ToxReplicate,
           :position 3,
@@ -3047,7 +3130,7 @@
           :cardinality :one,
           :type :long}]}
  {:db/id "toxsigeffectlookup",
-  :entity/name "toxsigeffectlookup",
+  :entity/name "Tox Sig Effect",
   :entity/ns :entity.ns/toxsigeffectlookup,
   :entity/pks [:toxsigeffectlookup/ToxSigEffectRowID],
   :entity/prKeys [:toxsigeffectlookup/ToxSigEffectRowID],
@@ -3077,7 +3160,7 @@
           :cardinality :one,
           :type :long}]}
  {:db/id "toxspecieslookup",
-  :entity/name "toxspecieslookup",
+  :entity/name "Tox Species",
   :entity/ns :entity.ns/toxspecieslookup,
   :entity/pks [:toxspecieslookup/ToxSpeciesRowID],
   :entity/prKeys [:toxspecieslookup/ToxSpeciesRowID],
@@ -3113,7 +3196,7 @@
           :cardinality :one,
           :type :long}]}
  {:db/id "toxsum",
-  :entity/name "toxsum",
+  :entity/name "Tox Sum",
   :entity/ns :entity.ns/toxsum,
   :entity/pks [:toxsum/ToxSumRowID],
   :entity/prKeys [:toxsum/ToxSumRowID],
@@ -3152,7 +3235,8 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/statmethlookup},
-          :strlen 10}
+          :strlen 10,
+          :refKey :entity.ns/statmethlookup}
    #:attr{:name "StdDev",
           :key :toxsum/StdDev,
           :position 5,
@@ -3164,14 +3248,16 @@
           :position 2,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/toxeffort}}
+          :ref #:entity{:ns :entity.ns/toxeffort},
+          :refKey :entity.ns/toxeffort}
    #:attr{:name "ToxSigEffectCode",
           :key :toxsum/ToxSigEffectCode,
           :position 10,
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/toxsigeffectlookup},
-          :strlen 10}
+          :strlen 10,
+          :refKey :entity.ns/toxsigeffectlookup}
    #:attr{:name "ToxSumComments",
           :key :toxsum/ToxSumComments,
           :position 11,
@@ -3186,7 +3272,7 @@
           :cardinality :one,
           :type :long}]}
  {:db/id "toxtest",
-  :entity/name "toxtest",
+  :entity/name "Tox Test",
   :entity/ns :entity.ns/toxtest,
   :entity/pks [:toxtest/ToxTestRowID],
   :entity/prKeys [:toxtest/ToxTestRowID],
@@ -3197,7 +3283,8 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/compliancelevellookup},
-          :strlen 5}
+          :strlen 5,
+          :refKey :entity.ns/compliancelevellookup}
    #:attr{:name "LabSampleID",
           :key :toxtest/LabSampleID,
           :position 4,
@@ -3210,7 +3297,8 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/qalookup},
-          :strlen 25}
+          :strlen 25,
+          :refKey :entity.ns/qalookup}
    #:attr{:name "SampleID",
           :key :toxtest/SampleID,
           :position 3,
@@ -3222,20 +3310,23 @@
           :position 2,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/sample}}
+          :ref #:entity{:ns :entity.ns/sample},
+          :refKey :entity.ns/sample}
    #:attr{:name "ToxBatch",
           :key :toxtest/ToxBatch,
           :position 5,
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/toxbatch},
-          :strlen 25}
+          :strlen 25,
+          :refKey :entity.ns/toxbatch}
    #:attr{:name "ToxConstituentRowID",
           :key :toxtest/ToxConstituentRowID,
           :position 6,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/toxconstituentlookup}}
+          :ref #:entity{:ns :entity.ns/toxconstituentlookup},
+          :refKey :entity.ns/toxconstituentlookup}
    #:attr{:name "ToxTestComments",
           :key :toxtest/ToxTestComments,
           :position 9,
@@ -3250,7 +3341,7 @@
           :cardinality :one,
           :type :long}]}
  {:db/id "toxtestdurlookup",
-  :entity/name "toxtestdurlookup",
+  :entity/name "Tox Test Dur",
   :entity/ns :entity.ns/toxtestdurlookup,
   :entity/pks [:toxtestdurlookup/ToxTestDurRowID],
   :entity/prKeys [:toxtestdurlookup/ToxTestDurRowID],
@@ -3279,7 +3370,7 @@
           :type :string,
           :strlen 5}]}
  {:db/id "unitlookup",
-  :entity/name "unitlookup",
+  :entity/name "Unit",
   :entity/ns :entity.ns/unitlookup,
   :entity/pks [:unitlookup/UnitCode],
   :entity/prKeys [:unitlookup/UnitCode],
@@ -3304,7 +3395,7 @@
           :cardinality :one,
           :type :long}]}
  {:db/id "unitslookup",
-  :entity/name "unitslookup",
+  :entity/name "Units",
   :entity/ns :entity.ns/unitslookup,
   :entity/pks [:unitslookup/UnitsLookupRowID],
   :entity/prKeys [:unitslookup/UnitsLookupRowID],
@@ -3349,9 +3440,10 @@
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/variableslookup},
-          :strlen 25}]}
+          :strlen 25,
+          :refKey :entity.ns/variableslookup}]}
  {:db/id "userpreferences",
-  :entity/name "userpreferences",
+  :entity/name "User Preferences",
   :entity/ns :entity.ns/userpreferences,
   :entity/pks [],
   :entity/prKeys [],
@@ -3609,7 +3701,7 @@
           :type :string,
           :strlen 50}]}
  {:db/id "variablecodeslookup",
-  :entity/name "variablecodeslookup",
+  :entity/name "Variable Codes",
   :entity/ns :entity.ns/variablecodeslookup,
   :entity/pks [:variablecodeslookup/VariableCodesLookUpRowID],
   :entity/prKeys [:variablecodeslookup/VariableCodesLookUpRowID],
@@ -3645,7 +3737,7 @@
           :cardinality :one,
           :type :long}]}
  {:db/id "variableslookup",
-  :entity/name "variableslookup",
+  :entity/name "Variables",
   :entity/ns :entity.ns/variableslookup,
   :entity/pks [:variableslookup/VariablesLookUpRowID],
   :entity/prKeys [:variableslookup/VariablesLookUpRowID],
@@ -3680,7 +3772,7 @@
           :cardinality :one,
           :type :long}]}
  {:db/id "wbtypelookup",
-  :entity/name "wbtypelookup",
+  :entity/name "Wb Type",
   :entity/ns :entity.ns/wbtypelookup,
   :entity/pks [:wbtypelookup/WBTypeRowID],
   :entity/prKeys [:wbtypelookup/WBTypeRowID],

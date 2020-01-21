@@ -36,6 +36,7 @@
     [riverdb.api.mutations :as rm]
     [riverdb.ui.lookup :as look]
     [riverdb.ui.lookups :as looks]
+    [riverdb.ui.lookup-options :refer [LookupOptions]]
     [riverdb.ui.dataviz-page :refer [DataVizPage]]
     [riverdb.ui.components :refer [ui-treeview]]
     [riverdb.ui.routes]
@@ -132,17 +133,17 @@
          {:keys [text type] :as data} (comp/get-state this :drag-state)
          instate     (state-k (comp/get-state this :drop-state))
          isover      (and (isType type) instate)
-         _           (debug "UPDATING DROPPABLE STATE" state-k "TYPE" type "INSTATE" instate "ISOVER" isover "ISTYPE" (isType type))
+         ;_           (debug "UPDATING DROPPABLE STATE" state-k "TYPE" type "INSTATE" instate "ISOVER" isover "ISTYPE" (isType type))
 
          onDragEnter (fn [e fn]
                        (let [] ;{:keys [text type] :as data} @dragging]
-                         (debug "DRAG ENTER ATOM" state-k type text "ISOVER" isover "ISTYPE" (isType type))
+                         ;(debug "DRAG ENTER ATOM" state-k type text "ISOVER" isover "ISTYPE" (isType type))
                          (when (isType type)
                            (set-state! {state-k true})
                            (when fn (fn data)))))
          onDragOver  (fn [e fn]
                        (let []
-                         (debug "DRAG OVER ATOM" state-k type text "ISOVER" isover "ISTYPE" (isType type))
+                         ;(debug "DRAG OVER ATOM" state-k type text "ISOVER" isover "ISTYPE" (isType type))
                          (cancelEvs e)
                          (when (isType type)
                            (when (not instate)
@@ -150,16 +151,16 @@
                            (when fn (fn data)))))
          onDragLeave (fn [e fn]
                        (let []
-                         (debug "DRAG LEAVE ATOM" state-k type text "ISOVER" isover "ISTYPE" (isType type))
+                         ;(debug "DRAG LEAVE ATOM" state-k type text "ISOVER" isover "ISTYPE" (isType type))
                          (cancelEvs e)
                          (when isover
                            (set-state! {state-k nil})
                            (when fn (fn data)))))
          onDrop      (fn [e fn]
                        (let []
-                         (debug "DROP ATOM" state-k type text "ISOVER" isover "ISTYPE" (isType type))
-                         ;(cancelEvs e)
-                         (-> e (.stopPropagation))
+                         ;(debug "DROP ATOM" state-k type text "ISOVER" isover "ISTYPE" (isType type))
+                         (cancelEvs e)
+                         ;(-> e (.stopPropagation))
                          (when isover
                            (set-state! {state-k nil})
                            (when fn (fn data)))))]
@@ -169,14 +170,14 @@
   ;(debug "USE DRAGGABLE")
   (let [set-state! (fn [new-state] (comp/update-state! this update :drag-state merge new-state))
         dragStart  (fn [ev data]
-                     (debug "DRAG START" data)
+                     ;(debug "DRAG START" data)
                      (-> ev (.stopPropagation))
                      (-> ev .-dataTransfer (.setData "text/plain" (:text data)))
                      (set-state! data))
         dragEnd    (fn [ev]
                      ;(cancelEvs ev)
                      (let [data (comp/get-state this :drag-state)]
-                       (debug "DRAG END" data)
+                       ;(debug "DRAG END" data)
                        (set-state! nil)))]
     {:onDragStart dragStart :onDragEnd dragEnd}))
 
@@ -233,40 +234,59 @@
                                   (log/debug "RefInput change" value)
                                   (setRef value)))}))
 
-(defsc Filter [this {:keys [key text filt filt-opts attr]} {:keys [onChange]}]
-  {:query         [:key
-                   :text
-                   :filt
-                   :filt-opts
-                   {:attr (comp/get-query Attribute)}]
-   :initial-state (fn [{:keys [key text filt filt-opts attr]}]
-                    {:key  key
-                     :text text
-                     :filt filt
-                     :filt-opts filt-opts
-                     :attr attr})}
-  (let [{:attr/keys [type ref]} attr]
-    (debug "RENDER FILTER" key text type attr)
+(defn load-ref-options [this attr]
+  (let [app-state (fapp/current-state SPA)
+        theta-key (:attr/refKey attr)
+        options? (get-in app-state [:riverdb.lookup-options/ns theta-key :options])]
+    (debug "LOAD REF OPTIONS" (:attr/key attr) "REFS" theta-key "OPTIONS?" options?)
+    (when-not options?
+      (debug "LOADING OPTIONS ...")
+      (f/load! this ))))
+
+
+(defsc Filter [this {:keys [key text value ref-opts attr]} {:keys [onChange]}]
+  {:query             [:key
+                       :text
+                       :value
+                       [:riverdb.lookup-options/ns key]
+                       {:ref-opts (comp/get-query LookupOptions)}
+                       {:attr (comp/get-query Attribute)}]
+
+   ;; FIXME check to see if ref-opts exist, if not, load them
+   :componentDidMount (fn [this]
+                        (let [props (comp/props this)]))}
+
+  (let [{:attr/keys [type]} attr]
+    ;(debug "RENDER FILTER" key type value)
     (case type
       :boolean
-      (ui-checkbox {:checked  (or filt false)
-                    :onChange #(onChange (not filt))})
+      (ui-checkbox {:checked  (or value false)
+                    :onChange #(onChange (not value))})
       :ref
-      (ref-input filt filt-opts (fn [new-value] (onChange new-value)))
+      (ref-input value ref-opts onChange)
       :string
       (ui-input {:style    {:width 100}
-                 :value    (or filt "")
+                 :value    (or value "")
                  :onChange #(onChange (-> % .-target .-value))})
       :else
-      (ui-input {:style {:width 100}}))))
+      (ui-input {:style    {:width 100}
+                 :value    (or value "")
+                 :onChange #(onChange (-> % .-target .-value))}))))
 (def ui-filter (comp/factory Filter))
 
+(defn add-filter [this attr]
+  (let [{:attr/keys [key name type]} attr
+        filters (:ui/filters (comp/props this))]
+    (when (= type :ref)
+      (load-ref-options this attr))
+    (fm/set-value! this :ui/filters
+      (assoc (or filters {}) key {:key key :text name :attr attr}))))
 
-(def filters-ex [{:text "Site Visit" :key :sitevisit/SiteVisitDate :filt {:< #inst "2007-01-01"
-                                                                          :> #inst "2001-01-01"}}
-                 {:text "Name" :key :constituentlookup/Name :filt "hsdgf"}
-                 {:text "Active" :key :constituentlookup/Active :filt true}
-                 {:text "Analyte" :key :constituentlookup/Analyte :filt "12312423524"}])
+(def filters-ex [{:text "Site Visit" :key :sitevisit/SiteVisitDate :value {:< #inst "2007-01-01"
+                                                                           :> #inst "2001-01-01"}}
+                 {:text "Name" :key :constituentlookup/Name :value "hsdgf"}
+                 {:text "Active" :key :constituentlookup/Active :value true}
+                 {:text "Analyte" :key :constituentlookup/Analyte :value "12312423524"}])
 
 (defsc ThetaList [this {:keys [thetas] :ui/keys [ready filters showChooseCols prKeys] :as props}]
   {:ident              [:riverdb.theta.list/ns :riverdb.entity/ns]
@@ -274,7 +294,7 @@
                         :ui/ready
                         :ui/showChooseCols
                         :ui/prKeys
-                        {:ui/filters (comp/get-query Filter)}
+                        :ui/filters
                         {:thetas (comp/get-query ThetaRow)}]
    :componentDidUpdate (fn [this prev-props prev-state])
    :componentDidMount  (fn [this]
@@ -303,11 +323,11 @@
                                     ;; FIXME load spec over the wire at session start
                                     theta-spec   (get look/specs-map theta-k)
                                     theta-prKeys (:entity/prKeys theta-spec)
-                                    state        (fapp/current-state SPA)
-                                    userPrefs    (get-in state (into [:user/prefs] route-ident))
+                                    app-state    (fapp/current-state SPA)
+                                    userPrefs    (get-in app-state (into [:user/prefs] route-ident))
                                     ;; if we have user prefs for display keys, otherwise use the spec prKeys
                                     userPrKeys   (get userPrefs :ui/prKeys theta-prKeys)
-                                    userFilters  (get userPrefs :ui/filters [])]
+                                    userFilters  (get userPrefs :ui/filters {})]
                                 ;; save state where this component is about to load: [:riverdb.theta.list/ns ident-val]
                                 (rm/merge-ident! route-ident {:riverdb.entity/ns ident-val
                                                               :ui/ready          false
@@ -322,8 +342,8 @@
         attrs      (:entity/attrs theta-spec)
         ;; select visible attrs
         prAttrs    (select-keys attrs prKeys)
-        _          (debug "prAttrs" prAttrs)
-        _          (debug "FILTERS" filters)
+        ;_          (debug "prAttrs" prAttrs)
+        ;_          (debug "FILTERS" filters)
         {:keys [red blue]} (css/get-classnames ThetaList)]
 
     (if ready
@@ -335,14 +355,14 @@
                             (onDrop e
                               (fn [{:keys [text key]}]
                                 (debug "DROP HANDLER" :root key text)
-                                (fm/set-value! this :ui/filters (remove #(= (:key %) key) filters)))))}
+                                (fm/set-value! this :ui/filters (dissoc filters key)))))}
 
           (div :#sv-list-menu.ui.menu {:key "list-controls"}
             (div :.item {:style {}} theta-nm)
 
             ;; FIXME droppable FILTERS
             (let [{:keys [onDragEnter onDragOver onDragLeave onDrop isOver]} (useDroppable this :filters :header)]
-              (debug "RENDER FILTERS" filters "ISOVER" isOver)
+              ;(debug "RENDER FILTERS" filters "ISOVER" isOver)
               (dom/div :.item.droppable
                 {:style       {:backgroundColor (if isOver "lightblue" "white")}
                  :onDragOver  onDragOver
@@ -352,44 +372,24 @@
                                 (onDrop e
                                   (fn [{:keys [text] :as data}]
                                     (debug "FILTER DROP" data)
-                                    (let [k     (:key data)
-                                          attr  (k attrs)
-                                          dupe? (filter #(= (:key %) k) filters)]
-                                      (when (empty? dupe?)
-                                        (fm/set-value! this :ui/filters
-                                          (conj (or filters [])
-                                            (comp/get-initial-state Filter {:key k :text text :attr attr}))))))))}
-
-                ;{:onDragOver  (fn [ev]
-                ;                (cancelEvs ev)
-                ;                (let [{:keys [text type]} @dragging]
-                ;                  (debug "DRAG OVER Filters" text type)
-                ;                  (when-not isOverFilters
-                ;                    (comp/set-state! this {:isOverFilters true}))))
-                ; :onDrop      (fn [ev]
-                ;                (cancelEvs ev)
-                ;                (let [field (-> ev .-dataTransfer (.getData "text"))]
-                ;                  (debug "DROP Filters" field)
-                ;                  (when isOverFilters
-                ;                    (comp/set-state! this {:isOverFilters false}))
-                ;                  (when (strKeys field)
-                ;                    (fm/set-value! this :ui/filters (conj (or filters #{}) field)))))
-                ; :onDragLeave (fn [ev]
-                ;                (when isOverFilters
-                ;                  (comp/set-state! this {:isOverFilters false}))
-                ;                (debug "DRAG LEAVE Filters"))
-
+                                    (let [attr (get attrs (:key data))]
+                                      (add-filter this attr)))))}
 
                 "Filters"
                 (doall
-                  (for [{:keys [key text] :as filt} filters]
+                  (for [[k {:keys [key text] :as filt}] filters]
                     ;; FIXME draggable filter
                     (let [{:keys [onDragStart onDragEnd]} (useDraggable this)]
                       (div :.item {:key         key
                                    :draggable   true
                                    :onDragStart #(onDragStart % {:type :filter :text text :key key})
                                    :onDragEnd   onDragEnd}
-                        text (ui-filter filt)))))))
+                        text (ui-filter (comp/computed filt
+                                          {:onChange
+                                           (fn [value]
+                                             (let [new-filt    (assoc filt :value value)
+                                                   new-filters (assoc filters k new-filt)]
+                                               (fm/set-value! this :ui/filters new-filters)))}))))))))
 
             (div :.item
               (button {:key "create" :onClick #(debug "CREATE")} "New"))
