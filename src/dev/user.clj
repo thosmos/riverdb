@@ -39,6 +39,12 @@
   (stop)
   (tools-ns/refresh :after 'user/start))
 
+(defn specs []
+  (edn/read-string
+    (slurp "resources/specs.edn")))
+
+(def specs-map (dspec/specs->map (specs)))
+
 (defn format-specs []
   (tu/spitpp "resources/specs-save.edn"
     (dspec/sort-specs

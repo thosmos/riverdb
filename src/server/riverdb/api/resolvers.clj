@@ -29,47 +29,65 @@
         (= k :>)
         (conj find [(list '> arg v)])
         (= k :<)
-        (conj find [(list '< arg v)])))
+        (conj find [(list '< arg v)])
+        (= k :contains)
+        (let [argl (symbol (str arg "LC"))
+              v (clojure.string/lower-case v)]
+          (-> find
+            (conj [(list 'clojure.string/lower-case arg) argl])
+            (conj [`(~'.contains ^String ~argl ~v)])))))
     find conditions))
+
+(defn process-filter [])
 
 (defn add-filters [arg find-v filter-m]
   (try
     (reduce-kv
       (fn [find k v]
-        (let [ent-k     (keyword "entity.ns" (namespace k))
-              ent-nm    (name k)
-              attr-spec (get-in specs-map [ent-k :entity/attrs k])
-              ref?      (= (:attr/type attr-spec) :ref)
-              inst?     (= (:attr/type attr-spec) :instant)
-              string?   (string? v)
-              map?      (map? v)
-              arg?      (cond
-                          (and ref? map?)
-                          (symbol (str "?" (name (ffirst v))))
-                          (and inst? map?)
-                          (symbol (str "?" ent-nm)))
-              find      (cond
-                          (and ref? map?)
-                          (add-filters arg? find v) ;; if it's a nested field, then recurse
-                          (and inst? map?)
-                          (add-conditions find arg? v) ;; if it's got where conditions, add the bindings
-                          :else
-                          find)
-              v         (cond
-                          ref?
-                          (cond
-                            string?
-                            (Long/parseLong v)
-                            map?
-                            arg?)
-                          inst?
-                          (cond
-                            map?
-                            arg? ;; if it's a map of conditions, return the arg that they bind to
-                            :else
-                            v)
-                          :else
-                          v)]
+        (let [ent-k        (keyword "entity.ns" (namespace k))
+              ent-nm       (name k)
+              attr-spec    (get-in specs-map [ent-k :entity/attrs k])
+              attr-type    (:attr/type attr-spec)
+              type-ref?    (= attr-type :ref)
+              type-inst?   (= attr-type :instant)
+              type-string? (= attr-type :string)
+
+              val-string?  (string? v)
+              val-map?     (map? v)
+
+              arg?         (cond
+                             (and type-ref? val-map?)
+                             (symbol (str "?" (name (ffirst v))))
+                             (and type-inst? val-map?)
+                             (symbol (str "?" ent-nm))
+                             type-string?
+                             (symbol (str "?" ent-nm)))
+              find         (cond
+                             (and type-ref? val-map?)
+                             (add-filters arg? find v) ;; if it's a nested field, then recurse
+                             (and type-inst? val-map?)
+                             (add-conditions find arg? v) ;; if it's got where conditions, add the bindings
+                             type-string?
+                             (add-conditions find arg? {:contains v})
+                             :else
+                             find)
+              v            (cond
+                             type-ref?
+                             (cond
+                               val-string?
+                               (Long/parseLong v)
+                               val-map?
+                               arg?)
+                             type-inst?
+                             (cond
+                               val-map?
+                               arg? ;; if it's a map of conditions, return the arg that they bind to
+                               :else
+                               v)
+                             type-string?
+                             arg?
+                             :else
+                             v)]
           (conj find [arg k v])))
       find-v filter-m)
     (catch Exception ex (log/error "ADD-FILTERS ERROR" ex))))
