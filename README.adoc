@@ -10,6 +10,8 @@ endif::[]
 
 == TLDR Quick Start
 
+These notes are mainly for my self at this point... The main thing missing is a process for setting up a fresh install and the data needed to run it.  That's the next TODO 
+
 ```Shell
 # Load all JS deps from package.json.
 yarn
