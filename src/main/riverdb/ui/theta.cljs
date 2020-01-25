@@ -323,23 +323,21 @@
                                    filters    (parse-filters (:ui/filters props))
                                    limit      (:ui/limit props)
                                    offset     (:ui/offset props)]
-                               (do
-                                 ;(fm/set-value! this :ui/ready false)
-                                 (load-thetas this ident query {:filter filters :limit limit :offset offset}))))))
+                               (load-thetas this ident query {:filter filters :limit limit :offset offset})))))
    :componentDidMount  (fn [this]
-                         (let [props      (comp/props this)
-                               ident      (comp/ident this props)
-                               ent-ns     (:riverdb.entity/ns props)
-                               ent-spec   (get look/specs-map ent-ns)
-                               ent-prKeys (get ent-spec :entity/prKeys)
-                               ;; if we have user prefs for display cols, otherwise use the spec prKeys
-                               queryKeys  (or (not-empty (:ui/prKeys props)) ent-prKeys)
-                               query      (make-row-query look/specs-map ent-ns queryKeys)
-                               limit      (:ui/limit props)
-                               offset     (:ui/offset props)]
-                           (debug "MOUNTED ThetaList" ident query)
+                         (let [props (comp/props this)
+                               ident (comp/ident this props)]
+                           (debug "MOUNTED ThetaList" ident)
                            (if (empty? (:thetas props))
-                             (load-thetas this ident query {:limit limit :offset offset})
+                             (let [ent-ns     (:riverdb.entity/ns props)
+                                   ent-spec   (get look/specs-map ent-ns)
+                                   ent-prKeys (get ent-spec :entity/prKeys)
+                                   ;; if we have user prefs for display cols, otherwise use the spec prKeys
+                                   queryKeys  (or (not-empty (:ui/prKeys props)) ent-prKeys)
+                                   query      (make-row-query look/specs-map ent-ns queryKeys)
+                                   limit      (:ui/limit props)
+                                   offset     (:ui/offset props)]
+                               (load-thetas this ident query {:limit limit :offset offset}))
                              (fm/set-value! this :ui/ready true))))
    :route-segment      ["list" :theta-ns]
    :will-enter         (fn [app {:keys [theta-ns] :as params}]
@@ -430,7 +428,7 @@
 
 
             (div :.item.right
-              (button {:key "create" :onClick #(debug "CREATE")} (str "New " entity-nm))))
+              (button {:disabled true :key "create" :onClick #(debug "CREATE")} (str "New " entity-nm))))
 
 
           (div :.ui.segment

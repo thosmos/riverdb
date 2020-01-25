@@ -39,14 +39,6 @@
     [goog.object :as gob]
     [com.fulcrologic.fulcro.data-fetch :as df]))
 
-(def tree-data
-  {:label    "Projects"
-   :onClick  #(debug "Click Projects")
-   :children [{:label "One"}
-              {:label "Two"}
-              {:label    "Three"
-               :children [{:label "Four"}
-                          {:label "Five"}]}]})
 
 ;; TASK per group
 

@@ -51,7 +51,7 @@
     <orderEntry type="library" name="Deps: henryw374/js-joda:1.10.1-1" level="project" />
     <orderEntry type="library" name="Deps: org.eclipse.jetty/jetty-http:9.4.18.v20190429" level="project" />
     <orderEntry type="library" name="Deps: org.eclipse.jetty/jetty-util:9.4.18.v20190429" level="project" />
-    <orderEntry type="library" name="Deps: com.taoensso/encore:2.115.0" level="project" />
+    <orderEntry type="library" name="Deps: com.taoensso/encore:2.117.0" level="project" />
     <orderEntry type="library" name="Deps: com.lucasbradstreet/cljs-uuid-utils:1.0.2" level="project" />
     <orderEntry type="library" name="Deps: datomic-schema:1.3.0" level="project" />
     <orderEntry type="library" name="Deps: io.rkn/conformity:0.5.1" level="project" />
@@ -128,6 +128,7 @@
     <orderEntry type="library" name="Deps: org.javassist/javassist:3.18.1-GA" level="project" />
     <orderEntry type="library" name="Deps: org.jboss.xnio/xnio-nio:3.7.3.Final" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/java.classpath:0.3.0" level="project" />
+    <orderEntry type="library" name="Deps: com.taoensso/sente:1.15.0" level="project" />
     <orderEntry type="library" name="Deps: com.google.guava/guava:25.1-jre" level="project" />
     <orderEntry type="library" name="Deps: lynxeyes/dotenv:1.0.2" level="project" />
     <orderEntry type="library" name="Deps: com.github.awkay/workspaces:1.0.0-RC2" level="project" />
@@ -170,7 +171,6 @@
     <orderEntry type="library" name="Deps: org.clojure/core.match:0.3.0" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/core.incubator:0.1.4" level="project" />
     <orderEntry type="library" name="Deps: org.eclipse.jetty/jetty-io:9.4.18.v20190429" level="project" />
-    <orderEntry type="library" name="Deps: cljsjs/socket-io-client:2.1.1-0" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/tools.reader:1.3.2" level="project" />
     <orderEntry type="library" name="Deps: thosmos/domain-spec:0.1.2" level="project" />
     <orderEntry type="library" name="Deps: com.wsscode/fuzzy:1.0.0" level="project" />

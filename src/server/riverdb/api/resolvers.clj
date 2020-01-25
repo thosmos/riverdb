@@ -99,6 +99,10 @@
     :else
     #(compare %1 %2)))
 
+(defn swap-derived-keys [query]
+  (debug "PREWALK QUERY")
+  (clojure.walk/prewalk-demo query))
+
 (defn lookup-resolve [env input]
   (debug "LOOKUP RESOLVER" input)
   (try
@@ -141,6 +145,8 @@
           query         (if meta?
                           [:db/id]
                           query)
+
+          query         (swap-derived-keys query)
 
           find          (if ids?
                           '[:find [(pull ?e qu) ...]

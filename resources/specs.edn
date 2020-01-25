@@ -291,114 +291,127 @@
           :identity true,
           :cardinality :one,
           :type :long}]}
- {:db/id "constituentlookup",
-  :entity/name "Constituent",
-  :entity/ns :entity.ns/constituentlookup,
-  :entity/lookup :constituentlookup/ConstituentCode,
-  :entity/pks [:constituentlookup/ConstituentRowID],
+ {:db/id          "constituentlookup",
+  :entity/name    "Constituent",
+  :entity/ns      :entity.ns/constituentlookup,
+  :entity/lookup  :constituentlookup/ConstituentCode,
+  :entity/pks     [:constituentlookup/ConstituentRowID],
   :entity/prKeys
-  [:constituentlookup/Name
-   :constituentlookup/Active
-   :constituentlookup/AnalyteCode
-   :constituentlookup/ConstituentCode
-   :constituentlookup/FractionCode
-   :constituentlookup/MatrixCode
-   :constituentlookup/MethodCode
-   :constituentlookup/UnitCode],
+                  [:constituentlookup/Name
+                   :constituentlookup/Active
+                   :constituentlookup/AnalyteCode
+                   :constituentlookup/ConstituentCode
+                   :constituentlookup/FractionCode
+                   :constituentlookup/MatrixCode
+                   :constituentlookup/MethodCode
+                   :constituentlookup/UnitCode],
   :entity/nameKey :constituentlookup/Name
   :entity/attrs
-  [#:attr{:name "Active",
-          :key :constituentlookup/Active,
-          :position 8,
-          :cardinality :one,
-          :type :boolean}
-   #:attr{:name "AnalyteCode",
-          :key :constituentlookup/AnalyteCode,
-          :position 5,
-          :cardinality :one,
-          :type :ref,
-          :ref #:entity{:ns :entity.ns/analytelookup},
-          :refPrKey :analytelookup/AnalyteName,
-          :refKey :entity.ns/analytelookup}
-   #:attr{:name "ConstituentCode",
-          :key :constituentlookup/ConstituentCode,
-          :position 12,
-          :cardinality :one,
-          :identity true,
-          :type :string,
-          :strlen 20}
-   #:attr{:name "ConstituentRowID",
-          :key :constituentlookup/ConstituentRowID,
-          :position 1,
-          :primary true,
-          :identity true,
-          :cardinality :one,
-          :type :long}
-   #:attr{:name "DeviceType",
-          :key :constituentlookup/DeviceType,
-          :position 9,
-          :cardinality :one,
-          :type :ref,
-          :ref #:entity{:ns :entity.ns/samplingdevicelookup},
-          :refPrKey :samplingdevicelookup/SampleDevice,
-          :refKey :entity.ns/samplingdevicelookup}
-   #:attr{:name "FractionCode",
-          :key :constituentlookup/FractionCode,
-          :position 6,
-          :cardinality :one,
-          :type :ref,
-          :ref #:entity{:ns :entity.ns/fractionlookup},
-          :refPrKey :fractionlookup/FractionName,
-          :refKey :entity.ns/fractionlookup}
-   #:attr{:name "HighValue",
-          :key :constituentlookup/HighValue,
-          :position 12,
-          :cardinality :one,
-          :type :bigdec}
-   #:attr{:name "LowValue",
-          :key :constituentlookup/LowValue,
-          :position 13,
-          :cardinality :one,
-          :type :bigdec}
-   #:attr{:name "MatrixCode",
-          :key :constituentlookup/MatrixCode,
-          :position 3,
-          :cardinality :one,
-          :type :ref,
-          :ref #:entity{:ns :entity.ns/matrixlookup},
-          :refPrKey :matrixlookup/MatrixName,
-          :refKey :entity.ns/matrixlookup}
-   #:attr{:name "MaxValue",
-          :key :constituentlookup/MaxValue,
-          :position 10,
-          :cardinality :one,
-          :type :bigdec}
-   #:attr{:name "MethodCode",
-          :key :constituentlookup/MethodCode,
-          :position 4,
-          :cardinality :one,
-          :type :ref,
-          :ref #:entity{:ns :entity.ns/methodlookup},
-          :refPrKey :methodlookup/MethodName,
-          :refKey :entity.ns/methodlookup}
-   #:attr{:name "MinValue",
-          :key :constituentlookup/MinValue,
-          :position 11,
-          :cardinality :one,
-          :type :bigdec}
-   #:attr{:name "Name",
-          :key :constituentlookup/Name,
-          :position 2,
-          :cardinality :one,
-          :type :string}
-   #:attr{:name "UnitCode",
-          :key :constituentlookup/UnitCode,
-          :position 7,
-          :cardinality :one,
-          :type :ref,
-          :ref #:entity{:ns :entity.ns/unitlookup},
-          :refPrKey :unitlookup/Unit,
-          :refKey :entity.ns/unitlookup}]}
+                  [#:attr{:name        "DerivedName",
+                          :key         :constituentlookup/DerivedName,
+                          :cardinality :one,
+                          :type        :string
+                          :derived     true
+                          :deriveFn    (fn [{:constituentlookup/keys [AnalyteCode MatrixCode UnitCode]}]
+                                         (str
+                                           (:analytelookup/AnalyteName AnalyteCode)
+                                           (:matrixlookup/MatrixName MatrixCode)
+                                           (:unitlookup/Unit UnitCode)))
+                          :deriveAttrs [:constituentlookup/AnalyteCode
+                                        :constituentlookup/MatrixCode
+                                        :constituentlookup/UnitCode]}
+                   #:attr{:name        "Active",
+                          :key         :constituentlookup/Active,
+                          :position    8,
+                          :cardinality :one,
+                          :type        :boolean}
+                   #:attr{:name        "AnalyteCode",
+                          :key         :constituentlookup/AnalyteCode,
+                          :position    5,
+                          :cardinality :one,
+                          :type        :ref,
+                          :ref         #:entity{:ns :entity.ns/analytelookup},
+                          :refPrKey    :analytelookup/AnalyteName,
+                          :refKey      :entity.ns/analytelookup}
+                   #:attr{:name        "ConstituentCode",
+                          :key         :constituentlookup/ConstituentCode,
+                          :position    12,
+                          :cardinality :one,
+                          :identity    true,
+                          :type        :string,
+                          :strlen      20}
+                   #:attr{:name        "ConstituentRowID",
+                          :key         :constituentlookup/ConstituentRowID,
+                          :position    1,
+                          :primary     true,
+                          :identity    true,
+                          :cardinality :one,
+                          :type        :long}
+                   #:attr{:name        "DeviceType",
+                          :key         :constituentlookup/DeviceType,
+                          :position    9,
+                          :cardinality :one,
+                          :type        :ref,
+                          :ref         #:entity{:ns :entity.ns/samplingdevicelookup},
+                          :refPrKey    :samplingdevicelookup/SampleDevice,
+                          :refKey      :entity.ns/samplingdevicelookup}
+                   #:attr{:name        "FractionCode",
+                          :key         :constituentlookup/FractionCode,
+                          :position    6,
+                          :cardinality :one,
+                          :type        :ref,
+                          :ref         #:entity{:ns :entity.ns/fractionlookup},
+                          :refPrKey    :fractionlookup/FractionName,
+                          :refKey      :entity.ns/fractionlookup}
+                   #:attr{:name        "HighValue",
+                          :key         :constituentlookup/HighValue,
+                          :position    12,
+                          :cardinality :one,
+                          :type        :bigdec}
+                   #:attr{:name        "LowValue",
+                          :key         :constituentlookup/LowValue,
+                          :position    13,
+                          :cardinality :one,
+                          :type        :bigdec}
+                   #:attr{:name        "MatrixCode",
+                          :key         :constituentlookup/MatrixCode,
+                          :position    3,
+                          :cardinality :one,
+                          :type        :ref,
+                          :ref         #:entity{:ns :entity.ns/matrixlookup},
+                          :refPrKey    :matrixlookup/MatrixName,
+                          :refKey      :entity.ns/matrixlookup}
+                   #:attr{:name        "MaxValue",
+                          :key         :constituentlookup/MaxValue,
+                          :position    10,
+                          :cardinality :one,
+                          :type        :bigdec}
+                   #:attr{:name        "MethodCode",
+                          :key         :constituentlookup/MethodCode,
+                          :position    4,
+                          :cardinality :one,
+                          :type        :ref,
+                          :ref         #:entity{:ns :entity.ns/methodlookup},
+                          :refPrKey    :methodlookup/MethodName,
+                          :refKey      :entity.ns/methodlookup}
+                   #:attr{:name        "MinValue",
+                          :key         :constituentlookup/MinValue,
+                          :position    11,
+                          :cardinality :one,
+                          :type        :bigdec}
+                   #:attr{:name        "Name",
+                          :key         :constituentlookup/Name,
+                          :position    2,
+                          :cardinality :one,
+                          :type        :string}
+                   #:attr{:name        "UnitCode",
+                          :key         :constituentlookup/UnitCode,
+                          :position    7,
+                          :cardinality :one,
+                          :type        :ref,
+                          :ref         #:entity{:ns :entity.ns/unitlookup},
+                          :refPrKey    :unitlookup/Unit,
+                          :refKey      :entity.ns/unitlookup}]}
  {:db/id "corrections",
   :entity/name "Corrections",
   :entity/ns :entity.ns/corrections,
@@ -1698,7 +1711,13 @@
   :entity/lookup :sample/SampleTypeCode,
   :entity/ns :entity.ns/sample,
   :entity/pks [:sample/SampleRowID],
-  :entity/prKeys [:sample/SampleDate :sample/SampleReplicate :sample/EventType :sample/QCCheck :sample/SampleComplete :sample/SampleTime :sample/SampleTypeCode],
+  :entity/prKeys [:sample/SampleDate
+                  :sample/SampleReplicate
+                  :sample/EventType
+                  :sample/QCCheck
+                  :sample/SampleComplete
+                  :sample/SampleTime
+                  :sample/SampleTypeCode],
   :entity/nameKey :sample/SampleDate
   :entity/attrs
   [#:attr{:name "DepthSampleCollection",
