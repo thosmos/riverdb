@@ -32,13 +32,11 @@
         (conj find [(list '< arg v)])
         (= k :contains)
         (let [argl (symbol (str arg "LC"))
-              v (clojure.string/lower-case v)]
+              v    (clojure.string/lower-case v)]
           (-> find
             (conj [(list 'clojure.string/lower-case arg) argl])
             (conj [`(~'.contains ^String ~argl ~v)])))))
     find conditions))
-
-(defn process-filter [])
 
 (defn add-filters [arg find-v filter-m]
   (try
@@ -146,7 +144,7 @@
                           [:db/id]
                           query)
 
-          query         (swap-derived-keys query)
+          ;query         (swap-derived-keys query)
 
           find          (if ids?
                           '[:find [(pull ?e qu) ...]
@@ -219,41 +217,47 @@
 
 
         ;; if it's a regular query, then let's do the whole thing
-        (let [limit          (get params :limit 25)
-              offset         (get params :offset 0)
-              sortField      (:sortField params)
-              sortOrder      (:sortOrder params)
+        (let [limit           (get params :limit 15)
+              offset          (get params :offset 0)
+              sortField       (:sortField params)
+              sortOrder       (:sortOrder params)
 
-              nestedSort?    false
-              childSortField nil
+              nestedSort?     (map? sortField)
+              childSortField  (when nestedSort?
+                                (-> sortField first val))
+              parentSortField (when nestedSort?
+                                (ffirst sortField))
 
-              ids            nil
+              _               (when nestedSort?
+                                (debug "childSortField" childSortField "parentSortField" parentSortField))
 
-              results        (if sortField
-                               (let [sort-fn (if nestedSort?
-                                               #(get-in % [sortField childSortField])
-                                               sortField)]
-                                 (sort-by sort-fn (compare-fn sortOrder) results))
-                               results)
+              ids             nil
 
-              results        (cond->> results
+              results         (if sortField
+                                (let [sort-fn (if nestedSort?
+                                                #(get-in % [parentSortField childSortField])
+                                                sortField)]
+                                  (sort-by sort-fn (compare-fn sortOrder) results))
+                                results)
 
-                               ; return exact list that was requested
-                               (seq ids)
-                               (fn [results]
-                                 (log/debug "Returning Exact Results for IDS" ids)
-                                 (let [id-map (into {} (for [res results]
-                                                         [(:db/id res) res]))
-                                       _      (log/debug "ID-MAP keys" (keys id-map))]
-                                   (vec
-                                     (for [id ids]
-                                       (get id-map id)))))
+              results         (cond->> results
 
-                               (and limit (> limit 0))
-                               (limit-fn limit offset))
+                                ; return exact list that was requested
+                                (seq ids)
+                                (fn [results]
+                                  (log/debug "Returning Exact Results for IDS" ids)
+                                  (let [id-map (into {} (for [res results]
+                                                          [(:db/id res) res]))
+                                        _      (log/debug "ID-MAP keys" (keys id-map))]
+                                    (vec
+                                      (for [id ids]
+                                        (get id-map id)))))
+
+                                (and limit (> limit 0))
+                                (limit-fn limit offset))
 
 
-              results        (walk-modify-k-vals results :db/id str)]
+              results         (walk-modify-k-vals results :db/id str)]
           (log/debug "FINAL RESULTS" (first results))
           {ent-key results})))
 

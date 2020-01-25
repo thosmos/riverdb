@@ -94,7 +94,18 @@
      :invalid? is-invalid?
      :value    value}))
 
-(defsc ParamForm [this {:constituentlookup/keys [Name]}]
+[:db/id
+ :riverdb.entity/ns
+ :constituentlookup/Name
+ :constituentlookup/Active
+ {:constituentlookup/AnalyteCode [:db/id :analytelookup/AnalyteName]}
+ :constituentlookup/ConstituentCode
+ {:constituentlookup/FractionCode [:db/id :fractionlookup/FractionName]}
+ {:constituentlookup/MatrixCode [:db/id :matrixlookup/MatrixName]}
+ {:constituentlookup/MethodCode [:db/id :methodlookup/MethodName]}
+ {:constituentlookup/UnitCode [:db/id :unitlookup/Unit]}]
+
+(defsc ConstituentForm [this {:constituentlookup/keys [Name]}]
   {:ident [:org.riverdb.db.constituentlookup/gid :db/id]
    :query [fs/form-config-join
            :db/id
@@ -114,7 +125,25 @@
            :constituentlookup/Name
            :constituentlookup/UnitCode]}
   (div Name))
-(def ui-param-form (comp/factory ParamForm {:keyfn :db/id}))
+(def ui-constituent-form (comp/factory ConstituentForm {:keyfn :db/id}))
+
+(defsc ParameterForm [this {:parameter/keys [name]}]
+  {:ident [:org.riverdb.db.parameter/gid :db/id]
+   :query [fs/form-config-join
+           :db/id
+           :riverdb.entity/ns
+           :parameter/active
+           :parameter/color
+           {:parameter/constituentlookupRef (comp/get-query looks/constituentlookup)}
+           {:parameter/samplingdevicelookupRef (comp/get-query looks/samplingdevicelookup)}
+           :parameter/high
+           :parameter/lines
+           :parameter/low
+           :parameter/name
+           :parameter/precisionCode
+           :parameter/uuid]}
+  (div name))
+(def ui-parameter-form (comp/factory ParameterForm {:keyfn :db/id}))
 
 (defn update-value! [this k value]
   (fm/set-value! this k value)
@@ -160,7 +189,7 @@
                    :projectslookup/AgencyRef
                    :riverdb.entity/ns
                    {:stationlookup/_Project (comp/get-query looks/stationlookup)}
-                   {:projectslookup/Parameters (comp/get-query ParamForm)}]
+                   {:projectslookup/Parameters (comp/get-query ConstituentForm)}]
    :form-fields   #{:projectslookup/ProjectID
                     :projectslookup/Name
                     :projectslookup/Active
@@ -184,7 +213,7 @@
         (dom/h5 "Parameters"
           (doall
             (for [p Parameters]
-              (ui-param-form p))))
+              (ui-constituent-form p))))
 
         (dom/button :.ui.button.secondary
           {:disabled (not dirty?)
@@ -213,7 +242,7 @@
            :projectslookup/ProjectID
            :projectslookup/Name
            :projectslookup/Public
-           {:projectslookup/Parameters (comp/get-query ParamForm)}]}
+           {:projectslookup/Parameters (comp/get-query ConstituentForm)}]}
   (let []
     (div Name)))
 
@@ -230,7 +259,7 @@
                    :projectslookup/AgencyRef
                    :riverdb.entity/ns
                    {:stationlookup/_Project (comp/get-query looks/stationlookup)}
-                   {:projectslookup/Parameters (comp/get-query ParamForm)}]
+                   {:projectslookup/Parameters (comp/get-query ConstituentForm)}]
    :form-fields   #{:projectslookup/ProjectID
                     :projectslookup/Name
                     :projectslookup/Active
@@ -254,7 +283,7 @@
         (dom/h5 "Parameters"
           (doall
             (for [p Parameters]
-              (ui-param-form p))))
+              (ui-constituent-form p))))
 
         (dom/button :.ui.button.secondary
           {:disabled (not dirty?)

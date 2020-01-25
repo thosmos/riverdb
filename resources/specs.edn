@@ -312,11 +312,11 @@
                           :cardinality :one,
                           :type        :string
                           :derived     true
-                          :deriveFn    (fn [{:constituentlookup/keys [AnalyteCode MatrixCode UnitCode]}]
+                          :deriveFn    "(fn [{:constituentlookup/keys [AnalyteCode MatrixCode UnitCode]}]
                                          (str
                                            (:analytelookup/AnalyteName AnalyteCode)
                                            (:matrixlookup/MatrixName MatrixCode)
-                                           (:unitlookup/Unit UnitCode)))
+                                           (:unitlookup/Unit UnitCode)))"
                           :deriveAttrs [:constituentlookup/AnalyteCode
                                         :constituentlookup/MatrixCode
                                         :constituentlookup/UnitCode]}

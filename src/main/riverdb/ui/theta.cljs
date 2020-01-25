@@ -39,6 +39,7 @@
     [riverdb.ui.lookup-options :refer [ThetaOptions ui-theta-options]]
     [riverdb.ui.dataviz-page :refer [DataVizPage]]
     [riverdb.ui.components :refer [ui-treeview]]
+    [riverdb.ui.components.drag :refer [useDroppable useDraggable]]
     [riverdb.ui.routes]
     [riverdb.ui.sitevisits-page :refer [SiteVisitsPage]]
     [riverdb.ui.session :refer [ui-session Session]]
@@ -51,83 +52,31 @@
 
 
 
-(def WidthProvider js/ReactGridLayout.WidthProvider)
-(def Responsive js/ReactGridLayout.Responsive)
-(def GridWithWidth (WidthProvider Responsive))
+(comment
+  (defsc Attribute [this props]
+    {:ident :attr/key
+     :query [:attr/key
+             :attr/name
+             :attr/type
+             :attr/cardinality
+             :attr/ref
+             :attr/refkey]})
+
+  (defsc Entity [this props]
+    {:ident :entity/ns
+     :query [:entity/ns
+             :entity/name
+             :entity/lookup
+             :entity/prKeys
+             {:entity/attrs (comp/get-query Attribute)}]}))
 
 
+(comment
+  (def WidthProvider js/ReactGridLayout.WidthProvider)
+  (def Responsive js/ReactGridLayout.Responsive)
+  (def GridWithWidth (WidthProvider Responsive)))
 
 
-
-
-
-
-(defn cancelEvs [e]
-  (-> e (.stopPropagation))
-  (-> e (.preventDefault)))
-
-;; {:type :header :text "AgencyCode" :key :agencylookup/AgencyCode :ref HTMLElement}
-(def dragging (atom nil))
-
-
-(defn useDroppable
-  ([this state-k] (useDroppable this state-k nil))
-  ([this state-k type-k]
-   ;(debug "USE DROPPABLE")
-   (let [set-state!  (fn [new-state] (comp/update-state! this update :drop-state merge new-state))
-         isType      (fn [type] (if type-k (= type type-k) true))
-
-         ;; updates every render / state change
-         {:keys [text type] :as data} (comp/get-state this :drag-state)
-         instate     (state-k (comp/get-state this :drop-state))
-         isover      (and (isType type) instate)
-         ;_           (debug "UPDATING DROPPABLE STATE" state-k "TYPE" type "INSTATE" instate "ISOVER" isover "ISTYPE" (isType type))
-
-         onDragEnter (fn [e fn]
-                       (let [] ;{:keys [text type] :as data} @dragging]
-                         ;(debug "DRAG ENTER ATOM" state-k type text "ISOVER" isover "ISTYPE" (isType type))
-                         (when (isType type)
-                           (set-state! {state-k true})
-                           (when fn (fn data)))))
-         onDragOver  (fn [e fn]
-                       (let []
-                         ;(debug "DRAG OVER ATOM" state-k type text "ISOVER" isover "ISTYPE" (isType type))
-                         (cancelEvs e)
-                         (when (isType type)
-                           (when (not instate)
-                             (set-state! {state-k true}))
-                           (when fn (fn data)))))
-         onDragLeave (fn [e fn]
-                       (let []
-                         ;(debug "DRAG LEAVE ATOM" state-k type text "ISOVER" isover "ISTYPE" (isType type))
-                         (cancelEvs e)
-                         (when isover
-                           (set-state! {state-k nil})
-                           (when fn (fn data)))))
-         onDrop      (fn [e fn]
-                       (let []
-                         ;(debug "DROP ATOM" state-k type text "ISOVER" isover "ISTYPE" (isType type))
-                         (cancelEvs e)
-                         ;(-> e (.stopPropagation))
-                         (when isover
-                           (set-state! {state-k nil})
-                           (when fn (fn data)))))]
-     {:isOver isover :onDragEnter onDragEnter :onDragOver onDragOver :onDragLeave onDragLeave :onDrop onDrop})))
-
-(defn useDraggable [this]
-  ;(debug "USE DRAGGABLE")
-  (let [set-state! (fn [new-state] (comp/update-state! this update :drag-state merge new-state))
-        dragStart  (fn [ev data]
-                     ;(debug "DRAG START" data)
-                     (-> ev (.stopPropagation))
-                     (-> ev .-dataTransfer (.setData "text/plain" (:text data)))
-                     (set-state! data))
-        dragEnd    (fn [ev]
-                     ;(cancelEvs ev)
-                     (let [data (comp/get-state this :drag-state)]
-                       ;(debug "DRAG END" data)
-                       (set-state! nil)))]
-    {:onDragStart dragStart :onDragEnd dragEnd}))
 
 (defsc ChooseColumns [this {:ui/keys [show attrs prKeys]} {:keys [onChange]}]
   {:query [:ui/show
@@ -140,13 +89,13 @@
                :right           0
                :margin          0
                :padding         20
-               :white-space     "nowrap"
+               :whiteSpace      "nowrap"
                :display         (if show "block" "none")
                :backgroundColor "white"}}
       (div {:style {:marginBottom 5}}
         (dom/b {} "Select Columns"))
 
-      (for [[k {:attr/keys [key] :as attr}] attrs]
+      (for [[_ {:attr/keys [key] :as attr}] attrs]
         (let [checked (if (some #{key} prKeys) true false)
               nm      (:attr/name attr)]
           (div {:key   key
@@ -154,8 +103,7 @@
             (ui-checkbox {:label   nm
                           :checked checked
                           :onClick (fn [_ data]
-                                     (let [data      (js->clj data)
-                                           checked   (get data "checked")
+                                     (let [checked   (gob/get data "checked")
                                            new-value (vec (if checked
                                                             (conj prKeys key)
                                                             (remove #{key} prKeys)))]
@@ -163,24 +111,6 @@
                                          (onChange new-value))))})))))))
 
 (def ui-choose-cols (comp/factory ChooseColumns))
-
-
-(defsc Attribute [this props]
-  {:ident :attr/key
-   :query [:attr/key
-           :attr/name
-           :attr/type
-           :attr/cardinality
-           :attr/ref
-           :attr/refkey]})
-
-(defsc Entity [this props]
-  {:ident :entity/ns
-   :query [:entity/ns
-           :entity/name
-           :entity/lookup
-           :entity/prKeys
-           {:entity/attrs (comp/get-query Attribute)}]})
 
 
 (defn ref-input [refKey value onChange]
@@ -191,16 +121,18 @@
     :boolean false
     ""))
 
+
 (defsc Filter [this {:keys [key text value type refKey] :as filter} {:keys [onChange]}]
   {:query [:key :text :value :type :refKey]}
   (let []
-    ;(debug "RENDER FILTER" key type value)
     (case type
       :boolean
       (ui-checkbox {:checked  (or value false)
                     :onChange #(onChange (not value))})
       :ref
       (ref-input refKey value onChange)
+
+      ;; default
       (ui-input {:style    {:width 100}
                  :value    (or value "")
                  :onChange #(onChange (-> % .-target .-value))}))))
@@ -211,23 +143,38 @@
   (let [{:attr/keys [key name type refKey]} attr
         filters (:ui/filters (comp/props this))
         filter  {:key key :text name :type type :refKey refKey :value (default-filter-value type)}]
-    (fm/set-value! this :ui/offset 0)
     (fm/set-value! this :ui/filters
       (assoc (or filters {}) key filter))))
 
 (defn parse-filters [ui-filters]
-  ;(debug "PARSE FILTERS" ui-filters)
+  (debug "PARSE FILTERS" ui-filters)
   (into {}
     (for [[k {:keys [key value]}] ui-filters]
       [key value])))
 
-(def filters-ex [{:text "Site Visit" :key :sitevisit/SiteVisitDate :value {:< #inst "2007-01-01"
-                                                                           :> #inst "2001-01-01"}}
-                 {:text "Name" :key :constituentlookup/Name :type :string :value "hsdgf"}
-                 {:text "Active" :key :constituentlookup/Active :type :boolean :value true}
-                 {:text "Analyte" :key :constituentlookup/Analyte :type :ref :value "12312423524" :refKey :entity.ns/analytelookup}])
+(comment
+  (def filters-ex [{:text "Site Visit" :key :sitevisit/SiteVisitDate :value {:< #inst "2007-01-01"
+                                                                             :> #inst "2001-01-01"}}
+                   {:text "Name" :key :constituentlookup/Name :type :string :value "hsdgf"}
+                   {:text "Active" :key :constituentlookup/Active :type :boolean :value true}
+                   {:text "Analyte" :key :constituentlookup/Analyte :type :ref :value "12312423524" :refKey :entity.ns/analytelookup}]))
 
-(defsc ThetaRow [this {:keys [] :as props} {:keys [prKeys root-spec]}]
+
+(defn get-refNameKey [attr]
+  (when (= :ref (:attr/type attr))
+    (let [refKey (:attr/refKey attr)]
+      (-> look/specs-map refKey :entity/nameKey))))
+
+(defn get-refNameKeys [attrs]
+  (reduce-kv
+    (fn [refs k v]
+      (if (= :ref (:attr/type v))
+        (assoc refs k (get-refNameKey v))
+        refs))
+    {} attrs))
+
+
+(defsc ThetaRow [this {:keys [] :as props} {:keys [prKeys refNameKeys]}]
   {:ident (fn []
             (let [ent-nm  (name (get props :riverdb.entity/ns))
                   ident-k (keyword (str "org.riverdb.db." ent-nm) "gid")
@@ -238,39 +185,69 @@
   (tr {}
     (doall
       (for [prKey prKeys]
-        (let [entity-k (get props :riverdb.entity/ns)
-              prAttr   (get-in root-spec [entity-k :entity/attrs prKey])
-              isRef?   (= :ref (:attr/type prAttr))
-              value    (if isRef?
-                         (let [refNS    (:attr/refKey prAttr)
-                               valueKey (get-in root-spec [refNS :entity/nameKey])]
-                           (get-in props [prKey valueKey]))
-                         (get props prKey))]
+        (let [refKey? (get refNameKeys prKey)
+              value   (if refKey?
+                        (get-in props [prKey refKey?])
+                        (get props prKey))]
           (td {:key prKey} (str value)))))))
 
 (def ui-theta-row (comp/factory ThetaRow {:keyfn :db/id}))
+
+
 
 (defmutation theta-post-load [{:keys [target-ident] :as params}]
   (action [{:keys [state]}]
     (debug "THETA POST LOAD MUTATION")
     (swap! state assoc-in (into target-ident [:ui/ready]) true)))
 
+(defn make-rowQuery [queryKeys refNameKeys]
+  (let []
+    (mapv #(if-let [refNameKey? (get refNameKeys %)]
+             {% [:db/id refNameKey?]}
+             %)
+      queryKeys)))
+
 (defn load-thetas
-  ([app target-ident query-keys {:keys [filter] :as params}]
-   (let [theta-k         (second target-ident)
+  ([this target-ident]
+
+   (let [;; FIXME set in :initLocalState ???  would that be faster than a global map lookup? ...
+         ;; globals
+         theta-k         (second target-ident)
          theta-nm        (name theta-k)
          theta-db-k      (keyword (str "org.riverdb.db." theta-nm))
-         theta-db-k-meta (keyword (str "org.riverdb.db." theta-nm "-meta"))]
+         theta-db-k-meta (keyword (str "org.riverdb.db." theta-nm "-meta"))
+         theta-spec      (get look/specs-map theta-k)
+         theta-prKeys    (get theta-spec :entity/prKeys)
+         theta-attrs     (get theta-spec :entity/attrs)
+         refNameKeys     (get-refNameKeys theta-attrs)
+
+         ;; locals
+         props           (comp/props this)
+         {:ui/keys [prKeys filters limit offset sortField sortOrder]} props
+
+         ;; if we have user prefs for display cols, otherwise use the spec prKeys
+         queryKeys       (or (not-empty prKeys) theta-prKeys)
+
+         query           (make-rowQuery queryKeys refNameKeys)
+         filters         (parse-filters filters)
+         refSortField?   (get refNameKeys sortField)
+         _               (debug "REF SORT FIELD" refSortField?)
+         params          {:filter    filters
+                          :limit     limit
+                          :offset    offset
+                          :sortField (if refSortField? {sortField refSortField?} sortField)
+                          :sortOrder sortOrder}]
+
      (debug "LOAD THETA META" target-ident theta-db-k-meta params)
-     (f/load! app theta-db-k-meta nil
+     (f/load! this theta-db-k-meta nil
        {;:parallel true
-        :params {:filter filter :meta-count true :limit 1}
+        :params {:filter filters :meta-count true :limit 1}
         :target (into target-ident [:ui/list-meta])})
-     (debug "SET QUERY ThetaRow" (apply conj [:db/id :riverdb.entity/ns] query-keys))
-     (comp/set-query! app ThetaRow {:query (apply conj [:db/id :riverdb.entity/ns] query-keys)})
+     (debug "SET QUERY ThetaRow" (apply conj [:db/id :riverdb.entity/ns] query))
+     (comp/set-query! this ThetaRow {:query (apply conj [:db/id :riverdb.entity/ns] query)})
      (debug "LOAD THETA" params)
      (try
-       (f/load! app theta-db-k ThetaRow
+       (f/load! this theta-db-k ThetaRow
          {;:parallel             true
           :target               (into target-ident [:thetas])
           :params               params
@@ -279,22 +256,7 @@
        (catch js/Object ex (debug "LOAD ERROR" ex))))))
 
 
-(defn make-row-query [specs-map ent-k queryKeys]
-  (let [ent-spec (get specs-map ent-k)
-        attrs    (get ent-spec :entity/attrs)]
-    (reduce
-      (fn [query qKey]
-        (let [type (get-in attrs [qKey :attr/type])]
-          (conj query
-            (if (= type :ref)
-              (let [attr    (qKey attrs)
-                    refKey  (:attr/refKey attr)
-                    nameKey (-> specs-map refKey :entity/nameKey)]
-                {qKey (if nameKey [:db/id nameKey] [:db/id])})
-              qKey))))
-      [] queryKeys)))
-
-(defsc ThetaList [this {:keys [thetas] :ui/keys [ready filters showChooseCols prKeys limit offset list-meta] :as props}]
+(defsc ThetaList [this {:keys [thetas] :ui/keys [ready filters showChooseCols prKeys limit offset list-meta sortField sortOrder] :as props}]
   {:ident              [:riverdb.theta.list/ns :riverdb.entity/ns]
    :query              [:riverdb.entity/ns
                         :ui/ready
@@ -304,40 +266,34 @@
                         :ui/limit
                         :ui/offset
                         :ui/list-meta
+                        :ui/sortField
+                        :ui/sortOrder
                         [:riverdb.theta.options/ns '_] ;; needed to trigger render after a ref lookup loads itself the first time
                         {:thetas (comp/get-query ThetaRow)}]
    :componentDidUpdate (fn [this prev-props prev-state]
-                         (let [props (comp/props this)
-                               pdiff (clojure.data/diff prev-props props)
-                               load? (some
-                                       #{:ui/prKeys :ui/filters :ui/offset :ui/limit}
-                                       (concat (keys (first pdiff)) (keys (second pdiff))))]
-                           (debug "DID UPDATE - LOAD?" load?)
+                         (let [props         (comp/props this)
+                               ident         (comp/ident this props)
+                               pdiff         (clojure.data/diff prev-props props)
+                               load?         (some
+                                               #{:ui/prKeys :ui/filters :ui/offset :ui/limit :ui/sortOrder :ui/sortField}
+                                               (concat (keys (first pdiff)) (keys (second pdiff))))
+                               reset-offset? (and load?
+                                               (some
+                                                 #{:ui/filters :ui/limit :ui/sortOrder :ui/sortField}
+                                                 (concat (keys (first pdiff)) (keys (second pdiff)))))]
+                           (debug "DID UPDATE ThetaList" ident "LOAD?" load?)
+                           (when reset-offset?
+                             (fm/set-value! this :ui/offset 0))
                            (when load?
-                             (let [ident      (comp/ident this props)
-                                   ent-ns     (:riverdb.entity/ns props)
-                                   ent-spec   (get look/specs-map ent-ns)
-                                   ent-prKeys (get ent-spec :entity/prKeys)
-                                   queryKeys  (or (not-empty (:ui/prKeys props)) ent-prKeys)
-                                   query      (make-row-query look/specs-map ent-ns queryKeys)
-                                   filters    (parse-filters (:ui/filters props))
-                                   limit      (:ui/limit props)
-                                   offset     (:ui/offset props)]
-                               (load-thetas this ident query {:filter filters :limit limit :offset offset})))))
+                             (do
+                               (fm/set-value! this :ui/loading true)
+                               (load-thetas this ident)))))
    :componentDidMount  (fn [this]
                          (let [props (comp/props this)
                                ident (comp/ident this props)]
-                           (debug "MOUNTED ThetaList" ident)
+                           (debug "DID MOUNT ThetaList" ident)
                            (if (empty? (:thetas props))
-                             (let [ent-ns     (:riverdb.entity/ns props)
-                                   ent-spec   (get look/specs-map ent-ns)
-                                   ent-prKeys (get ent-spec :entity/prKeys)
-                                   ;; if we have user prefs for display cols, otherwise use the spec prKeys
-                                   queryKeys  (or (not-empty (:ui/prKeys props)) ent-prKeys)
-                                   query      (make-row-query look/specs-map ent-ns queryKeys)
-                                   limit      (:ui/limit props)
-                                   offset     (:ui/offset props)]
-                               (load-thetas this ident query {:limit limit :offset offset}))
+                             (load-thetas this ident)
                              (fm/set-value! this :ui/ready true))))
    :route-segment      ["list" :theta-ns]
    :will-enter         (fn [app {:keys [theta-ns] :as params}]
@@ -352,14 +308,14 @@
                                     theta-prKeys (:entity/prKeys theta-spec)
                                     app-state    (fapp/current-state SPA)
                                     userPrefs    (get-in app-state (into [:user/prefs] route-ident))
+                                    props        (get-in app-state route-ident)
+                                    {:ui/keys [filters prKeys limit offset sortField sortOrder]} props
                                     ;; if we have user prefs for display keys, otherwise use the spec prKeys
-                                    userPrKeys   (get userPrefs :ui/prKeys theta-prKeys)
-                                    userFilters  (get userPrefs :ui/filters {})]
+                                    userPrKeys   (or (get userPrefs :ui/prKeys) prKeys theta-prKeys)
+                                    userFilters  (or (get userPrefs :ui/filters) filters {})]
                                 ;; save state where this component is about to load: [:riverdb.theta.list/ns ident-val]
                                 (rm/merge-ident! route-ident {:riverdb.entity/ns ident-val
                                                               :ui/ready          false
-                                                              :ui/limit          10
-                                                              :ui/offset         0
                                                               :ui/filters        userFilters
                                                               :ui/prKeys         userPrKeys})
                                 (dr/target-ready! app route-ident)))))
@@ -371,6 +327,22 @@
         attrs       (:entity/attrs entity-spec)
         ;; select visible attrs
         prAttrs     (select-keys attrs prKeys)
+        ;; find only the :ref type attrs
+        refNameKeys (get-refNameKeys prAttrs)
+        handleSort  (fn [field]
+                      (if (not= field sortField)
+                        (do
+                          (fm/set-value! this :ui/sortField field)
+                          (fm/set-value! this :ui/sortOrder :asc))
+                        (if (= sortOrder :desc)
+                          (do
+                            (fm/set-value! this :ui/sortField nil)
+                            (fm/set-value! this :ui/sortOrder nil))
+                          (do
+                            (fm/set-value! this :ui/sortOrder :desc)))))
+        limit       (or limit 15)
+        offset      (or offset 0)
+
         {:keys [red blue]} (css/get-classnames ThetaList)]
 
     (if ready
@@ -458,7 +430,7 @@
                   {:onChange #(fm/set-value! this :ui/prKeys %)})))
 
 
-            (table :.ui.very.compact.mini.table {:key "wqtab" :style {:marginTop 0}}
+            (table :.ui.sortable.very.compact.mini.table {:key "wqtab" :style {:marginTop 0}}
               (thead {:key 1}
                 (tr {:key "head"}
                   (doall
@@ -466,7 +438,10 @@
                       (let [{:attr/keys [name]} (prKey prAttrs)]
 
                         ;; NOTE draggable header
-                        (th {:key prKey}
+                        (th {:key     prKey
+                             :classes [(when (= sortField prKey)
+                                         (str "sorted " (if (= sortOrder :desc) "descending" "ascending")))]
+                             :onClick #(handleSort prKey)}
                           (let [{:keys [onDragStart onDragEnd]} (useDraggable this)]
                             (dom/span :.draggable
                               {:draggable   true
@@ -474,16 +449,27 @@
                                :onDragEnd   onDragEnd}
                               name))))))))
 
+
               ;; NOTE  ROWS !!!!
               (tbody {:key 2}
                 (doall
                   (for [theta thetas]
-                    (ui-theta-row (comp/computed theta {:root-spec look/specs-map :prKeys prKeys}))))))
+                    (do
+                      ;(debug "THETA ROW" (pr-str theta))
+                      (ui-theta-row
+                        (comp/computed theta {:prKeys prKeys :refNameKeys refNameKeys})))))))
+
+
             (div :.ui.menu
-              (div :.item
-                (ui-input {:type     "text" :label "Results Per Page" :defaultValue limit
-                           :onChange (fn [e]
-                                       (fm/set-integer! this :ui/limit :event e))}))
+              (div :.item {}
+                (dom/span {:style {}} "Results Per Page")
+                (ui-input {:type         "text"
+                           :style        {:width 70}
+                           :defaultValue limit
+                           :onChange     (fn [e]
+                                           (fm/set-integer! this :ui/limit :event e))}))
+              (div :.item (str "Showing " (-> activePage dec (* limit) inc) " to " (* activePage limit) " of " query-count " results"))
+
               (div :.item.right
                 (ui-pagination
                   {:id            "paginator"
