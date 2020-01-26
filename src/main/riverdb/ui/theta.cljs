@@ -1,6 +1,7 @@
 (ns riverdb.ui.theta
   (:require
     [clojure.string :as str]
+    [clojure.data]
     [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
@@ -177,7 +178,7 @@
                          (get-in props [prKey refKey?])
                          (get props prKey))]
            (td {:key prKey} (str value)))))
-     (td {} "")]))
+     (td {:key "cols"} "")]))
 
 
 (def ui-theta-row (comp/factory ThetaRow {:keyfn :db/id}))
@@ -341,9 +342,15 @@
         {:keys [red blue]} (css/get-classnames ThetaList)]
 
     (if ready
-      (let [activePage             (inc (/ offset limit))
+      (let [offset                 (or offset 0)
+            limit                  (or limit 15)
+            activePage             (if (> limit 0)
+                                     (inc (/ offset limit))
+                                     1)
             query-count            (get list-meta :org.riverdb.meta/query-count 0)
-            totalPages             (int (Math/ceil (/ query-count limit)))
+            totalPages             (if (> limit 0)
+                                     (int (Math/ceil (/ query-count limit)))
+                                     1)
             handlePaginationChange (fn [e t]
                                      (let [page       (-> t .-activePage)
                                            new-offset (* (dec page) limit)]
@@ -454,12 +461,21 @@
             (div :.ui.menu
               (div :.item {}
                 (dom/span {:style {}} "Results Per Page")
-                (ui-input {:type         "text"
-                           :style        {:width 70}
-                           :defaultValue limit
+                (ui-input {:style        {:width 70}
+                           :defaultValue (str limit)
+                           :value        (str (if (= limit -1) "" limit))
                            :onChange     (fn [e]
-                                           (fm/set-integer! this :ui/limit :event e))}))
-              (div :.item (str "Showing " (-> activePage dec (* limit) inc) " to " (* activePage limit) " of " query-count " results"))
+                                           (let [value (-> e .-target .-value)
+                                                 value (if (= value "")
+                                                         -1 value)]
+                                             (fm/set-integer! this :ui/limit :value value)))}))
+              (let [limit (if (< limit 0) 0 limit)
+                    from  (-> activePage dec (* limit) inc)
+                    to    (* activePage limit)
+                    to    (if (= to 0) 1 to)]
+
+                (debug "LIMIT" limit "activePage" activePage)
+                (div :.item (str "Showing " from " to " to " of " query-count " results")))
 
               (div :.item.right
                 (ui-pagination

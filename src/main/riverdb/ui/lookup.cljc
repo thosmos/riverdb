@@ -5,7 +5,7 @@
     [com.fulcrologic.fulcro.data-fetch :as f]
     [com.fulcrologic.fulcro.dom :as dom]
     ;[domain-spec.core :refer [specs->map]]
-    [taoensso.timbre :as log]
+    [theta.log :refer [debug]]
     #?@(:cljs
         [[shadow.resource :as rc]
          [cljs.tools.reader.edn :as edn]])

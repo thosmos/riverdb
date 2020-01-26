@@ -1612,6 +1612,8 @@
           :key :projectslookup/Stations,
           :cardinality :many,
           :type :ref,
+          :ref {:entity/ns :entity.ns/stationlookup}
+          :refKey :entity.ns/stationlookup
           :doc "Each project has a set of stations"}]}
  {:db/id "qalookup",
   :entity/name "QA",
