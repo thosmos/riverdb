@@ -4,6 +4,7 @@
   [com.fulcrologic.fulcro.components :refer [defsc transact! factory]]
   [com.fulcrologic.fulcro.algorithms.tempid :refer [tempid]]
   [com.fulcrologic.fulcro.dom :as dom :refer [div]]
+  [com.fulcrologic.fulcro.algorithms.form-state :as fs]
   [taoensso.timbre :as log]))
 
 (defsc
@@ -207,7 +208,7 @@
  {:ident [:org.riverdb.db.constituentlookup/gid :db/id],
   :initial-state #:db{:id (tempid)},
   :query
-  [:db/id :riverdb.entity/ns :constituentlookup/ConstituentRowID]})
+  [:db/id :riverdb.entity/ns :constituentlookup/Name fs/form-config-join]})
 
 
 (defsc
@@ -1018,7 +1019,7 @@
  {:ident [:org.riverdb.db.samplingdevicelookup/gid :db/id],
   :initial-state #:db{:id (tempid)},
   :query
-  [:db/id :riverdb.entity/ns :samplingdevicelookup/SamplingDeviceCode]})
+  [:db/id :riverdb.entity/ns :samplingdevicelookup/SamplingDeviceCode fs/form-config-join]})
 
 
 (defsc

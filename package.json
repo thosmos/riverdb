@@ -1,6 +1,6 @@
 {
-  "name": "riverdb-graphql",
-  "version": "0.2.0",
+  "name": "riverdb",
+  "version": "0.3.0",
   "description": "A River Science Data Management System",
   "private": true,
   "dependencies": {
@@ -25,7 +25,8 @@
     "semantic-ui-react": "^0.88.2",
     "set-value": "^2.0.1",
     "shortid": "^2.2.15",
-    "socket.io-client": "1.7.4"
+    "socket.io-client": "1.7.4",
+    "window-table": "^0.10.5-alpha.1"
   },
   "devDependencies": {
     "intl-messageformat": "^2.2.0",
@@ -40,7 +41,7 @@
   "scripts": {
     "main": "npx shadow-cljs watch :main",
     "dev": "npx shadow-cljs server",
-    "server": "clojure -A:dev -J-Dtrace -J-Dguardrails.enabled=true",
+    "server": "clojure -A:dev:server:run",
     "client/workspaces": "npx shadow-cljs watch :workspaces",
     "client/test": "npx shadow-cljs watch :test",
     "client/cljs": "shadow-cljs cljs-repl :main",

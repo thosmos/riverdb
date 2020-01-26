@@ -34,21 +34,24 @@
     [riverdb.application :refer [SPA]]
     [riverdb.roles :as roles]
     [riverdb.api.mutations :as rm]
-    [riverdb.ui.lookup :as look]
+    [riverdb.ui.lookup :as look :refer [get-refNameKey get-refNameKeys]]
     [riverdb.ui.lookups :as looks]
     [riverdb.ui.lookup-options :refer [ThetaOptions ui-theta-options]]
     [riverdb.ui.dataviz-page :refer [DataVizPage]]
     [riverdb.ui.components :refer [ui-treeview]]
     [riverdb.ui.components.drag :refer [useDroppable useDraggable]]
+    [riverdb.ui.components.grid-layout :as grid]
     [riverdb.ui.routes]
     [riverdb.ui.sitevisits-page :refer [SiteVisitsPage]]
     [riverdb.ui.session :refer [ui-session Session]]
+    [riverdb.ui.style :as style]
     [riverdb.ui.tac-report-page :refer [TacReportPage]]
     [riverdb.ui.user]
     [theta.log :as log :refer [debug]]
-    [theta.ui.dnd :refer [ui-droppable]]
+    ;[theta.ui.dnd :refer [ui-droppable]]
     [goog.object :as gob]
-    [cljsjs.react-grid-layout]))
+    [cljsjs.react-grid-layout]
+    [nubank.workspaces.ui.core :as uc]))
 
 
 
@@ -70,11 +73,6 @@
              :entity/prKeys
              {:entity/attrs (comp/get-query Attribute)}]}))
 
-
-(comment
-  (def WidthProvider js/ReactGridLayout.WidthProvider)
-  (def Responsive js/ReactGridLayout.Responsive)
-  (def GridWithWidth (WidthProvider Responsive)))
 
 
 
@@ -160,18 +158,7 @@
                    {:text "Analyte" :key :constituentlookup/Analyte :type :ref :value "12312423524" :refKey :entity.ns/analytelookup}]))
 
 
-(defn get-refNameKey [attr]
-  (when (= :ref (:attr/type attr))
-    (let [refKey (:attr/refKey attr)]
-      (-> look/specs-map refKey :entity/nameKey))))
 
-(defn get-refNameKeys [attrs]
-  (reduce-kv
-    (fn [refs k v]
-      (if (= :ref (:attr/type v))
-        (assoc refs k (get-refNameKey v))
-        refs))
-    {} attrs))
 
 
 (defsc ThetaRow [this {:keys [] :as props} {:keys [prKeys refNameKeys]}]
@@ -183,13 +170,15 @@
               ident))
    :query [:db/id :riverdb.entity/ns]}
   (tr {}
-    (doall
-      (for [prKey prKeys]
-        (let [refKey? (get refNameKeys prKey)
-              value   (if refKey?
-                        (get-in props [prKey refKey?])
-                        (get props prKey))]
-          (td {:key prKey} (str value)))))))
+    [(doall
+       (for [prKey prKeys]
+         (let [refKey? (get refNameKeys prKey)
+               value   (if refKey?
+                         (get-in props [prKey refKey?])
+                         (get props prKey))]
+           (td {:key prKey} (str value)))))
+     (td {} "")]))
+
 
 (def ui-theta-row (comp/factory ThetaRow {:keyfn :db/id}))
 
@@ -198,7 +187,9 @@
 (defmutation theta-post-load [{:keys [target-ident] :as params}]
   (action [{:keys [state]}]
     (debug "THETA POST LOAD MUTATION")
-    (swap! state assoc-in (into target-ident [:ui/ready]) true)))
+    (swap! state update-in target-ident #(-> %
+                                           (assoc :ui/ready true)
+                                           (assoc :ui/loading false)))))
 
 (defn make-rowQuery [queryKeys refNameKeys]
   (let []
@@ -256,7 +247,7 @@
        (catch js/Object ex (debug "LOAD ERROR" ex))))))
 
 
-(defsc ThetaList [this {:keys [thetas] :ui/keys [ready filters showChooseCols prKeys limit offset list-meta sortField sortOrder] :as props}]
+(defsc ThetaList [this {:keys [thetas] :ui/keys [ready filters showChooseCols prKeys limit offset loading list-meta sortField sortOrder] :as props}]
   {:ident              [:riverdb.theta.list/ns :riverdb.entity/ns]
    :query              [:riverdb.entity/ns
                         :ui/ready
@@ -265,6 +256,7 @@
                         :ui/filters
                         :ui/limit
                         :ui/offset
+                        :ui/loading
                         :ui/list-meta
                         :ui/sortField
                         :ui/sortOrder
@@ -316,8 +308,11 @@
                                 ;; save state where this component is about to load: [:riverdb.theta.list/ns ident-val]
                                 (rm/merge-ident! route-ident {:riverdb.entity/ns ident-val
                                                               :ui/ready          false
+                                                              :ui/loading        false
                                                               :ui/filters        userFilters
-                                                              :ui/prKeys         userPrKeys})
+                                                              :ui/prKeys         userPrKeys
+                                                              :ui/limit          (or limit 15)
+                                                              :ui/offset         (or offset 0)})
                                 (dr/target-ready! app route-ident)))))
    :css                [[:.red {:backgroundColor "red"}
                          :.blue {:backgroundColor "blue"}]]}
@@ -340,8 +335,8 @@
                             (fm/set-value! this :ui/sortOrder nil))
                           (do
                             (fm/set-value! this :ui/sortOrder :desc)))))
-        limit       (or limit 15)
-        offset      (or offset 0)
+        limit       limit
+        offset      offset
 
         {:keys [red blue]} (css/get-classnames ThetaList)]
 
@@ -403,61 +398,57 @@
               (button {:disabled true :key "create" :onClick #(debug "CREATE")} (str "New " entity-nm))))
 
 
-          (div :.ui.segment
-            (div {:style {:padding   0
-                          :margin    0
-                          :marginTop 1
-                          :float     "right"
-                          :position  "absolute"
-                          :width     20
-                          :height    20
-                          :right     15}}
-              (button :.ui.small.secondary.basic.icon.button
-                {:key     "button"
-                 :style   {:padding     0
-                           :margin      0
-                           :paddingTop  3
-                           :paddingLeft 1
-                           :width       20
-                           :height      20}
-                 :onClick #(fm/toggle! this :ui/showChooseCols)}
-                (dom/i :.pointer.small.plus.icon {:style {}}))
+          (div :.ui.segment {}
+            (div :.ui.dimmable {:classes [(when loading "dimmed")]}
+              (div :.ui.inverted.dimmer {:key "dimmer" :classes [(when loading "active")]}
+                (div :.ui.text.loader "Loading"))
+              (table :.ui.sortable.very.compact.mini.table {:key "wqtab" :style {:marginTop 0}}
+                (thead {:key 1}
+                  (tr {:key "head"}
+                    [(doall
+                       (for [prKey prKeys]
+                         (let [{:attr/keys [name]} (prKey prAttrs)]
 
-              (ui-choose-cols
-                (comp/computed {:ui/attrs  (:entity/attrs entity-spec)
-                                :ui/show   showChooseCols
-                                :ui/prKeys prKeys}
-                  {:onChange #(fm/set-value! this :ui/prKeys %)})))
+                           ;; NOTE draggable header
+                           (th {:key     prKey
+                                :classes [(when (= sortField prKey)
+                                            (str "sorted " (if (= sortOrder :desc) "descending" "ascending")))]
+                                :onClick #(handleSort prKey)}
+                             (let [{:keys [onDragStart onDragEnd]} (useDraggable this)]
+                               (dom/span :.draggable
+                                 {:draggable   true
+                                  :onDragStart #(onDragStart % {:type :header :text name :key prKey})
+                                  :onDragEnd   onDragEnd}
+                                 name))))))
+                     (th {:key   "cols"
+                          :style {:width 20}}
+                       (button :.ui.small.secondary.basic.icon.button
+                         {:key     "button"
+                          :style   {:padding     0
+                                    :margin      0
+                                    :paddingTop  3
+                                    :paddingLeft 0
+                                    :width       20
+                                    :height      20}
+                          :onClick #(fm/toggle! this :ui/showChooseCols)}
+                         (dom/i :.pointer.small.plus.icon {:style {}}))
+
+                       (ui-choose-cols
+                         (comp/computed {:ui/attrs  (:entity/attrs entity-spec)
+                                         :ui/show   showChooseCols
+                                         :ui/prKeys prKeys}
+                           {:onChange #(fm/set-value! this :ui/prKeys %)})))]))
 
 
-            (table :.ui.sortable.very.compact.mini.table {:key "wqtab" :style {:marginTop 0}}
-              (thead {:key 1}
-                (tr {:key "head"}
+                ;; NOTE  ROWS !!!!
+                (tbody {:key 2}
                   (doall
-                    (for [prKey prKeys]
-                      (let [{:attr/keys [name]} (prKey prAttrs)]
+                    (for [theta thetas]
+                      (do
+                        ;(debug "THETA ROW" (pr-str theta))
+                        (ui-theta-row
+                          (comp/computed theta {:prKeys prKeys :refNameKeys refNameKeys}))))))))
 
-                        ;; NOTE draggable header
-                        (th {:key     prKey
-                             :classes [(when (= sortField prKey)
-                                         (str "sorted " (if (= sortOrder :desc) "descending" "ascending")))]
-                             :onClick #(handleSort prKey)}
-                          (let [{:keys [onDragStart onDragEnd]} (useDraggable this)]
-                            (dom/span :.draggable
-                              {:draggable   true
-                               :onDragStart #(onDragStart % {:type :header :text name :key prKey})
-                               :onDragEnd   onDragEnd}
-                              name))))))))
-
-
-              ;; NOTE  ROWS !!!!
-              (tbody {:key 2}
-                (doall
-                  (for [theta thetas]
-                    (do
-                      ;(debug "THETA ROW" (pr-str theta))
-                      (ui-theta-row
-                        (comp/computed theta {:prKeys prKeys :refNameKeys refNameKeys})))))))
 
 
             (div :.ui.menu

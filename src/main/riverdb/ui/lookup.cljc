@@ -30,6 +30,19 @@
 ;#?(:cljs (def specs (rc/inline "specs.edn")))
 #?(:cljs (def specs-map (specs->map (edn/read-string (rc/inline "specs.edn")))))
 
+#?(:cljs (defn get-refNameKey [attr]
+           (when (= :ref (:attr/type attr))
+             (let [refKey (:attr/refKey attr)]
+               (-> specs-map refKey :entity/nameKey)))))
+
+#?(:cljs (defn get-refNameKeys [attrs]
+           (reduce-kv
+             (fn [refs k v]
+               (if (= :ref (:attr/type v))
+                 (assoc refs k (get-refNameKey v))
+                 refs))
+             {} attrs)))
+
 ;#?(:clj (defmacro specs [] (specs->map (clojure.edn/read-string (clojure.core/slurp "resources/specs.edn")))))
 
 ;#?(:clj (defmacro specs [] (clojure.edn/read-string (clojure.core/slurp "resources/specs.edn"))))

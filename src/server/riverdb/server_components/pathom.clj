@@ -9,6 +9,7 @@
     [riverdb.model.user :as user]
     [riverdb.model.session :as session]
     [riverdb.api.resolvers :as resolvers]
+    [riverdb.api.mutations :as mutations]
     [riverdb.server-components.config :refer [config]]
     [riverdb.state :refer [db cx]]))
 
@@ -20,7 +21,9 @@
      (update ::pc/index-resolvers #(into {} (map (fn [[k v]] [k (dissoc v ::pc/resolve)])) %))
      (update ::pc/index-mutations #(into {} (map (fn [[k v]] [k (dissoc v ::pc/mutate)])) %)))})
 
-(def all-resolvers [user/resolvers session/resolvers resolvers/resolvers resolvers/lookup-resolvers resolvers/id-resolvers index-explorer])
+(def all-resolvers [user/resolvers session/resolvers resolvers/resolvers
+                    resolvers/lookup-resolvers resolvers/id-resolvers index-explorer
+                    mutations/mutations])
 
 (defn preprocess-parser-plugin
   "Helper to create a plugin that can view/modify the env/tx of a top-level request.

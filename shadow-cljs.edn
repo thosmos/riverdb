@@ -1,15 +1,15 @@
 {:deps   {:aliases [:cljsbuild]}
  :nrepl  {:port 9000}
- :jvm-opts ["-Xmx2G"]
+ :jvm-opts ["-Xmx1G"]
  :builds {:main       {:target     :browser
                        :output-dir "resources/public/admin/js/main"
                        :asset-path "/admin/js/main"
 
                        :modules    {:main {:init-fn riverdb.client/init
                                            :entries [riverdb.client]}}
-                       ;; guardrails checks only during dev
-                       :dev        {:compiler-options
-                                    {:external-config {:guardrails {}}}}
+                       ;;; guardrails checks only during dev
+                       ;:dev        {:compiler-options
+                       ;             {:external-config {:guardrails {}}}}
 
                        :devtools   {:after-load riverdb.client/refresh
                                     :preloads   [com.fulcrologic.fulcro.inspect.preload

@@ -15,6 +15,10 @@
     [clojure.walk :as walk]
     [clojure.string :as st]))
 
+
+
+
+
 (defn add-conditions
   "add :where conditions like:
   [(> ?SiteVisitDate #inst \"2019-11-03T00:00:00.000-00:00\")]
@@ -266,27 +270,28 @@
 
 
 (def lookup-resolvers
-  (vec
-    (for [spec specs-sorted]
+  (mapv
+    (fn [spec]
       (let [{:entity/keys [ns attrs]} spec
             nm  (name ns)
             aks (mapv :attr/key attrs)]
-        ;gid-key (keyword (str "riverdb.entity.ns." name) "gid")]
         {::pc/sym     (symbol nm)
          ::pc/output  [{(keyword (str "org.riverdb.db." nm))
                         (into [:db/id :riverdb.entity/ns :org.riverdb.meta/query-count] aks)}]
-         ::pc/resolve lookup-resolve}))))
+         ::pc/resolve lookup-resolve}))
+    specs-sorted))
 
 (def meta-resolvers
-  (vec
-    (for [spec specs-sorted]
+  (mapv
+    (fn [spec]
       (let [{:entity/keys [ns attrs]} spec
             nm  (name ns)
             aks (mapv :attr/key attrs)]
         {::pc/sym     (symbol (str nm "-meta"))
          ::pc/output  [{(keyword (str "org.riverdb.db." nm "-meta"))
                         (into [:db/id :riverdb.entity/ns :org.riverdb.meta/query-count] aks)}]
-         ::pc/resolve lookup-resolve}))))
+         ::pc/resolve lookup-resolve}))
+    specs-sorted))
 
 
 

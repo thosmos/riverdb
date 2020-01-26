@@ -112,6 +112,7 @@
     <orderEntry type="library" name="Deps: buddy/buddy-hashers:1.4.0" level="project" />
     <orderEntry type="library" name="Deps: com.lambdaworks/scrypt:1.4.0" level="project" />
     <orderEntry type="library" name="Deps: com.cognitect/transit-js:0.8.846" level="project" />
+    <orderEntry type="library" name="Deps: hicada:0.1.8" level="project" />
     <orderEntry type="library" name="Deps: clj-tuple:0.2.2" level="project" />
     <orderEntry type="library" name="Deps: org.mozilla/rhino:1.7R5" level="project" />
     <orderEntry type="library" name="Deps: clojurewerkz/scrypt:1.2.0" level="project" />

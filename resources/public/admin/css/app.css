@@ -1,6 +1,6 @@
 html, body, #app {
   height: 100vh;
-  width: 100%
+  width: 100%;
 }
 
 a:hover, button:hover, select:hover {
@@ -9,6 +9,10 @@ a:hover, button:hover, select:hover {
 
 .ui.menu {
     margin-bottom: 0;
+    background-color: white;
+}
+.ui.secondary.menu {
+background-color: white;
 }
 
 .ui.container {

@@ -56,7 +56,7 @@
                       {:key k :value k :text (text-key m)})))]
       (swap! state update-in target-ident (fn [st]
                                             (-> st
-                                              (assoc :ui/ready true)
+                                              (assoc :ui/loading false)
                                               (assoc :ui/options opts)
                                               (dissoc :ui/thetas)))))))
 
@@ -75,11 +75,8 @@
          theta-nm        (name theta-k)
          theta-db-k      (keyword (str "org.riverdb.db." theta-nm))
          theta-db-k-meta (keyword (str "org.riverdb.db." theta-nm "-meta"))]
-     (debug "LOAD THETA" params)
-     ;(f/load! app theta-db-k-meta nil
-     ;  {;:parallel true
-     ;   :params {:filter filter :meta-count true :limit 1}
-     ;   :target (into target-ident [:ui/list-meta])})
+     (debug "LOAD THETA OPTIONS" params)
+     (rm/merge-ident! target-ident {:ui/loading true})
      (f/load! app theta-db-k ThetaOption
        {;:parallel             true
         :target               (into target-ident [:ui/thetas])
@@ -95,12 +92,14 @@
    :pre-merge         (fn [{:keys [data-tree current-normalized state-map query] :as env}]
                         (debug "PRE-MERGE ThetaOptions" current-normalized query))
    :componentDidMount (fn [this]
-                        (let [props       (comp/props this)
-                              ident       (comp/ident this props)
-                              app-state   (fapp/current-state SPA)
-                              ref-props   (get-in app-state ident)]
+                        (let [props     (comp/props this)
+                              ident     (comp/ident this props)
+                              app-state (fapp/current-state SPA)
+                              ref-props (get-in app-state ident)]
                           (debug "MOUNTED ThetaOptions" ident)
-                          (if (empty? (:ui/options ref-props))
+                          (if (and
+                                (empty? (:ui/options ref-props))
+                                (not (:ui/loading ref-props)))
                             (let [theta-k     (second ident)
                                   theta-nm    (name theta-k)
                                   isLookup?   (clojure.string/ends-with? theta-nm "lookup")
@@ -113,25 +112,45 @@
                                   isLookup?
                                   (assoc-in [:filter (keyword theta-nm "Active")] true))))
                             (do
-                              (debug "OPTIONS ALREADY EXIST, NOT LOADING")))))}
+                              (debug "OPTIONS ALREADY EXIST OR ARE LOADING")))))}
   (let [this-ident  (comp/get-ident this)
         theta-k     (:riverdb.entity/ns props)
         theta-spec  (get look/specs-map theta-k)
         theta-nmKey (get theta-spec :entity/nameKey)
         app-state   (fapp/current-state SPA)
         ref-props   (get-in app-state this-ident)
-        {:ui/keys [ready options]} ref-props]
-    (debug "RENDER ThetaOptions" this-ident theta-k theta-nmKey ready value)
-    (ui-dropdown {:loading      (not ready)
+        {:ui/keys [options loading]} ref-props]
+    (debug "RENDER ThetaOptions" this-ident "theta-k:" theta-k "nmKey:" theta-nmKey "value:" value "loading:" loading)
+    (ui-dropdown {:loading      loading
                   :search       true
                   :selection    true
                   :tabIndex     -1
                   :options      options
                   :value        (or value "")
+
+                  ;:fluid        true
                   :autoComplete "off"
                   :style        {:width "auto" :minWidth "10em"}
                   :onChange     (fn [_ d]
                                   (when-let [value (-> d .-value)]
                                     (log/debug "RefInput change" value)
-                                    (onChange value)))})))
+                                    (when onChange
+                                      (onChange value))))})))
+
 (def ui-theta-options (comp/factory ThetaOptions {:keyfn :riverdb.entity/ns}))
+
+(defn preload-options [ent-ns]
+  (let [ident     (comp/get-ident ThetaOptions {:riverdb.entity/ns ent-ns})
+        theta-nm    (name ent-ns)
+        isLookup?   (clojure.string/ends-with? theta-nm "lookup")
+        nameKey   (get-in look/specs-map [ent-ns :entity/nameKey])
+        app-state (fapp/current-state SPA)
+        ref-props (get-in app-state ident)
+        {:ui/keys [options loading]} ref-props]
+    (if (or (some? options) loading)
+      (debug "NOT PRELOADING ...")
+      (do (debug "PRELOADING" ident (first options) loading)
+          (load-theta-options SPA ident nameKey
+            (cond-> {:limit -1 :sortField nameKey}
+              isLookup?
+              (assoc-in [:filter (keyword theta-nm "Active")] true)))))))
