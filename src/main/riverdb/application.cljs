@@ -25,7 +25,7 @@
                            error?))
                        false
                        values)]
-      (debug "contains-error?" has-error? body)
+      ;(debug "contains-error?" has-error? body)
       has-error?)))
 
 

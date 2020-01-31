@@ -234,7 +234,8 @@
 
 
 (dr/defrouter TopRouter [this props]
-  {:router-targets [Main Signup SignupSuccess ThetaRoot Projects TacReportPage DataVizPage SiteVisitsPage]})
+  {:router-targets [Main Signup SignupSuccess ThetaRoot Projects TacReportPage DataVizPage SiteVisitsPage]
+   :shouldComponentUpdate (fn [_ _ _] true)})
 (def ui-top-router (comp/factory TopRouter))
 
 
@@ -272,9 +273,10 @@
                    :root/login           {}
                    :root/current-session {}
                    :root/activity        {}
-                   :root/agency-menu     {}}}
+                   :root/agency-menu     {}}
+   :shouldComponentUpdate (fn [_ _ _] true)}
   (let [current-route (dr/current-route this this)
-        _             (println "TOP CHROME" ready tx-result (keys props))
+        ;_             (println "TOP CHROME" ready tx-result (keys props))
         ;tx-result {:error "testing 1 2 3"}
         current-tab   (some-> current-route first keyword)
         {current-user :account/name
@@ -310,7 +312,8 @@
 
 (defsc Root [this {:root/keys [top-chrome]}]
   {:query         [{:root/top-chrome (comp/get-query TopChrome)}]
-   :initial-state {:root/top-chrome {}}}
+   :initial-state {:root/top-chrome {}}
+   :shouldComponentUpdate (fn [_ _ _] true)}
 
   (inj/style-element {:component Root})
   (ui-top-chrome top-chrome))

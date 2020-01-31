@@ -285,8 +285,7 @@
                                              precisionCode replicates
                                              constituentlookupRef
                                              samplingdevicelookupRef]
-                            :as             props}
-                      {:keys [top-this]}]
+                            :as             props}]
   {:ident         [:org.riverdb.db.parameter/gid :db/id]
    :query         [fs/form-config-join
                    :db/id
@@ -424,7 +423,7 @@
             (doall
               (vec (for [p Parameters]
                      (let [p-data (fs/add-form-config ParameterForm p)]
-                       (ui-parameter-form (comp/computed p-data {:top-this this})))))))
+                       (ui-parameter-form p-data))))))
 
           (ui-cancel-save this props dirty? {:cancelAlwaysOn true}))
 
@@ -433,64 +432,8 @@
           (button :.ui.button.primary {:onClick #(fm/set-value! this :ui/editing true)} "Edit")))
       (ui-loader {:active true}))))
 
-
 (def ui-project-form (comp/factory ProjectForm {:keyfn :db/id}))
 
-
-
-;
-;(defsc ProjectList [this {:keys [db/id ui/show] :projectslookup/keys [Name Parameters] :as props}]
-;  {:ident         (fn [] [:component/id :projects-list])
-;   :query         [:db/id
-;                   :ui/show
-;                   :projectslookup/ProjectID
-;                   :projectslookup/Name
-;                   :projectslookup/Active
-;                   :projectslookup/Public
-;                   :projectslookup/QAPPVersion
-;                   :projectslookup/AgencyRef
-;                   :riverdb.entity/ns
-;                   {:stationlookup/_Project (comp/get-query looks/stationlookup)}
-;                   {:projectslookup/Parameters (comp/get-query ParameterForm)}]
-;   :form-fields   #{:projectslookup/ProjectID
-;                    :projectslookup/Name
-;                    :projectslookup/Active
-;                    :projectslookup/Public
-;                    :projectslookup/QAPPVersion}
-;   :initial-state (fn [params]
-;                    (fs/add-form-config
-;                      ProjectForm
-;                      {:ui/show true}))}
-;  (let [dirty? (some? (seq (fs/dirty-fields props false)))]
-;    (ui-treeview {:collapsed (not show)
-;                  :nodeLabel (dom/span {:style {} :onClick #(println "CLICK LABEL")} Name)
-;                  :onClick   #(do (fm/set-value! this :ui/show (not show)))}
-;      (div :.ui.segment
-;        (div :.fields {}
-;          (rui-input this :projectslookup/ProjectID {:label "ID" :required true})
-;          (rui-input this :projectslookup/Name {:required true})
-;          (rui-checkbox this :projectslookup/Active {})
-;          (rui-checkbox this :projectslookup/Public {}))
-;        (rui-input this :projectslookup/QAPPVersion {:label "QAPP"})
-;        (dom/h5 "Parameters"
-;          (doall
-;            (for [p Parameters]
-;              (ui-parameter-form p))))
-;
-;        (dom/button :.ui.button.secondary
-;          {:disabled (not dirty?)
-;           :onClick  #(do
-;                        (debug "CANCEL!" dirty?)
-;                        (comp/transact! this
-;                          `[(rm/reset-form ~{:ident (comp/get-ident this)})]))} "Cancel")
-;
-;        (dom/button :.ui.button.primary
-;          {:disabled (not dirty?)
-;           :onClick  #(do
-;                        (debug "SAVE!" dirty?)
-;                        (comp/transact! this
-;                          `[(rm/save-entity ~{:ident (comp/get-ident this)
-;                                              :diff  (fs/dirty-fields props false)})]))} "Save")))))
 
 (defmutation init-projects-forms [{:keys []}]
   (action [{:keys [state]}]

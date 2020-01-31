@@ -37,6 +37,7 @@
     [riverdb.ui.util :refer [make-tempid]]
     [riverdb.util :refer [paginate]]
     [theta.log :as log :refer [debug info]]
+    [thosmos.util :refer [merge-tree]]
     [tick.alpha.api :as t]
     [com.fulcrologic.fulcro.application :as app]
     [goog.object :as gobj]))
@@ -139,18 +140,23 @@
 
 (def ui-theta-options (comp/factory ThetaOptions {:keyfn :riverdb.entity/ns}))
 
-(defn preload-options [ent-ns]
-  (let [ident     (comp/get-ident ThetaOptions {:riverdb.entity/ns ent-ns})
-        theta-nm    (name ent-ns)
-        isLookup?   (clojure.string/ends-with? theta-nm "lookup")
-        nameKey   (get-in look/specs-map [ent-ns :entity/nameKey])
-        app-state (fapp/current-state SPA)
-        ref-props (get-in app-state ident)
-        {:ui/keys [options loading]} ref-props]
-    (if (or (some? options) loading)
-      (debug "NOT PRELOADING ...")
-      (do (debug "PRELOADING" ident (first options) loading)
-          (load-theta-options SPA ident nameKey
-            (cond-> {:limit -1 :sortField nameKey}
-              isLookup?
-              (assoc-in [:filter (keyword theta-nm "Active")] true)))))))
+(defn preload-options
+  ([ent-ns]
+   (preload-options ent-ns nil))
+  ([ent-ns params]
+   (let [ident     (comp/get-ident ThetaOptions {:riverdb.entity/ns ent-ns})
+         theta-nm  (name ent-ns)
+         isLookup? (clojure.string/ends-with? theta-nm "lookup")
+         nameKey   (get-in look/specs-map [ent-ns :entity/nameKey])
+         app-state (fapp/current-state SPA)
+         ref-props (get-in app-state ident)
+         params (cond-> {:limit -1 :sortField nameKey}
+                  isLookup?
+                  (assoc-in [:filter (keyword theta-nm "Active")] true)
+                  params
+                  (merge-tree params))
+         {:ui/keys [options loading]} ref-props]
+     (if (or (some? options) loading)
+       (debug "NOT PRELOADING ...")
+       (do (debug "PRELOADING" ident (first options) loading)
+           (load-theta-options SPA ident nameKey params))))))
