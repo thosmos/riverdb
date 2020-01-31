@@ -10,10 +10,13 @@
     [datomic.api :as d]
     [riverdb.api.tac-report :as tac]
     [riverdb.graphql.schema :refer [table-specs-ds specs-sorted specs-map]]
+    [riverdb.ui.globals :as globals]
     [datascript.core :as ds]
     [thosmos.util :as tu :refer [walk-modify-k-vals limit-fn]]
     [clojure.walk :as walk]
-    [clojure.string :as st]))
+    [clojure.string :as st]
+    [com.fulcrologic.fulcro.components :as comp]
+    [clojure.edn :as edn]))
 
 
 
@@ -39,7 +42,7 @@
               v    (clojure.string/lower-case v)]
           (-> find
             (conj [(list 'clojure.string/lower-case arg) argl])
-            (conj [`(~'.contains ^String ~argl ~v)])))))
+            (conj [`(clojure.string/includes? ~argl ~v)])))))
     find conditions))
 
 (defn add-filters [arg find-v filter-m]
@@ -59,7 +62,7 @@
 
               arg?         (cond
                              (and type-ref? val-map?)
-                             (symbol (str "?" (name (ffirst v))))
+                             (symbol (str "?" (str (namespace (ffirst v)) "_" (name (ffirst v)))))
                              (and type-inst? val-map?)
                              (symbol (str "?" ent-nm))
                              type-string?
@@ -327,20 +330,67 @@
          ::pc/resolve   (id-resolve-factory gid-k)
          ::pc/transform pc/transform-batch-resolver}))))
 
+(def derived-resolvers
+  (vec
+    (for [spec specs-sorted]
+      (let [{:entity/keys [ns attrs]} spec
+            aks   (mapv :attr/key attrs)
+            nm    (name ns)
+            gid-k (keyword (str "org.riverdb.db." nm) "gid")]
+        {::pc/sym       (symbol (str nm "GID"))
+         ::pc/input     #{gid-k}
+         ::pc/output    (into [:db/id :riverdb.entity/ns] aks)
+         ::pc/resolve   (id-resolve-factory gid-k)
+         ::pc/transform pc/transform-batch-resolver}))))
+
 
 
 
 (defresolver agency-project-years [env _]
-  {;::pc/input     #{:agency}
-   ::pc/output [:agency-project-years]}
-  ;::pc/transform pc/transform-batch-resolver}
+  {::pc/output [:agency-project-years]}
   (let [params (-> env :ast :params)]
     (log/info "QUERY :agency-project-years" params)
     {:agency-project-years (tac/get-agency-project-years (db) (:agencies params))}))
 
 
+(defresolver db-idents [env _]
+  {::pc/output [{:db-idents [:db/ident :db/id]}]}
+  {:db-idents
+   (mapv
+     (fn [[dbid dbident]]
+       {:db/id (str dbid) :db/ident dbident})
+     (d/q '[:find ?e ?id
+            :where
+            [(> ?e 1000)]
+            [?e :db/ident ?id]]
+       (db)))})
 
+(defresolver db-ident [env {:db/keys [ident]}]
+  {::pc/output [:db/id]
+   ::pc/input  #{:db/ident}}
+  (let [db-id (d/q '[:find ?e .
+                     :in $ ?id
+                     :where
+                     [(> ?e 1000)]
+                     [?e :db/ident ?id]]
+                (db) ident)]
+    (debug "DB-IDENT QUERY" ident db-id)
+    {:db/id (when db-id
+              (str db-id))}))
 
+(defresolver meta-entities [env _]
+  {::pc/output [{:meta-entities (mapv :attr/key (get-in (domain-spec.core/spec-specs) [0 :entity/attrs]))}]}
+  {:meta-entities specs-sorted})
+
+(defn get-global-attrs []
+  (edn/read-string (slurp "resources/global-attrs.edn")))
+
+(defresolver meta-global-attrs [env _]
+  {::pc/output [{:meta-global-attrs (mapv :attr/key (get-in (domain-spec.core/spec-specs) [1 :entity/attrs]))}]}
+  {:meta-global-attrs (get-global-attrs)})
+
+(defresolver globals [env _]
+  {::pc/output [{:globals [:db-idents :meta-entities :meta-global-attrs]}]})
 
 ;(defresolver all-sitevisit-years [env _]
 ;  {::pc/output [:all-sitevisit-years]}
@@ -393,4 +443,4 @@
   {::pc/output [:test-meta]}
   {:test-meta (with-meta {:some :data} {:some :meta})})
 
-(def resolvers [agencylookup-resolver agency-project-years tac-report-data dataviz-data meta-resolvers index-explorer test-meta])
+(def resolvers [globals db-ident db-idents meta-entities meta-global-attrs agencylookup-resolver agency-project-years tac-report-data dataviz-data meta-resolvers index-explorer test-meta])

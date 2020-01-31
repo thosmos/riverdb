@@ -148,6 +148,7 @@
       (h2 {:style {:flex "0 0 0"}} (str agency " " project " " (when report-year
                                                                  report-year)))
       (div {:style {:flex "1 0 100%"}}
+        (log/debug "PRE AUTOSIZER Child FN")
         (ui-autosizer {}
           (fn [jsprops]
             (let [height (comp/isoget jsprops "height")
@@ -182,7 +183,7 @@
         {:keys [results-rs param-config report-year]} dataviz-data
         param-config (param-sort param-config)]
     (log/debug "RENDER DataVizPage" ProjectID current-year)
-    (div :.ui.container {:className "dataviz-report" :style {}}
+    (div :.ui.container {:className "dataviz-report" :style {:height "100%"}}
       (div :.ui.menu {:key "report-selectors" :style {}}
         (div :.item {:key "report-year-selector"}
           (ui-project-years project-years)

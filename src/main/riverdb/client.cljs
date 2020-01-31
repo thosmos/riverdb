@@ -9,6 +9,7 @@
     [com.fulcrologic.fulcro.components :as comp]
     [com.fulcrologic.fulcro-css.css-injection :as cssi]
     [riverdb.model.session :as session]
+    [riverdb.ui.globals :as globals]
     [riverdb.ui.session :as ui-session]
     [riverdb.ui.routes :as routes]
     [riverdb.ui.project-years :as py]
@@ -35,7 +36,8 @@
   (uism/begin! SPA session/session-machine ::session/session
     {:actor/login-form      root/Login
      :actor/current-session ui-session/Session
-     :actor/project-years   py/ProjectYears}
+     :actor/project-years   py/ProjectYears
+     :actor/globals         globals/Globals}
     {:desired-path (some-> js/window .-location .-pathname)})
   (app/mount! SPA root/Root "app" {:initialize-state? false}))
 

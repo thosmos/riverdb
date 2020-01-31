@@ -22,10 +22,11 @@
     [riverdb.application :refer [SPA]]
     [riverdb.model.session :as session]
     [riverdb.roles :as roles]
-    [riverdb.api.mutations :as rm]
+    [riverdb.api.mutations :as rm :refer [TxResult ui-tx-result]]
     [riverdb.ui.lookups :as looks]
     [riverdb.ui.dataviz-page :refer [DataVizPage]]
     [riverdb.ui.components :refer [ui-treeview]]
+    [riverdb.ui.globals :refer [DBIdents Globals]]
     [riverdb.ui.routes]
     [riverdb.ui.sitevisits-page :refer [SiteVisitsPage]]
     [riverdb.ui.session :refer [ui-session Session]]
@@ -213,23 +214,21 @@
    :ident         (fn [] [:component/id :main])
    :route-segment ["main"]}
   (let []
-    (div :.ui.container
-      (div :.ui.segment
-        (h3 "Welcome")
-        (let [{current-user :account/name
-               logged-in?   :session/valid?} session]
-          (if-not logged-in?
-            (div {}
-              (p {} "Please log in")
-              (ui-login-form login-form)
-              (button {:onClick #(f/load! this :test-meta nil)} "test-meta"))
+    (div :.ui.segment
+      (h3 "Welcome")
+      (let [{current-user :account/name
+             logged-in?   :session/valid?} session]
+        (if-not logged-in?
+          (div {}
+            (p {} "Please log in")
+            (ui-login-form login-form))
 
-            (dom/ul
-              ;; More nav links here
-              ;(dom/li nil (dom/a #js {:className "" :onClick #(r/nav-to! this :main)} (tr "Main")))
-              ;(dom/li nil (dom/a #js {:className "" :onClick #(r/nav-to! this :preferences)} (tr "Preferences")))
-              (dom/li (dom/a {:href "/tac-report"} "TAC Report"))
-              (dom/li (dom/a {:href "/dataviz"} "Data Viz")))))))))
+          (dom/ul
+            ;; More nav links here
+            ;(dom/li nil (dom/a #js {:className "" :onClick #(r/nav-to! this :main)} (tr "Main")))
+            ;(dom/li nil (dom/a #js {:className "" :onClick #(r/nav-to! this :preferences)} (tr "Preferences")))
+            (dom/li (dom/a {:href "/tac-report"} "TAC Report"))
+            (dom/li (dom/a {:href "/dataviz"} "Data Viz"))))))))
 ;(dom/li nil (dom/a #js {:className "" :onClick #(r/nav-to! this :stations-page)} (tr "Stations")))
 ;(dom/li (dom/a {:href "https://dev.riverdb.org/rimdb/"} "Data Entry")))))))))
 
@@ -254,29 +253,29 @@
 (defsc AgencyMenu [this {::keys [current-agency] :as props}]
   {:query         [{[::current-agency '_] (om/get-query looks/agencylookup-sum)}]
    :initial-state {::current-agency {}}}
-  (let [];_ (debug "RENDER AgencyMenu" current-agency)]
+  (let [] ;_ (debug "RENDER AgencyMenu" current-agency)]
     (when current-agency
       (div :.item (:agencylookup/AgencyCode current-agency)))))
 (def ui-agency-menu (comp/factory AgencyMenu))
 
-(defsc TopChrome [this {:root/keys [ready router current-session login activity agency-menu]}]
+(defsc TopChrome [this {:root/keys [ready router current-session login activity agency-menu tx-result] :as props}]
   {:ident         (fn [] [:component/id :top-chrome])
    :query         [{:root/router (comp/get-query TopRouter)}
                    {:root/current-session (comp/get-query Session)}
-                   ;{:root/dr-history (comp/get-query DrHistory)}
                    [:root/ready '_]
                    {:root/login (comp/get-query Login)}
                    {:root/activity (comp/get-query Activity)}
-                   {:root/agency-menu (comp/get-query AgencyMenu)}]
+                   {:root/agency-menu (comp/get-query AgencyMenu)}
+                   {[:root/tx-result '_] (comp/get-query TxResult)}]
    :initial-state {:root/router          {}
-                   ;:root/dr-history      {}
                    :root/ready           false
                    :root/login           {}
                    :root/current-session {}
                    :root/activity        {}
                    :root/agency-menu     {}}}
   (let [current-route (dr/current-route this this)
-        _             (println "TOP CHROME" ready)
+        _             (println "TOP CHROME" ready tx-result (keys props))
+        ;tx-result {:error "testing 1 2 3"}
         current-tab   (some-> current-route first keyword)
         {current-user :account/name
          logged-in?   :session/valid?} current-session]
@@ -299,9 +298,12 @@
           (div :.item (ui-activity {}))
           (ui-agency-menu agency-menu)
           (ui-login login)))
-      ;(ui-dr-history {:current-route current-route})
       (if ready
-        (ui-top-router router)
+        (div :.ui.container {}
+          (ui-top-router router)
+          (when (not (empty? tx-result))
+            (ui-tx-result tx-result)))
+
         (ui-loader {:active true})))))
 
 (def ui-top-chrome (comp/factory TopChrome))
@@ -309,5 +311,6 @@
 (defsc Root [this {:root/keys [top-chrome]}]
   {:query         [{:root/top-chrome (comp/get-query TopChrome)}]
    :initial-state {:root/top-chrome {}}}
+
   (inj/style-element {:component Root})
   (ui-top-chrome top-chrome))

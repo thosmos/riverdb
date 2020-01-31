@@ -56,23 +56,6 @@
 
 
 
-(comment
-  (defsc Attribute [this props]
-    {:ident :attr/key
-     :query [:attr/key
-             :attr/name
-             :attr/type
-             :attr/cardinality
-             :attr/ref
-             :attr/refkey]})
-
-  (defsc Entity [this props]
-    {:ident :entity/ns
-     :query [:entity/ns
-             :entity/name
-             :entity/lookup
-             :entity/prKeys
-             {:entity/attrs (comp/get-query Attribute)}]}))
 
 
 

@@ -4,6 +4,7 @@
     [com.fulcrologic.fulcro.algorithms.normalize :as norm]
     [com.fulcrologic.fulcro.application :as fa]
     [com.fulcrologic.fulcro.mutations :refer [defmutation]]
+    [com.fulcrologic.semantic-ui.collections.message.ui-message :refer [ui-message]]
     [com.fulcrologic.fulcro.components :as om]
     [theta.log :as log :refer [debug]]
     [riverdb.application :refer [SPA]]
@@ -11,7 +12,10 @@
     [riverdb.util :as util :refer [sort-maps-by]]
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.fulcro.components :as comp]
-    [com.fulcrologic.fulcro.algorithms.form-state :as fs]))
+    [com.fulcrologic.fulcro.algorithms.form-state :as fs]
+    [com.fulcrologic.fulcro.mutations :as fm]
+    [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
+    [com.fulcrologic.fulcro.dom :as dom :refer [div]]))
 
 ;;;  CLIENT
 
@@ -312,16 +316,8 @@
     (debug "SORTING SITES")
     (swap! state sort-ident-list-by* idents-path ident-key sort-fn)))
 
-(defmutation save-entity
-  "saves an entity to the backend Datomic DB"
-  [{:keys [ident diff]}]
-  (action [{:keys [state]}]
-    (debug "SAVE ENTITY" ident)
-    (swap! state (fn [s]
-                   (-> s
-                     ; update the pristine state
-                     (fs/entity->pristine* ident)))))
-  (remote [env] true))
+
+
 
 (defmutation save-project [{:keys [id diff]}]
   (action [{:keys [state]}]
@@ -338,22 +334,87 @@
                      (fs/pristine->entity* ident))))))
 
 
-;hmm (dt/process-target @state source-path target)
-;hum (get-in
-;      (dt/process-target (fa/current-state SPA)
-;        [:component/id :proj-years :agency-project-years :SYRCL_1 :sites]
-;        [:hmm :sites])
-;      [:component/id :proj-years :agency-project-years :SYRCL_1 :sites])
-;
+(defn clear-tx-result* [state]
+  (debug "CLEAR TX RESULT")
+  (assoc state :root/tx-result {}))
+(defmutation clear-tx-result [{:keys [] :as params}]
+  (action [{:keys [state]}]
+    (swap! state clear-tx-result*)))
+(defn clear-tx-result! []
+  (comp/transact! SPA `[(clear-tx-result)]))
 
-;    ms (get-in @state source-path)
-;    hmm(vec (->>
-;              (
-;                (get-in @state source-path))
-;              (sort-by sort-fn)))]
-;(swap! state assoc-in source-path ms))))
+(defn show-tx-result* [state result]
+  (debug "SHOW TX RESULT")
+  (assoc state :root/tx-result result))
+(defmutation show-tx-result [result]
+  (action [{:keys [state]}]
+    (swap! state (fn [s] (assoc-in s [:root/tx-result] result)))))
+(defn show-tx-result! [result]
+  (comp/transact! SPA `[(show-tx-result ~result)]))
 
-;(defmutation import-data-entry [p]
-;  (action [{:keys [state]}]
-;    (swap! state assoc :import-rimdb :in-progress))
-;  (remote [env] true))
+(defn set-saving* [state ident busy]
+  (assoc-in state (conj ident :ui/saving) busy))
+(defmutation set-saving [{:keys [ident busy]}]
+  (action [{:keys [state]}]
+    (swap! state set-saving* ident busy)))
+(defn set-saving! [ident busy]
+  (comp/transact! SPA `[(set-saving {:ident ~ident :busy ~busy})]))
+
+(comp/defsc TxResult [this {:keys [result error com.wsscode.pathom.core/reader-error]}]
+  {:query         [:result
+                   :error
+                   :com.wsscode.pathom.core/reader-error]
+   :initial-state {:result                               nil
+                   :error                                nil
+                   :com.wsscode.pathom.core/reader-error nil}}
+  (let [error (or error reader-error)]
+    (debug "TxResult" error)
+    (div {:style {:position "absolute" :top "50px" :left 0 :right 0 :maxWidth 500 :margin "auto"}}
+      (if error
+        (ui-message {:error true}
+          (div :.content {}
+            (div :.ui.right.floated.negative.button
+              {:onClick clear-tx-result!}
+              "OK")
+            (div :.header {} "Server Error")
+            (div :.horizontal.items
+              (div :.item error))))
+        (ui-message {:success true :onDismiss clear-tx-result!}
+          (div :.content {}
+            (div :.header {} "Success")
+            (dom/p {} result)))))))
+
+(def ui-tx-result (comp/factory TxResult))
+
+
+(defmutation set-pristine
+  "changes a form's current state to pristine"
+  [{:keys [ident]}]
+  (action [{:keys [state]}]
+    (swap! state fs/entity->pristine* ident)))
+(defn set-pristine! [ident]
+  (comp/transact! SPA `[(set-pristine {:ident ~ident})]))
+
+(defmutation save-entity
+  "saves an entity diff to the backend Datomic DB"
+  [{:keys [ident diff] :as params}]
+  (action [{:keys [state]}]
+    (debug "SAVE ENTITY DIFF" ident diff)
+    (set-saving! ident true))
+  (remote [env] true)
+  (ok-action [{:keys [state] :as env}]
+    (debug "OK ACTION" (keys env))
+    (js/setTimeout clear-tx-result! 2000)
+    (swap! state
+      (fn [s]
+        (-> s
+          (fs/entity->pristine* ident)
+          (set-saving* ident false)
+          (show-tx-result* {:result "Save Succeeded"})))))
+  (error-action [{:keys [app ref result state] :as env}]
+    (log/info "Mutation Error Result " ident diff result)
+    (swap! state
+      (fn [s]
+        (-> s
+          (set-saving* ident false)
+          (show-tx-result* (get-in result [:body `save-entity])))))))

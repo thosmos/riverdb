@@ -1,63 +1,65 @@
-{:deps   {:aliases [:cljsbuild]}
- :nrepl  {:port 9000}
+{:deps     {:aliases [:cljsbuild]}
+ :nrepl    {:port 9000}
  :jvm-opts ["-Xmx1G"]
- :builds {:main       {:target     :browser
-                       :output-dir "resources/public/admin/js/main"
-                       :asset-path "/admin/js/main"
+ :builds   {:main       {:target     :browser
+                         :output-dir "resources/public/admin/js/main"
+                         :asset-path "/admin/js/main"
 
-                       :modules    {:main {:init-fn riverdb.client/init
-                                           :entries [riverdb.client]}}
-                       ;;; guardrails checks only during dev
-                       ;:dev        {:compiler-options
-                       ;             {:external-config {:guardrails {}}}}
+                         :modules    {:main {:init-fn riverdb.client/init
+                                             :entries [riverdb.client]}}
+                         ;;; guardrails checks only during dev
+                         ;:dev        {:compiler-options
+                         ;             {:external-config {:guardrails {}}}}
 
-                       :devtools   {:after-load riverdb.client/refresh
-                                    :preloads   [com.fulcrologic.fulcro.inspect.preload
-                                                 riverdb.development-preload]
-                                    :watch-dir "resources/public/admin/css"}}
+                         :dev        {:closure-defines {com.fulcrologic.fulcro.inspect.inspect_ws/SERVER_PORT 8237}}
+                         :devtools   {:after-load riverdb.client/refresh
+                                      :preloads   [com.fulcrologic.fulcro.inspect.preload
+                                                   ;com.fulcrologic.fulcro.inspect.websocket-preload
+                                                   riverdb.development-preload]
+                                      :watch-dir  "resources/public/admin/css"}}
 
-          :native
-                      {:target     :react-native
-                       :init-fn    riverdb.client-native/init
-                       :output-dir "mobile/app"
-                       :dev        {:closure-defines {riverdb.client-native/SERVER_URL "http://localhost:8989/api"}}
-                       :release    {:compiler-options {:optimizations     :simple
-                                                       :infer-externs     :auto
-                                                       :variable-renaming :off
-                                                       :property-renaming :off
-                                                       :pretty-print      true
-                                                       :source-map        true}}
-                       :js-options {:node-modules-dir "mobile/node_modules"}
-                       :devtools   {:autoload   true
-                                    :after-load riverdb.client-native/start
-                                    :preloads   [shadow.expo.keep-awake]}}
-;; Uncomment the following line if you're running Fulcro Inspect Electron
-;com.fulcrologic.fulcro.inspect.websocket-preload
+            :native
+                        {:target     :react-native
+                         :init-fn    riverdb.client-native/init
+                         :output-dir "mobile/app"
+                         :dev        {:closure-defines {riverdb.client-native/SERVER_URL "http://localhost:8989/api"}}
+                         :release    {:compiler-options {:optimizations     :simple
+                                                         :infer-externs     :auto
+                                                         :variable-renaming :off
+                                                         :property-renaming :off
+                                                         :pretty-print      true
+                                                         :source-map        true}}
+                         :js-options {:node-modules-dir "mobile/node_modules"}
+                         :devtools   {:autoload   true
+                                      :after-load riverdb.client-native/start
+                                      :preloads   [shadow.expo.keep-awake]}}
+            ;; Uncomment the following line if you're running Fulcro Inspect Electron
+            ;com.fulcrologic.fulcro.inspect.websocket-preload
 
-          :test       {:target           :browser-test
-                       :test-dir         "resources/public/js/test"
-                       :ns-regexp        "-test$"
-                       ;; static required for mocking to work
-                       :compiler-options {:static-fns      false
-                                          :external-config {:guardrails {}}}
-                       :devtools         {:http-port          8022
-                                          :http-resource-root "public"
-                                          :http-root          "resources/public/js/test"}}
+            :test       {:target           :browser-test
+                         :test-dir         "resources/public/js/test"
+                         :ns-regexp        "-test$"
+                         ;; static required for mocking to work
+                         :compiler-options {:static-fns      false
+                                            :external-config {:guardrails {}}}
+                         :devtools         {:http-port          8022
+                                            :http-resource-root "public"
+                                            :http-root          "resources/public/js/test"}}
 
-          :ci-tests   {:target           :karma
-                       :js-options       {:js-provider :shadow}
-                       :compiler-options {:static-fns false} ; required for mocking to work
-                       :output-to        "target/ci.js"
-                       :ns-regexp        "-test$"}
+            :ci-tests   {:target           :karma
+                         :js-options       {:js-provider :shadow}
+                         :compiler-options {:static-fns false} ; required for mocking to work
+                         :output-to        "target/ci.js"
+                         :ns-regexp        "-test$"}
 
-          :workspaces {:target     nubank.workspaces.shadow-cljs.target
-                       :ns-regexp  "-(test|ws)$"
-                       :output-dir "resources/public/workspaces/js"
-                       :asset-path "/workspaces/js"
-                       :devtools   {:preloads           [com.fulcrologic.fulcro.inspect.preload]
-                                    :http-root          "resources/public/workspaces"
-                                    :http-port          8023
-                                    :http-resource-root "."}}}}
+            :workspaces {:target     nubank.workspaces.shadow-cljs.target
+                         :ns-regexp  "-(test|ws)$"
+                         :output-dir "resources/public/workspaces/js"
+                         :asset-path "/workspaces/js"
+                         :devtools   {:preloads           [com.fulcrologic.fulcro.inspect.preload]
+                                      :http-root          "resources/public/workspaces"
+                                      :http-port          8023
+                                      :http-resource-root "."}}}}
 
 ;{:lein   {:profile "cljs"}
 ; :nrepl  {:port 9000}

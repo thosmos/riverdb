@@ -2,14 +2,12 @@
   (:require
     [com.fulcrologic.fulcro.dom :as dom :refer [div ul li p h3 button table tr td]]
     [com.fulcrologic.fulcro.components :as om :refer [defsc transact!]]
-    [com.fulcrologic.fulcro.data-fetch :as f]
-    [com.fulcrologic.fulcro.mutations :as fm]
-    [riverdb.api.mutations :as rm]
     [riverdb.util :refer [sort-maps-by with-index]]
     [riverdb.ui.session :refer [Session]]
-    [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
     [com.fulcrologic.fulcro.components :as comp]
     [com.fulcrologic.fulcro.algorithms.react-interop :as interop]
+    [com.fulcrologic.fulcro.mutations :as fm]
+
     [tick.alpha.api :as t]
     [tick.timezone]
     [theta.log :refer [debug]]
@@ -66,3 +64,4 @@
       (dom/text #js {:textAnchor "middle" :x (/ w 2) :y (/ h 2)} label))))
 
 (def ui-placeholder (om/factory PlaceholderImage))
+

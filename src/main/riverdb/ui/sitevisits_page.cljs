@@ -3,6 +3,7 @@
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
+    [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc transact!]]
     [com.fulcrologic.fulcro.data-fetch :as f]
     [com.fulcrologic.fulcro.dom :as dom :refer [div ul li a p h2 h3 button table thead
@@ -37,6 +38,8 @@
     [tick.alpha.api :as t]
     [com.fulcrologic.fulcro.application :as app]
     [goog.object :as gobj]))
+
+(declare SVRouter)
 
 (defn merge-form-config! [app class props & named-params]
   (let [props-with-config (fs/add-form-config class props)]
@@ -85,7 +88,9 @@
            {:sample/EventType [:db/id :eventtypelookup/EventType]}]
    :initial-state
           (fn [p]
-            {:db/id (tempid/tempid)})})
+            {:db/id (make-tempid)
+             :sample/FieldResults []
+             :sample/EventType {:db/id :eventtypelookup/WaterChem}})})
 
 (defsc SiteVisit [this props]
   {:ident         [:org.riverdb.db.sitevisit/gid :db/id]
@@ -133,47 +138,97 @@
                    {:sitevisit/Visitors (comp/get-query looks/person)}
                    {:sitevisit/Samples (comp/get-query Sample)}]
 
-   :initial-state (fn [params] {:db/id                       (make-tempid)
-                                :riverdb.entity/ns           :entity.ns/sitevisit
-                                :sitevisit/CreationTimestamp (js/Date.)
-                                :sitevisit/Visitors          []
-                                :sitevisit/Samples           []
-                                :sitevisit/VisitType         {:db/id :sitevisittype/Monthly}
-                                :sitevisit/StationFailCode   {:db/id :stationfaillookup/NotRecorded}})})
+   :initial-state (fn [{:keys [id VisitType StationFailCode Samples] :as params}]
+                    {:db/id                       (or id (make-tempid))
+                     :riverdb.entity/ns           :entity.ns/sitevisit
+                     :sitevisit/CreationTimestamp (js/Date.)
+                     :sitevisit/Visitors          []
+                     :sitevisit/Samples           (or Samples [])
+                     :sitevisit/VisitType         (or VisitType {:db/id :sitevisittype/Monthly})
+                     :sitevisit/StationFailCode   (or StationFailCode {:db/id :stationfaillookup/None})})})
+
 
 ;(comp/get-initial-state Sample {:type :field})
 ;(comp/get-initial-state Sample {:type :obs})
 ;(comp/get-initial-state Sample {:type :lab})
 
 (defn set-value! [this k value]
-  (fm/set-value! this k value)
-  (transact! this `[(fs/mark-complete! nil k)]))
+  (let [props (comp/props this)
+        ready (:ui/ready props)]
+    (when ready
+      (fm/set-value! this k value)
+      (transact! this `[(fs/mark-complete! nil k)]))))
 
 (defn set-ref! [this k id]
-  (set-value! this k {:db/id id})
-  (transact! this `[(fs/mark-complete! nil k)]))
+  (let [props (comp/props this)
+        ready (:ui/ready props)]
+    (when
+      ready
+      (set-value! this k {:db/id id})
+      (transact! this `[(fs/mark-complete! nil k)]))))
 
 (defn set-refs! [this k ids]
-  (set-value! this k (mapv #(identity {:db/id %}) ids))
-  (transact! this `[(fs/mark-complete! nil k)]))
+  (let [props (comp/props this)
+        ready (:ui/ready props)]
+    (when ready
+      (set-value! this k (mapv #(identity {:db/id %}) ids))
+      (transact! this `[(fs/mark-complete! nil k)]))))
+
+
+(defsc SampleForm [this props {:keys [samplingdevicelookup-options]}]
+  {}
+  (tr
+    (td {:key 1} "Air Temp")
+    (td {:key 2}
+      (ui-form-dropdown {:search       true
+                         :selection    true
+                         :tabIndex     -1
+                         :value        "17592186046952"
+                         :options      samplingdevicelookup-options
+                         :autoComplete "off"
+                         :style        {:width "100px"}}))
+    ;:onChange     (fn [_ d]
+    ;                (when-let [value (-> d .-value)]
+    ;                  (set-ref! this :sitevisit/QAPerson value)))}))
+    (td {:key 3} (dom/input {:type "text" :value "57" :name "instID" :style {:width "50px"}}))
+    (td {:key 4} "°C")
+    (td {:key 5} (dom/input {:type "text" :value "25.5" :style {:width "50px"}}))
+    (td {:key 6} (dom/input {:type "text" :value "" :style {:width "50px"}}))
+    (td {:key 7} (dom/input {:type "text" :value "" :style {:width "50px"}}))
+    (td {:key 8} (dom/input {:type "text" :value "10:37a" :style {:width "80px"}}))
+    (td {:key 9} "1")
+    (td {:key 10} "25.50")
+    (td {:key 11} "0.00")
+    (td {:key 12} "0.00")))
+(def ui-sample-form (comp/factory SampleForm))
+
 
 (defsc SiteVisitForm [this
-                      {:db/keys [id]
+                      {:ui/keys [ready]
+                       :db/keys [id]
                        :sitevisit/keys [StationID DataEntryDate SiteVisitDate Time
                                         Visitors VisitType StationFailCode
                                         DataEntryPersonRef CheckPersonRef
-                                        QAPersonRef QACheck QADate] :as props}
+                                        QAPersonRef QACheck QADate Samples] :as props}
                       {:keys [station-options person-options sitevisittype-options
                               stationfaillookup-options samplingdevicelookup-options] :as cprops}]
   {:ident         [:org.riverdb.db.sitevisit/gid :db/id]
-   :query         (fn [] (into [fs/form-config-join] (comp/get-query SiteVisit)))
-   :initial-state (fn [params] (fs/add-form-config SiteVisitForm (comp/get-initial-state SiteVisit)))
+   :query         (fn [] (into [fs/form-config-join :ui/ready] (comp/get-query SiteVisit)))
+   :initial-state (fn [params] (merge (comp/get-initial-state SiteVisit params) {:ui/ready false}))
    :form-fields   #{:sitevisit/StationID :sitevisit/DataEntryDate :sitevisit/SiteVisitDate :sitevisit/Time
                     :sitevisit/Visitors :sitevisit/VisitType :sitevisit/StationFailCode
                     :sitevisit/DataEntryPersonRef :sitevisit/CheckPersonRef
-                    :sitevisit/QAPersonRef :sitevisit/QACheck :sitevisit/QADate}}
-  (let [isLoading (not (and station-options person-options sitevisittype-options stationfaillookup-options samplingdevicelookup-options))]
-    (debug "RENDER Site Visit Form " id) ;" props " props "computed" cprops)
+                    :sitevisit/QAPersonRef :sitevisit/QACheck :sitevisit/QADate :sitevisit/Samples}}
+  ;:pre-merge     (fn [{:keys [current-normalized data-tree] :as env}]
+  ;                 (debug "PREMERGE SiteVisitForm" current-normalized data-tree)
+  ;                 (->> data-tree
+  ;                   (merge current-normalized)
+  ;                   (clojure.walk/postwalk
+  ;                     #(if (= % :com.fulcrologic.fulcro.algorithms.merge/not-found) nil %))))}
+  (let [isLoading    (not (and station-options person-options sitevisittype-options stationfaillookup-options samplingdevicelookup-options))
+        dirty-fields (fs/dirty-fields props false)
+        dirty?       (some? (seq dirty-fields))]
+    (debug "RENDER Site Visit Form " id "DIRTY FIELDS" dirty-fields)
     (div :.dimmable.fields {:key "sv-form"}
       (ui-dimmer {:inverted true :active isLoading}
         (ui-loader {:indeterminate true}))
@@ -303,10 +358,10 @@
             (ui-checkbox {:size     "big" :fitted true :label "" :type "checkbox" :toggle true
                           :disabled (not (and QADate QAPersonRef))
                           :checked  QACheck
-                          :onChange  #(let [value (not QACheck)]
-                                        (when (and QADate QAPersonRef)
-                                          (log/debug "publish change" value)
-                                          (set-value! this :sitevisit/QACheck value)))})))
+                          :onChange #(let [value (not QACheck)]
+                                       (when (and QADate QAPersonRef)
+                                         (log/debug "publish change" value)
+                                         (set-value! this :sitevisit/QACheck value)))})))
 
         (table :.ui.very.compact.mini.table {:key "wqtab"}
           (thead {:key 1}
@@ -324,168 +379,194 @@
               (th {:key 11} "Std Dev")
               (th {:key 12} "% Prec")))
           (tbody {:key 2}
-
-
-            ;;; Air Temp
-            (tr
-              (td {:key 1} "Air Temp")
-              (td {:key 2}
-                (ui-form-dropdown {:search       true
-                                   :selection    true
-                                   :tabIndex     -1
-                                   :value        "17592186046952"
-                                   :options      samplingdevicelookup-options
-                                   :autoComplete "off"
-                                   :style        {:width "100px"}}))
-              ;:onChange     (fn [_ d]
-              ;                (when-let [value (-> d .-value)]
-              ;                  (set-ref! this :sitevisit/QAPerson value)))}))
-              (td {:key 3} (dom/input {:type "text" :value "57" :name "instID" :style {:width "50px"}}))
-              (td {:key 4} "°C")
-              (td {:key 5} (dom/input {:type "text" :value "25.5" :style {:width "50px"}}))
-              (td {:key 6} (dom/input {:type "text" :value "" :style {:width "50px"}}))
-              (td {:key 7} (dom/input {:type "text" :value "" :style {:width "50px"}}))
-              (td {:key 8} (dom/input {:type "text" :value "10:37a" :style {:width "80px"}}))
-              (td {:key 9} "1")
-              (td {:key 10} "25.50")
-              (td {:key 11} "0.00")
-              (td {:key 12} "0.00"))
-
-
-            ;;; H2O Temp
-            (tr
-              (td {:key 1} "H2O Temp")
-              (td {:key 2}
-                (ui-form-dropdown {:search       true
-                                   :selection    true
-                                   :tabIndex     -1
-                                   :value        "17592186046953"
-                                   :options      samplingdevicelookup-options
-                                   :autoComplete "off"
-                                   :style        {:width "100px"}}))
-              ;:onChange     (fn [_ d]
-              ;                (when-let [value (-> d .-value)]
-              ;                  (set-ref! this :sitevisit/QAPerson value)))}))
-              (td {:key 3} (dom/input {:type "text" :value "7" :name "instID" :style {:width "50px"}}))
-              (td {:key 4} "°C")
-              (td {:key 5} (dom/input {:type "text" :value "8.6" :style {:width "50px"}}))
-              (td {:key 6} (dom/input {:type "text" :value "8.5" :style {:width "50px"}}))
-              (td {:key 7} (dom/input {:type "text" :value "8.5" :style {:width "50px"}}))
-              (td {:key 8} (dom/input {:type "text" :value "10:38a" :style {:width "80px"}}))
-              (td {:key 9} "3")
-              (td {:key 10} "8.53")
-              (td {:key 11} "0.04")
-              (td {:key 12} "0.55"))
-
-
-            ;;; Cond
-            (tr
-              (td {:key 1} "Conductivity")
-              (td {:key 2}
-                (ui-form-dropdown {:search       true
-                                   :selection    true
-                                   :tabIndex     -1
-                                   :value        "17592186046962"
-                                   :options      samplingdevicelookup-options
-                                   :autoComplete "off"
-                                   :style        {:width "100px"}}))
-              ;:onChange     (fn [_ d]
-              ;                (when-let [value (-> d .-value)]
-              ;                  (set-ref! this :sitevisit/QAPerson value)))}))
-              (td {:key 3} (dom/input {:type "text" :value "7" :name "instID" :style {:width "50px"}}))
-              (td {:key 4} "°C")
-              (td {:key 5} (dom/input {:type "text" :value "40" :style {:width "50px"}}))
-              (td {:key 6} (dom/input {:type "text" :value "40" :style {:width "50px"}}))
-              (td {:key 7} (dom/input {:type "text" :value "40" :style {:width "50px"}}))
-              (td {:key 8} (dom/input {:type "text" :value "10:38a" :style {:width "80px"}}))
-              (td {:key 9} "3")
-              (td {:key 10} "40.0")
-              (td {:key 11} "0.00")
-              (td {:key 12} "0.00"))
-
-
-            ;; DO
-            (tr
-              (td {:key 1} "Dissolved Oxygen")
-              (td {:key 2}
-                (ui-form-dropdown {:search       true
-                                   :selection    true
-                                   :tabIndex     -1
-                                   :value        "17592186046955"
-                                   :options      samplingdevicelookup-options
-                                   :autoComplete "off"
-                                   :style        {:width "100px"}}))
-              ;:onChange     (fn [_ d]
-              ;                (when-let [value (-> d .-value)]
-              ;                  (set-ref! this :sitevisit/QAPerson value)))}))
-              (td {:key 3} (dom/input {:type "text" :value "80" :name "instID" :style {:width "50px"}}))
-              (td {:key 4} "°C")
-              (td {:key 5} (dom/input {:type "text" :value "8.7" :style {:width "50px"}}))
-              (td {:key 6} (dom/input {:type "text" :value "8.6" :style {:width "50px"}}))
-              (td {:key 7} (dom/input {:type "text" :value "8.6" :style {:width "50px"}}))
-              (td {:key 8} (dom/input {:type "text" :value "10:39a" :style {:width "80px"}}))
-              (td {:key 9} "3")
-              (td {:key 10} "8.63")
-              (td {:key 11} "0.04")
-              (td {:key 12} "0.54"))
-
-
-            ;;; pH
-            (tr
-              (td {:key 1} "pH")
-              (td {:key 2}
-                (ui-form-dropdown {:search       true
-                                   :selection    true
-                                   :tabIndex     -1
-                                   :value        "17592186046953"
-                                   :options      samplingdevicelookup-options
-                                   :autoComplete "off"
-                                   :style        {:width "100px"}}))
-              ;:onChange     (fn [_ d]
-              ;                (when-let [value (-> d .-value)]
-              ;                  (set-ref! this :sitevisit/QAPerson value)))}))
-              (td {:key 3} (dom/input {:type "text" :value "142" :name "instID" :style {:width "50px"}}))
-              (td {:key 4} "°C")
-              (td {:key 5} (dom/input {:type "text" :value "6.9" :style {:width "50px"}}))
-              (td {:key 6} (dom/input {:type "text" :value "6.9" :style {:width "50px"}}))
-              (td {:key 7} (dom/input {:type "text" :value "7.0" :style {:width "50px"}}))
-              (td {:key 8} (dom/input {:type "text" :value "10:40a" :style {:width "80px"}}))
-              (td {:key 9} "3")
-              (td {:key 10} "6.93")
-              (td {:key 11} "0.04")
-              (td {:key 12} "0.67"))
-
-
-            ;;; Turbidity
-            (tr
-              (td {:key 1} "Turbidity")
-              (td {:key 2}
-                (ui-dropdown {:search       true
-                              :selection    true
-                              :tabIndex     -1
-                              :value        "17592186046957"
-                              :options      samplingdevicelookup-options
-                              :autoComplete "off"
-                              :style        {:width "100px"}}))
-              ;:onChange     (fn [_ d]
-              ;                (when-let [value (-> d .-value)]
-              ;                  (set-ref! this :sitevisit/QAPerson value)))}))
-              (td {:key 3} (dom/input {:type "text" :value "" :name "instID" :style {:width "50px"}}))
-              (td {:key 4} "°C")
-              (td {:key 5} (dom/input {:type "text" :value "0.30" :style {:width "50px"}}))
-              (td {:key 6} (dom/input {:type "text" :value "0.26" :style {:width "50px"}}))
-              (td {:key 7} (dom/input {:type "text" :value "0.25" :style {:width "50px"}}))
-              (td {:key 8} (dom/input {:type "text" :value "10:41a" :style {:width "80px"}}))
-              (td {:key 9} "3")
-              (td {:key 10} "6.93")
-              (td {:key 11} "0.04")
-              (td {:key 12} "0.67"))))
+            (mapv
+              #(ui-sample-form
+                 (comp/computed %
+                   {:samplingdevicelookup-options samplingdevicelookup-options}))
+              Samples)))
 
 
 
+            ;;;; Air Temp
+            ;(tr
+            ;  (td {:key 1} "Air Temp")
+            ;  (td {:key 2}
+            ;    (ui-form-dropdown {:search       true
+            ;                       :selection    true
+            ;                       :tabIndex     -1
+            ;                       :value        "17592186046952"
+            ;                       :options      samplingdevicelookup-options
+            ;                       :autoComplete "off"
+            ;                       :style        {:width "100px"}}))
+            ;  ;:onChange     (fn [_ d]
+            ;  ;                (when-let [value (-> d .-value)]
+            ;  ;                  (set-ref! this :sitevisit/QAPerson value)))}))
+            ;  (td {:key 3} (dom/input {:type "text" :value "57" :name "instID" :style {:width "50px"}}))
+            ;  (td {:key 4} "°C")
+            ;  (td {:key 5} (dom/input {:type "text" :value "25.5" :style {:width "50px"}}))
+            ;  (td {:key 6} (dom/input {:type "text" :value "" :style {:width "50px"}}))
+            ;  (td {:key 7} (dom/input {:type "text" :value "" :style {:width "50px"}}))
+            ;  (td {:key 8} (dom/input {:type "text" :value "10:37a" :style {:width "80px"}}))
+            ;  (td {:key 9} "1")
+            ;  (td {:key 10} "25.50")
+            ;  (td {:key 11} "0.00")
+            ;  (td {:key 12} "0.00"))
+            ;
+            ;
+            ;;;; H2O Temp
+            ;(tr
+            ;  (td {:key 1} "H2O Temp")
+            ;  (td {:key 2}
+            ;    (ui-form-dropdown {:search       true
+            ;                       :selection    true
+            ;                       :tabIndex     -1
+            ;                       :value        "17592186046953"
+            ;                       :options      samplingdevicelookup-options
+            ;                       :autoComplete "off"
+            ;                       :style        {:width "100px"}}))
+            ;  ;:onChange     (fn [_ d]
+            ;  ;                (when-let [value (-> d .-value)]
+            ;  ;                  (set-ref! this :sitevisit/QAPerson value)))}))
+            ;  (td {:key 3} (dom/input {:type "text" :value "7" :name "instID" :style {:width "50px"}}))
+            ;  (td {:key 4} "°C")
+            ;  (td {:key 5} (dom/input {:type "text" :value "8.6" :style {:width "50px"}}))
+            ;  (td {:key 6} (dom/input {:type "text" :value "8.5" :style {:width "50px"}}))
+            ;  (td {:key 7} (dom/input {:type "text" :value "8.5" :style {:width "50px"}}))
+            ;  (td {:key 8} (dom/input {:type "text" :value "10:38a" :style {:width "80px"}}))
+            ;  (td {:key 9} "3")
+            ;  (td {:key 10} "8.53")
+            ;  (td {:key 11} "0.04")
+            ;  (td {:key 12} "0.55"))
+            ;
+            ;
+            ;;;; Cond
+            ;(tr
+            ;  (td {:key 1} "Conductivity")
+            ;  (td {:key 2}
+            ;    (ui-form-dropdown {:search       true
+            ;                       :selection    true
+            ;                       :tabIndex     -1
+            ;                       :value        "17592186046962"
+            ;                       :options      samplingdevicelookup-options
+            ;                       :autoComplete "off"
+            ;                       :style        {:width "100px"}}))
+            ;  ;:onChange     (fn [_ d]
+            ;  ;                (when-let [value (-> d .-value)]
+            ;  ;                  (set-ref! this :sitevisit/QAPerson value)))}))
+            ;  (td {:key 3} (dom/input {:type "text" :value "7" :name "instID" :style {:width "50px"}}))
+            ;  (td {:key 4} "°C")
+            ;  (td {:key 5} (dom/input {:type "text" :value "40" :style {:width "50px"}}))
+            ;  (td {:key 6} (dom/input {:type "text" :value "40" :style {:width "50px"}}))
+            ;  (td {:key 7} (dom/input {:type "text" :value "40" :style {:width "50px"}}))
+            ;  (td {:key 8} (dom/input {:type "text" :value "10:38a" :style {:width "80px"}}))
+            ;  (td {:key 9} "3")
+            ;  (td {:key 10} "40.0")
+            ;  (td {:key 11} "0.00")
+            ;  (td {:key 12} "0.00"))
+            ;
+            ;
+            ;;; DO
+            ;(tr
+            ;  (td {:key 1} "Dissolved Oxygen")
+            ;  (td {:key 2}
+            ;    (ui-form-dropdown {:search       true
+            ;                       :selection    true
+            ;                       :tabIndex     -1
+            ;                       :value        "17592186046955"
+            ;                       :options      samplingdevicelookup-options
+            ;                       :autoComplete "off"
+            ;                       :style        {:width "100px"}}))
+            ;  ;:onChange     (fn [_ d]
+            ;  ;                (when-let [value (-> d .-value)]
+            ;  ;                  (set-ref! this :sitevisit/QAPerson value)))}))
+            ;  (td {:key 3} (dom/input {:type "text" :value "80" :name "instID" :style {:width "50px"}}))
+            ;  (td {:key 4} "°C")
+            ;  (td {:key 5} (dom/input {:type "text" :value "8.7" :style {:width "50px"}}))
+            ;  (td {:key 6} (dom/input {:type "text" :value "8.6" :style {:width "50px"}}))
+            ;  (td {:key 7} (dom/input {:type "text" :value "8.6" :style {:width "50px"}}))
+            ;  (td {:key 8} (dom/input {:type "text" :value "10:39a" :style {:width "80px"}}))
+            ;  (td {:key 9} "3")
+            ;  (td {:key 10} "8.63")
+            ;  (td {:key 11} "0.04")
+            ;  (td {:key 12} "0.54"))
+            ;
+            ;
+            ;;;; pH
+            ;(tr
+            ;  (td {:key 1} "pH")
+            ;  (td {:key 2}
+            ;    (ui-form-dropdown {:search       true
+            ;                       :selection    true
+            ;                       :tabIndex     -1
+            ;                       :value        "17592186046953"
+            ;                       :options      samplingdevicelookup-options
+            ;                       :autoComplete "off"
+            ;                       :style        {:width "100px"}}))
+            ;  ;:onChange     (fn [_ d]
+            ;  ;                (when-let [value (-> d .-value)]
+            ;  ;                  (set-ref! this :sitevisit/QAPerson value)))}))
+            ;  (td {:key 3} (dom/input {:type "text" :value "142" :name "instID" :style {:width "50px"}}))
+            ;  (td {:key 4} "°C")
+            ;  (td {:key 5} (dom/input {:type "text" :value "6.9" :style {:width "50px"}}))
+            ;  (td {:key 6} (dom/input {:type "text" :value "6.9" :style {:width "50px"}}))
+            ;  (td {:key 7} (dom/input {:type "text" :value "7.0" :style {:width "50px"}}))
+            ;  (td {:key 8} (dom/input {:type "text" :value "10:40a" :style {:width "80px"}}))
+            ;  (td {:key 9} "3")
+            ;  (td {:key 10} "6.93")
+            ;  (td {:key 11} "0.04")
+            ;  (td {:key 12} "0.67"))
+            ;
+            ;
+            ;;;; Turbidity
+            ;(tr
+            ;  (td {:key 1} "Turbidity")
+            ;  (td {:key 2}
+            ;    (ui-dropdown {:search       true
+            ;                  :selection    true
+            ;                  :tabIndex     -1
+            ;                  :value        "17592186046957"
+            ;                  :options      samplingdevicelookup-options
+            ;                  :autoComplete "off"
+            ;                  :style        {:width "100px"}}))
+            ;  ;:onChange     (fn [_ d]
+            ;  ;                (when-let [value (-> d .-value)]
+            ;  ;                  (set-ref! this :sitevisit/QAPerson value)))}))
+            ;  (td {:key 3} (dom/input {:type "text" :value "" :name "instID" :style {:width "50px"}}))
+            ;  (td {:key 4} "°C")
+            ;  (td {:key 5} (dom/input {:type "text" :value "0.30" :style {:width "50px"}}))
+            ;  (td {:key 6} (dom/input {:type "text" :value "0.26" :style {:width "50px"}}))
+            ;  (td {:key 7} (dom/input {:type "text" :value "0.25" :style {:width "50px"}}))
+            ;  (td {:key 8} (dom/input {:type "text" :value "10:41a" :style {:width "80px"}}))
+            ;  (td {:key 9} "3")
+            ;  (td {:key 10} "6.93")
+            ;  (td {:key 11} "0.04")
+            ;  (td {:key 12} "0.67"))))
 
 
-        (button :.ui.button {:type "submit"} "Save")))))
+
+
+        (div {}
+          (dom/button :.ui.button.secondary
+            {:onClick #(do
+                         (debug "CANCEL!" dirty? (fs/dirty-fields props false))
+                         (when dirty?
+                           (comp/transact! this
+                             `[(rm/reset-form ~{:ident (comp/get-ident this)})]))
+                         (fm/set-value! this :ui/editing false)
+                         (routes/route-to! "/sitevisit/list")
+                         #_(dr/change-route-relative this SVRouter ["list"]))}
+            "Cancel")
+
+          (dom/button :.ui.button.primary
+            {:disabled (not dirty?)
+             :onClick  #(let [dirty-fields (fs/dirty-fields props true)]
+                          (debug "SAVE!" dirty? dirty-fields)
+                          (comp/transact! this
+                            `[(rm/save-entity ~{:ident (comp/get-ident this)
+                                                :diff  dirty-fields})])
+                          (fm/set-value! this :ui/editing false))}
+            "Save"))))))
+
 
 (def ui-sv-form (comp/factory SiteVisitForm {:keyfn :db/id}))
 
@@ -508,6 +589,51 @@
 ;(swap! state update-in [:tac-report-data :no-results-rs] sort-maps-by [:site :date])))
 ;:sitevisit/StationFailCode :entity.ns/stationfaillookup
 
+;(defn replace-db-ident* [state-map entity]
+;  (let [id?  (when (map? entity)
+;               (get-in state-map [:db/ident (:db/id entity) :db/id]))]
+;    (if id?
+;      (assoc entity :db/id id?)
+;      entity)))
+
+(defn replace-ident-refs* [state-map ident]
+  (let [props     (get-in state-map ident)
+        new-props (reduce-kv
+                    (fn [props k v]
+                      (if (and (map? v) (keyword? (:db/id v)))
+                        (if-let [db-id (get-in state-map [:db/ident (:db/id v) :db/id])]
+                          (assoc-in props [k :db/id] db-id)
+                          props)
+                        props))
+                    props props)]
+    (assoc-in state-map ident new-props)))
+
+(fm/defmutation form-ready
+  [{:keys [route-target form-target form-class-key]}]
+  (action [{:keys [state]}]
+    (swap! state (fn [st]
+                   (-> st
+                     (fs/add-form-config*
+                       (comp/registry-key->class form-class-key) form-target)
+                     (assoc-in (conj form-target :ui/ready) true))))
+
+    (dr/target-ready! SPA route-target)))
+
+(fm/defmutation merge-new-sv
+  [{:keys [sv-ident]}]
+  (action [{:keys [state]}]
+    (let [sv (comp/get-initial-state SiteVisitForm {:id (second sv-ident)})]
+      (swap! state
+        (fn [st]
+          (-> st
+            (merge/merge-component SiteVisitForm sv
+              :replace [:riverdb.ui.root/current-sv]
+              :replace [:component/id :sitevisit-editor :sitevisit])
+            (replace-ident-refs* sv-ident)
+            (fs/add-form-config* SiteVisitForm sv-ident)
+            (assoc-in (conj sv-ident :ui/ready) true)))))))
+
+
 (defsc SiteVisitEditor [this {:keys [sitevisit]
                               :riverdb.ui.root/keys [current-agency current-project]
                               :ui/keys [station-options person-options sitevisittype-options
@@ -528,20 +654,26 @@
                        :ui/samplingdevicelookup-options nil}
    :route-segment     ["edit" :sv-id]
    :will-enter        (fn [app {:keys [sv-id] :as params}]
-                        (let [is-new?    (clojure.string/starts-with? sv-id "t")
-                              sv-id      (if is-new?
-                                           (tempid/tempid sv-id)
-                                           sv-id)
-                              sv-ident   [:org.riverdb.db.sitevisit/gid sv-id]
-                              edit-ident [:component/id :sitevisit-editor]]
-                          (log/debug "WILL ENTER" sv-id params)
+                        (let [is-new?      (= sv-id "new")
+                              sv-id        (if is-new?
+                                             (make-tempid)
+                                             sv-id)
+                              sv-ident     [:org.riverdb.db.sitevisit/gid sv-id]
+                              editor-ident [:component/id :sitevisit-editor]]
+                          (log/debug "WILL ENTER" sv-id "NEW?" is-new? "PARAMS" params)
+                          (when is-new?
+                            (comp/transact! app `[(merge-new-sv ~{:sv-ident sv-ident})]))
                           (if is-new?
-                            (dr/route-immediate edit-ident)
-                            (dr/route-deferred edit-ident
-                              #(f/load app sv-ident looks/sitevisit
-                                 {:target               [:component/id :sitevisit-editor :sitevisit]
-                                  :post-mutation        `dr/target-ready
-                                  :post-mutation-params {:target edit-ident}})))))
+                            (dr/route-immediate editor-ident)
+                            (dr/route-deferred editor-ident
+                              #(f/load! app sv-ident looks/sitevisit
+                                 {:target               (targeting/multiple-targets
+                                                          [:riverdb.ui.root/current-sv]
+                                                          [:component/id :sitevisit-editor :sitevisit])
+                                  :post-mutation        `form-ready
+                                  :post-mutation-params {:route-target editor-ident
+                                                         :form-target  sv-ident
+                                                         :form-class-key (comp/class->registry-key SiteVisitForm)}})))))
    :will-leave        (fn [this props]
                         (debug "WILL LEAVE EDITOR")
                         (dr/route-immediate (comp/get-ident this)))
@@ -631,7 +763,7 @@
 ;    ...)))
 
 
-(defsc SiteVisitSummary [this {:keys [db/id sitevisit/SiteVisitDate sitevisit/VisitType] :as props}]
+(defsc SiteVisitSummary [this {:keys [db/id sitevisit/SiteVisitDate sitevisit/VisitType] :as props} {:keys [onEdit]}]
   {:query         [:db/id
                    :sitevisit/SiteVisitID
                    :sitevisit/SiteVisitDate
@@ -646,14 +778,14 @@
         id      (if (tempid/tempid? id)
                   (.-id id)
                   id)
-        goto-fn #(routes/route-to! (str "/sitevisit/edit/" id))]
+        edit-fn #(onEdit props)]
     ;(log/debug "RENDER SV SUM" id type SiteVisitDate)
-    (tr {:key id :style {:cursor "pointer"} :onClick goto-fn} ;:onMouseOver #(println "HOVER" id)}
+    (tr {:key id :style {:cursor "pointer"} :onClick edit-fn} ;:onMouseOver #(println "HOVER" id)}
       (td {:key 1} (str SiteVisitDate))
       (td {:key 2} type)
       (td {:key 3 :padding 2}
         (button :.ui.primary.basic.icon.button
-          {:style {:padding 5} :onClick goto-fn}
+          {:style {:padding 5} :onClick edit-fn}
           (dom/i :.pointer.edit.icon {}))))))
 
 (def ui-sv-summary (comp/factory SiteVisitSummary {:keyfn :db/id}))
@@ -672,18 +804,20 @@
         :params   {:filter filter :limit limit :offset offset :sort sort}}))))
 
 (defn load-sites [this agencyCode]
-  (f/load! this :org.riverdb.db.stationlookup looks/stationlookup-sum
-    {:target               [:component/id :sitevisit-list :sites]
-     :params               {:limit -1 :filter {:stationlookup/Agency {:agencylookup/AgencyCode agencyCode}}}
-     :post-mutation        `rm/sort-ident-list-by
-     :post-mutation-params {:idents-path [:component/id :sitevisit-list :sites]
-                            :ident-key   :org.riverdb.db.stationlookup/gid
-                            :sort-fn     :stationlookup/StationID}}))
+  (debug "LOAD SITES" agencyCode)
+  (let [target [:component/id :sitevisit-list :sites]]
+    (f/load! this :org.riverdb.db.stationlookup looks/stationlookup-sum
+      {:target               target
+       :params               {:limit -1 :filter {:stationlookup/Agency {:agencylookup/AgencyCode agencyCode}}}
+       :post-mutation        `rm/sort-ident-list-by
+       :post-mutation-params {:idents-path target
+                              :ident-key   :org.riverdb.db.stationlookup/gid
+                              :sort-fn     :stationlookup/StationID}})))
 
 (defn make-filter
   ([props]
    (let [{:riverdb.ui.root/keys [current-agency current-project current-year]
-          :ui/keys [site]} props
+          :ui/keys              [site]} props
          year-from (when current-year
                      (js/parseInt current-year))
          year-to   (when year-from
@@ -701,9 +835,9 @@
 
 (defsc SiteVisitList
   "This tracks current-project, current-year, filter, limit, sort, and site"
-  [this {:keys    [sitevisits sites project-years]
+  [this {:keys                 [sitevisits sites project-years]
          :riverdb.ui.root/keys [current-agency current-project current-year]
-         :ui/keys [site sort limit offset list-meta] :as props}]
+         :ui/keys              [site sort limit offset list-meta] :as props}]
   {:ident              (fn [] [:component/id :sitevisit-list])
    :query              [{:sitevisits (comp/get-query SiteVisitSummary)}
                         {:project-years (comp/get-query ProjectYears)}
@@ -746,11 +880,11 @@
                              (let [filter (make-filter props)]
                                (load-sitevisits this filter limit offset sort)))))
    :componentDidMount  (fn [this]
-                         (debug "SV LIST :componentDidMount RUN QUERY")
                          (let [{:ui/keys              [limit offset sort] :as props
                                 :riverdb.ui.root/keys [current-agency]} (comp/props this)
                                filter (make-filter props)
                                {:agencylookup/keys [AgencyCode]} current-agency]
+                           (debug "SV LIST :componentDidMount RUN QUERY" AgencyCode)
                            (load-sitevisits this filter limit offset sort)
                            (when AgencyCode
                              (load-sites this AgencyCode))))}
@@ -763,14 +897,9 @@
                                        new-offset (* (dec page) limit)]
                                    (log/debug "PAGINATION" "page" page "new-offset" new-offset)
                                    (when (> new-offset -1) (fm/set-integer! this :ui/offset :value new-offset))))
-        onCreate               (fn []
-                                 (let [new-sv (comp/get-initial-state SiteVisitForm)
-                                       id     (:db/id new-sv)
-                                       id-str (.-id id)]
-                                   (merge/merge-component! this SiteVisitForm new-sv
-                                     :replace [:riverdb.ui.root/current-sv]
-                                     :replace [:component/id :sitevisit-editor :sitevisit])
-                                   (routes/route-to! (str "/sitevisit/edit/" id-str))))]
+        onEdit                 (fn [sv]
+                                 (routes/route-to! (str "/sitevisit/edit/" (or (:db/id sv) "new"))))]
+
     (div {}
       (div :#sv-list-menu.ui.menu {:key "title"}
         (div :.item {:style {}} "Site Visits")
@@ -793,7 +922,7 @@
                     (for [{:keys [db/id stationlookup/StationName stationlookup/StationID]} sites]
                       (option {:value id :key id} (str StationID ": " StationName)))))))))
         (div :.item
-          (button {:key "create" :onClick onCreate} "New"))
+          (button {:key "create" :onClick #(onEdit nil)} "New"))
 
         (div :.item.right
           (ui-pagination
@@ -815,7 +944,7 @@
           (tbody {:key 2}
             (vec
               (for [sv sitevisits]
-                (ui-sv-summary sv)))))))))
+                (ui-sv-summary (comp/computed sv {:onEdit onEdit}))))))))))
 
 ;[:Pagination {:activePage "{activePage}" :boundaryRange "{boundaryRange}" :onPageChange "{this.handlePaginationChange}" :size "mini" :siblingRange "{siblingRange}" :totalPages "{totalPages}"}]
 
@@ -839,7 +968,7 @@
         project-name  (:name proj)
         current-route (dr/current-route this this)]
     #_(debug "RENDER SiteVisitsPage")
-    (div :.ui.container {}
+    (div {}
       (div :.ui.raised.segment {}
         (ui-sv-router svrouter)))))
 

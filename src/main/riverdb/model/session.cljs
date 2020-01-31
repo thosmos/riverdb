@@ -11,6 +11,7 @@
     [riverdb.api.mutations :as rm]
     [riverdb.application :refer [SPA]]
     [riverdb.roles :as roles]
+    [riverdb.ui.globals :as globals]
     [riverdb.ui.routes :as routes]
     [riverdb.ui.project-years :as py]
     [theta.log :refer [debug info]]
@@ -72,10 +73,11 @@
                           agencies   (when roles (roles/roles->agencies2 roles))
                           agency     (first agencies)
                           agencyCode (:agencylookup/AgencyCode agency)]
-                      (df/load SPA :agency-project-years nil
-                        {:params {:agencies [agencyCode]}
-                         :target [:component/id :proj-years :agency-project-years]
+                      (df/load! SPA :agency-project-years nil
+                        {:params        {:agencies [agencyCode]}
+                         :target        [:component/id :proj-years :agency-project-years]
                          :post-mutation `rm/process-project-years})
+                      (df/load! SPA [:component/id :globals] globals/Globals)
                       (debug "AUTH STUFF" agencyCode (keys env))
                       (assoc-in env [::uism/state-map :riverdb.ui.root/current-agency]
                         [:org.riverdb.db.agencylookup/gid (:db/id agency)]))))
@@ -91,7 +93,7 @@
 
 (uism/defstatemachine session-machine
   {::uism/actors
-   #{:actor/login-form :actor/current-session :actor/project-years}
+   #{:actor/login-form :actor/current-session :actor/project-years :actor/globals}
 
    ::uism/aliases
    {:username       [:actor/login-form :account/email]

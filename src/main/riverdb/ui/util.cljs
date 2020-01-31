@@ -1,11 +1,11 @@
 (ns riverdb.ui.util
   (:require
     [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
-    ["shortid" :as shortid]))
+    ["shortid" :as shorty :refer [generate]]))
 
 (defn shortid []
-  (.generate shortid))
+  (shorty))
 
 (defn make-tempid []
-  (tempid/tempid (str "t" (.generate shortid))))
+  (tempid/tempid (str "t" (generate))))
 

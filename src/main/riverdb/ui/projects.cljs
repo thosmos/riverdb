@@ -1,6 +1,7 @@
 (ns riverdb.ui.projects
   (:require
     [clojure.string :as str]
+    [cognitect.transit :as transit]
     [com.fulcrologic.fulcro.application :as app]
     [com.fulcrologic.fulcro.dom :as dom :refer [div ul li p h3 button label span table tr th td thead tbody]]
     [com.fulcrologic.fulcro.dom.html-entities :as ent]
@@ -42,7 +43,8 @@
     [com.fulcrologic.fulcro.components :as om]
     [com.fulcrologic.fulcro.data-fetch :as f]
     [goog.object :as gob]
-    [com.fulcrologic.fulcro.data-fetch :as df]))
+    [com.fulcrologic.fulcro.data-fetch :as df]
+    [cljs.tools.reader.edn :as edn]))
 
 
 ;; TASK per group
@@ -150,31 +152,32 @@
   (action [{:keys [state ref]}]
     (swap! state (assoc-in (comp/get-ident ref) :ui/editing editing))))
 
-(defn ui-cancel-save [this props dirty? {:keys [onCancel onSave cancelAlwaysOn]}]
+(defn ui-cancel-save [this {:ui/keys [saving] :as props} dirty? {:keys [onCancel onSave cancelAlwaysOn]}]
   (div {}
     (dom/button :.ui.button.secondary
       {;:disabled (and (not dirty?) (not cancelAlwaysOn))
        :onClick #(do
                    (debug "CANCEL!" dirty?)
-                   (when dirty?
+                   (if dirty?
                      (comp/transact! this
-                       `[(rm/reset-form ~{:ident (comp/get-ident this)})]))
-                   (fm/set-value! this :ui/editing false)
+                       `[(rm/reset-form ~{:ident (comp/get-ident this)})])
+                     (fm/set-value! this :ui/editing false))
                    (when onCancel
                      (onCancel)))}
       (if dirty? "Cancel" "Close"))
 
     (dom/button :.ui.button.primary
       {:disabled (not dirty?)
-       :onClick  #(let [dirty-fields (fs/dirty-fields props false)]
+       :onClick  #(let [dirty-fields (fs/dirty-fields props true)]
                     (debug "SAVE!" dirty? dirty-fields)
                     (comp/transact! this
                       `[(rm/save-entity ~{:ident (comp/get-ident this)
                                           :diff  dirty-fields})])
-                    (fm/set-value! this :ui/editing false)
                     (when onSave
                       (onSave)))}
-      "Save")))
+      (if saving
+        (ui-loader {:active true})
+        "Save"))))
 
 (defn rui-input [this k opts]
   (let [props   (comp/props this)
@@ -194,6 +197,42 @@
                          (debug "rui-input" k new-v)
                          (set-value! this k new-v)))})))))
 
+(defn rui-bigdec [this k opts]
+  (let [props   (comp/props this)
+        value   (get props k)
+        label   (get opts :label (clojure.string/capitalize (name k)))
+        opts    (dissoc opts :label)]
+    (div :.field {}
+      (dom/label {} label)
+      (ui-input
+        (merge opts
+          {:value    (if (transit/bigdec? value)
+                       (.-rep value)
+                       (or value ""))
+           :onChange (fn [e]
+                       (let [val (transit/bigdec (.. e -target -value))
+                             new-v (if (= (.-rep val) "")
+                                     nil
+                                     val)]
+                        (debug "Set BigDecimal" k new-v
+                         (set-value! this k new-v))))})))))
+
+(defn rui-int [this k opts]
+  (let [props   (comp/props this)
+        value   (get props k)
+        label   (get opts :label (clojure.string/capitalize (name k)))
+        opts    (dissoc opts :label)]
+    (div :.field {}
+      (dom/label {} label)
+      (ui-input
+        (merge opts
+          {:value    (or (str value) "")
+           :onChange (fn [e]
+                       (let [val   (js/parseInt (.. e -target -value))
+                             new-v (if (js/Number.isNaN val) nil val)]
+                         (debug "Set Integer" k new-v
+                           (set-value! this k new-v))))})))))
+
 (defn rui-checkbox [this k opts]
   (let [props (comp/props this)
         value (get props k)
@@ -209,15 +248,41 @@
 
 (defn ui-precision [this props]
   (debug "PRECISION" props)
-  (div :.field
-    (dom/label {} "Precision")
-    (div :.ui.horizontal.items
-      (div :.item {:key 1} (ui-form-radio {:label "Range" :checked false}))
-      (div :.item {:key 2} (ui-form-radio {:label "% RDS" :checked true}))
-      (div :.item {:key 3} (ui-form-radio {:label "Both" :checked false})))))
+  (let [edn-val (try (edn/read-string props) (catch js/Object ex nil))
+        {:keys [threshold range rds]} edn-val
+        thresh? (some? threshold)
+        range? (and (not thresh?) (some? range))
+        rds? (and (not thresh?) (some? rds))]
+    (div :.field
+      (dom/label {} "Precision")
+      (div {}
+        (div :.ui.fields {}
+          ;(ui-form-field {:control "Radio" :label "Range"})
+          (ui-form-radio {:label "Range" :checked range?})
+          (div :.field (ui-input {:className "ui small input"
+                                  :value     (or (str range) "")
+                                  :disabled  (not (or range? thresh?))
+                                  :style     {:width 80}})))
+        (div :.ui.fields {}
+          ;(ui-form-field {:control "Radio" :label "Range"})
+          (ui-form-radio {:label "% RDS" :checked rds?})
+          (div :.field (ui-input {:className "ui small input"
+                                  :value     (or (str rds) "")
+                                  :disabled  (not (or rds? thresh?))
+                                  :style     {:width 80}})))
+        #_(div :.item {:key 2} (ui-form-radio {:label "% RDS" :checked rds?}))
+        (div :.ui.fields {}
+          ;(ui-form-field {:control "Radio" :label "Range"})
+          (ui-form-radio {:label "Threshold" :checked thresh?})
+          (div :.field (ui-input {:className "ui small input"
+                                  :value     (or (str threshold) "")
+                                  :disabled  (not thresh?)
+                                  :style     {:width 80}})))
+        #_(div :.item {:key 3} (ui-form-radio {:label "Threshold" :checked thresh?}))))))
 
-(defsc ParameterForm [this {:ui/keys        [editing]
-                            :parameter/keys [active name high low precisionCode
+(defsc ParameterForm [this {:ui/keys        [editing saving]
+                            :parameter/keys [active name high low
+                                             precisionCode replicates
                                              constituentlookupRef
                                              samplingdevicelookupRef]
                             :as             props}
@@ -233,16 +298,19 @@
                    :parameter/low
                    :parameter/name
                    :parameter/precisionCode
+                   :parameter/replicates
                    :parameter/uuid
                    ;; passed to lookup dropdowns
                    :parameter/constituentlookupRef
                    ;:parameter/constituentlookupRef
                    :parameter/samplingdevicelookupRef
-                   :ui/editing]
+                   :ui/editing
+                   :ui/saving]
    ;[:riverdb.theta.options/ns '_]]
    :initial-state {:riverdb.entity/ns :entity.ns/parameter
                    :parameter/name    ""
                    :ui/editing        false
+                   :ui/saving false
                    :parameter/active  false}
    :form-fields   #{:parameter/constituentlookupRef
                     :parameter/samplingdevicelookupRef
@@ -252,6 +320,7 @@
                     :parameter/lines
                     :parameter/low
                     :parameter/name
+                    :parameter/replicates
                     :parameter/precisionCode}
    :pre-merge     (fn [{:keys [current-normalized data-tree] :as env}]
                     (debug "PREMERGE ParameterForm" (:parameter/active data-tree) current-normalized data-tree)
@@ -276,18 +345,19 @@
           (dom/label {} "Constituent")
           (ui-theta-options {:riverdb.entity/ns :entity.ns/constituentlookup :ui/value (:db/id constituentlookupRef)}))
         (div :.fields {}
-          (div :.field {} (rui-input this :parameter/high {:style {:width 100}}))
-          (div :.field {} (rui-input this :parameter/low {:style {:width 100}}))
-          (div :.field {} (rui-input this :parameter/precisionCode {:label "Precision" :style {:width 200}})))
+         (div :.field {} (rui-bigdec this :parameter/low {:style {:width 100}}))
+         (div :.field {} (rui-bigdec this :parameter/high {:style {:width 100}}))
+         (div :.field {} (rui-int this :parameter/replicates {:style {:width 100}}))
+         (div :.field {} (rui-input this :parameter/precisionCode {:label "Precision" :style {:width 200}})))
         (div :.field {} (ui-precision this precisionCode))
-        (ui-cancel-save this props dirty? {
-                                           :cancelAlwaysOn true}))
-      ;:onCancel       #(fm/set-value! this :ui/editing false)
-      ;:onSave         #(fm/set-value! this :ui/editing false)}))
-      (div {:style {:padding 10}}
+        (when saving
+          "SAVING")
+        (ui-cancel-save this props dirty?
+          {:cancelAlwaysOn true}))
+      (div {:style {:padding 0}}
         (div :.ui.horizontal.list {}
           (div :.ui.item {}
-            (dom/a :.ui.header {:onClick #(fm/toggle! this :ui/editing)} name))
+            (dom/a {:onClick #(fm/toggle! this :ui/editing)} name))
           #_(div :.ui.item {}
               (button :.ui.mini.primary.button {:onClick #(fm/toggle! this :ui/editing)} "Edit")))))))
 ;(:constituentlookup/Name constituentlookupRef)))))))
@@ -483,15 +553,14 @@
 
   ;(comp/transact! this `[(init-projects-forms)])))}
   (let [_ (debug "PROJECTS" projects "KEYS" (keys props))]
-    (div :.ui.container
-      (if ready
-        (div :.ui.segment
-          (ui-header {} "Projects")
-          (ui-form {:key "form" :size "tiny"}
-            [(doall
-               (for [pj projects]
-                 (let [{:keys [db/id ui/hidden] :projectslookup/keys [Name ProjectID Active Public]} pj]
-                   (ui-project-form pj))))]))
-        (ui-loader {:active true})))))
+    (if ready
+      (div :.ui.segment
+        (ui-header {} "Projects")
+        (ui-form {:key "form" :size "tiny"}
+          [(doall
+             (for [pj projects]
+               (let [{:keys [db/id ui/hidden] :projectslookup/keys [Name ProjectID Active Public]} pj]
+                 (ui-project-form pj))))]))
+      (ui-loader {:active true}))))
 
 (def ui-projects (comp/factory Projects))

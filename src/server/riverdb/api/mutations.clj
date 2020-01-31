@@ -2,6 +2,7 @@
   (:require
     [clojure.string :as st]
     [clojure.walk :as walk]
+    [cognitect.transit :as transit]
     [com.wsscode.pathom.connect :as pc :refer [defresolver defmutation]]
     [com.wsscode.pathom.core :as p]
     [datomic.api :as d]
@@ -43,14 +44,18 @@
   (try (Long/parseLong str)
        (catch Exception _ nil)))
 
+(defn parse-bigdec [str]
+  (try (BigDecimal. str)
+       (catch Exception _ nil)))
+
 (defn gid-ident->db-id [ident]
   (let [db-id (parse-long (second ident))]
     db-id))
 
 (defn gid-ident->ent-ns [ident]
-  (let [ns (namespace (first ident))
-        strs (clojure.string/split ns #"\.")
-        table (last strs)
+  (let [ns     (namespace (first ident))
+        strs   (clojure.string/split ns #"\.")
+        table  (last strs)
         ent-ns (keyword "entity.ns" table)]
     ent-ns))
 
@@ -60,35 +65,79 @@
   (let [ent-spec (get specs-map ent-ns)
         attrs    (get ent-spec :entity/attrs)]
     (into {} (for [[k v] diff]
-               (let [attr-spec (get attrs k)
-                     spec-ref? (= :ref (:attr/type attr-spec))
-                     val-map? (map? v)
-                     val-ref?  (and
-                                 val-map?
-                                 spec-ref?
-                                 (= (count v) 1)
-                                 (some? (:db/id v)))]
-                 (if val-ref?
-                   [k (parse-long (:db/id v))]
-                   [k v]))))))
+               (let [attr-spec    (get attrs k)
+                     attr-type    (:attr/type attr-spec)
+                     spec-ref?    (= :ref attr-type)
+                     spec-bigdec? (= :bigdec attr-type)
+                     ;; get the diff's :after value
+                     val          (:after v)
+                     _            (debug "DIFF" k "VAL" val)
+                     val-map?     (map? val)
+                     val-ref?     (and
+                                    val-map?
+                                    spec-ref?
+                                    (= (count val) 1)
+                                    (some? (:db/id val)))]
+                 (case attr-type
+                   :ref
+                   [k (parse-long (:db/id val))]
+                   [k val]))))))
 
+(defn diff->txd [ent-ns db-id diff]
+  ;(debug "DIFF->TXD" ent-ns db-id diff)
+  (let [ent-spec (get specs-map ent-ns)
+        attrs    (get ent-spec :entity/attrs)]
+    (vec
+      (for [[k v] diff]
+        (let [attr-spec    (get attrs k)
+              attr-type    (:attr/type attr-spec)
+              ;_ (debug "DIFF->TXD" k attr-type v)
+              spec-ref?    (= :ref attr-type)
+              spec-bigdec? (= :bigdec attr-type)
+              ;; get the diff's :after value
+              val          (:after v)
+              retract?     (nil? val)]
+          ;_            (debug "DIFF" k "VAL" val)
+          ;val-map?     (map? val)]
+          ;val-ref?     (and
+          ;               val-map?
+          ;               spec-ref?
+          ;               (= (count val) 1)
+          ;               (some? (:db/id val)))]
+          (if retract?
+            [:db/retract db-id k (:before v)]
+            (case attr-type
+              :ref
+              [:db/add db-id k (parse-long (:db/id val))]
+              [:db/add db-id k val])))))))
 
 
 
 (defn save-entity* [env ident diff]
-  (debug "MUTATION save-entity" "IDENT" ident "DIFF" diff (comment "ENV" (keys env)) "SESSION" (:session (:ring/request env)))
+  (debug "MUTATION!!! save-entity" "IDENT" ident "DIFF" diff (comment "ENV" (keys env)) "SESSION" (:session (:ring/request env)))
   (let [session-valid? (get-in env [:ring/request :session :session/valid?])
         user-email     (when session-valid?
                          (get-in env [:ring/request :session :account/auth :user :user/email]))
         karl?          (= user-email "karl@yubariver.org")]
-    (when karl?
-      (let [txds (vec (for [[idt dif] diff]
-                        (let [db-id (gid-ident->db-id idt)
-                              ent-ns (gid-ident->ent-ns idt)
-                              tx-val (parse-diff ent-ns dif)]
-                          (d/transact (cx) [(merge {:db/id db-id}
-                                              tx-val)]))))]
-        (debug "TXDS" txds)))))
+    (if karl?
+      (let [result (try
+                     (let [txds (vec
+                                  (apply concat
+                                    (for [[idt dif] diff]
+                                      (let [db-id  (gid-ident->db-id idt)
+                                            ent-ns (gid-ident->ent-ns idt)
+                                            txd    (diff->txd ent-ns db-id dif)]
+                                        (debug "SAVE-ENTITY TXD" txd)
+                                        txd))))
+                           _    (debug "SAVE-ENTITY TXDS" txds)
+                           tx   (d/transact (cx) txds)]
+                       (debug "TXDS" txds "TX" @tx)
+                       (:status @tx))
+                     (catch Exception ex ex))]
+        (debug "SAVE-ENTITY RESULT" result)
+        result)
+
+      {:error "Unauthorized"})))
 
 (pc/defmutation save-entity [env {:keys [ident diff]}]
   {::pc/sym    `save-entity

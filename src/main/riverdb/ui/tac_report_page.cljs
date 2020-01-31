@@ -255,7 +255,7 @@
   (let [{:projectslookup/keys [ProjectID Name]} current-project
         AgencyCode (:agencylookup/AgencyCode current-agency)]
     (debug "RENDER TacReportPage" AgencyCode ProjectID)
-    (dom/div :.ui.container {:className "tac-report-page"}
+    (dom/div {:className "tac-report-page"}
       (dom/div :.ui.menu {:style {}}
         (dom/div :.item {}
           (ui-project-years project-years)

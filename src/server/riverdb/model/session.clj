@@ -61,10 +61,10 @@
   {::pc/output [:session/valid?]}
   (response-updating-session env {:session/valid? false :account/name ""}))
 
-(defmutation signup! [env {:keys [email password]}]
-  {::pc/output [:signup/result]}
-  (swap! account-database assoc email {:email    email
-                                       :password password})
-  {:signup/result "OK"})
+;(defmutation signup! [env {:keys [email password]}]
+;  {::pc/output [:signup/result]}
+;  (swap! account-database assoc email {:email    email
+;                                       :password password})
+;  {:signup/result "OK"})
 
-(def resolvers [current-session-resolver login logout signup!])
+(def resolvers [current-session-resolver login logout])
