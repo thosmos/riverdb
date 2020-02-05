@@ -49,35 +49,35 @@
    :font-size   "23px"
    :line-height "1em"})
 
-(defn more-icon [props]
-  (dom/svg (merge {:width 20 :height 19 :viewBox "0 0 40 40"} props)
-    (dom/g {:fill "#000"} (dom/path {:d "m20 26.6c1.8 0 3.4 1.6 3.4 3.4s-1.6 3.4-3.4 3.4-3.4-1.6-3.4-3.4 1.6-3.4 3.4-3.4z m0-10c1.8 0 3.4 1.6 3.4 3.4s-1.6 3.4-3.4 3.4-3.4-1.6-3.4-3.4 1.6-3.4 3.4-3.4z m0-3.2c-1.8 0-3.4-1.6-3.4-3.4s1.6-3.4 3.4-3.4 3.4 1.6 3.4 3.4-1.6 3.4-3.4 3.4z"}))))
+;(defn more-icon [props]
+;  (dom/svg (merge {:width 20 :height 19 :viewBox "0 0 40 40"} props)
+;    (dom/g {:fill "#000"} (dom/path {:d "m20 26.6c1.8 0 3.4 1.6 3.4 3.4s-1.6 3.4-3.4 3.4-3.4-1.6-3.4-3.4 1.6-3.4 3.4-3.4z m0-10c1.8 0 3.4 1.6 3.4 3.4s-1.6 3.4-3.4 3.4-3.4-1.6-3.4-3.4 1.6-3.4 3.4-3.4z m0-3.2c-1.8 0-3.4-1.6-3.4-3.4s1.6-3.4 3.4-3.4 3.4 1.6 3.4 3.4-1.6 3.4-3.4 3.4z"}))))
 
-(fp/defsc Button
-  [this props]
-  {:css [[:.button
-          font-os12sb
-          {:background-color color-fiord
-           :border           "none"
-           :border-radius    "3px"
-           :color            color-white
-           :cursor           "pointer"
-           :display          "inline-block"
-           :padding          "2px 8px"
-           :line-height      "1.5"
-           :margin-bottom    "0"
-           :text-align       "center"
-           :white-space      "nowrap"
-           :vertical-align   "middle"
-           :user-select      "none"
-           :outline          "none"}
-          [:&:disabled
-           {:background "#8c95a0"
-            :color      "#ccc"
-            :cursor     "not-allowed"}]]]}
-  (apply dom/button :.button props (fp/children this)))
+;(fp/defsc Button
+;  [this props]
+;  {:css [[:.button
+;          font-os12sb
+;          {:background-color color-fiord
+;           :border           "none"
+;           :border-radius    "3px"
+;           :color            color-white
+;           :cursor           "pointer"
+;           :display          "inline-block"
+;           :padding          "2px 8px"
+;           :line-height      "1.5"
+;           :margin-bottom    "0"
+;           :text-align       "center"
+;           :white-space      "nowrap"
+;           :vertical-align   "middle"
+;           :user-select      "none"
+;           :outline          "none"}
+;          [:&:disabled
+;           {:background "#8c95a0"
+;            :color      "#ccc"
+;            :cursor     "not-allowed"}]]]}
+;  (apply dom/button :.button props (fp/children this)))
 
-(def button (fp/factory Button))
-
-(fp/defsc CSS [this _]
-  {:css-include [Button]})
+;(def button (fp/factory Button))
+;
+;(fp/defsc CSS [this _]
+;  {:css-include [Button]})

@@ -270,15 +270,15 @@
 
 (def common-interceptors [(body-params/body-params) http/html-body])
 
-(defn resource-handlers [request]
-  (let [handlers (->
-                   (ring.util.response/not-found nil)
-                   (wrap-resource "public")
-                   (wrap-content-type)
-                   (wrap-not-modified))
-        resp     (handlers request)]
-    (debug "RESOURCE HANDLER" (:status resp) (:uri request))
-    resp))
+;(defn resource-handlers [request]
+;  (let [handlers (->
+;                   (ring.util.response/not-found nil)
+;                   (wrap-resource "public")
+;                   (wrap-content-type)
+;                   (wrap-not-modified))
+;        resp     (handlers request)]
+;    (debug "RESOURCE HANDLER" (:status resp) (:uri request))
+;    resp))
 
 (defn add-admin-routes [routes]
   (debug "DEFAULT ROUTES" routes)

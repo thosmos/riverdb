@@ -5,7 +5,7 @@
 
 ;(def uri (or (dotenv/env :DATOMIC_URI) "datomic:free://localhost:4334/test-db"))
 
-(def default-uri "datomic:free://localhost:4334/test-db")
+(def default-uri "datomic:free://localhost:4334/riverdb")
 
 ;(defn get-mysql-uri [db-name sql-user sql-password]
 ;  (str "datomic:sql://" db-name "?jdbc:mysql://localhost:3306/datomic?user=" sql-user "&password=" sql-password "&useSSL=false"))

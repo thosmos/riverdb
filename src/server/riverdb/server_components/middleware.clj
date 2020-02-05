@@ -4,6 +4,7 @@
     [cognitect.transit :as t]
     [riverdb.server-components.config :refer [config]]
     [riverdb.server-components.pathom :refer [parser]]
+
     [mount.core :refer [defstate]]
     [com.fulcrologic.fulcro.server.api-middleware :refer [handle-api-request
                                                           wrap-transit-params
@@ -12,9 +13,13 @@
     [ring.middleware.gzip :refer [wrap-gzip]]
     [ring.util.response :refer [response file-response resource-response]]
     [ring.util.response :as resp]
+    [ring.util.io :as ring-io]
     [hiccup.page :refer [html5]]
     [taoensso.timbre :as tlog]
-    [clojure.string :as str]))
+    [clojure.string :as str]
+    [clojure.java.io :as io]
+    [riverdb.api.tac-report :as tac]
+    [riverdb.state :refer [db]]))
 
 
 (def ^:private not-found-handler
@@ -98,14 +103,31 @@
       [:div#app]
       [:script {:src "/admin/workspaces/js/main.js"}]]]))
 
+(defn render-csv
+  [{:keys [params] :as req}]
+  (let [db (db)
+        agency (:agency params)]
+    (debug "RENDER CSV" req)
+    (-> (resp/response
+          (ring-io/piped-input-stream
+            #(tac/csv-all-years (io/make-writer % {}) db agency))))))
+;(response/content-type "text/plain")
+;(response/charset "ANSI")
+
 (defn wrap-html-routes [ring-handler]
-  (fn [{:keys [uri anti-forgery-token] :as req}]
-    (debug "HTML ROUTES HANDLER" uri)
+  (fn [{:keys [uri params path-info anti-forgery-token] :as req}]
+    (debug "HTML ROUTES HANDLER" uri path-info params (keys req))
     (cond
+
+      (#{"/sitevisits.csv"} uri)
+      (render-csv req)
+      ;(resp/content-type "text/html"))
+
       (#{"/" "/index.html"} uri)
       (-> (resp/response (index anti-forgery-token))
         (resp/content-type "text/html"))
 
+      ;; FIXME all-routes-to-index (below) makes this inaccessible
       ;; See note above on the `wslive` function.
       (#{"/wslive.html"} uri)
       (-> (resp/response (wslive anti-forgery-token))
@@ -120,6 +142,7 @@
     (if (or
           (= "/api" uri)
           (str/ends-with? uri ".css")
+          (str/ends-with? uri ".csv")
           (str/ends-with? uri ".png")
           (str/ends-with? uri ".map")
           (str/ends-with? uri ".jpg")
