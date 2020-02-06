@@ -15,6 +15,9 @@
          :dev       {:extra-paths ["src/dev"]
                      :extra-deps  {expound                     {:mvn/version "0.7.2"}
                                    org.clojure/tools.namespace {:mvn/version "0.3.1"}}}
+         :dev-deps  {:override-deps {thosmos/util {:local/root "../../clojure/thosmos.util"}
+                                     com.fulcrologic/fulcro {:local/root "/Users/thomas/Develop/cljs/fulcro/fulcro"}}}
+
          :guardrail {:extra-deps {com.fulcrologic/guardrails {:mvn/version "0.0.10"}}
                      :jvm-opts   ["-XX:-OmitStackTraceInFastThrow" "-Dguardrails.enabled=true"]}
          :cljsbuild {:extra-paths ["src/test" "src/workspaces"]
@@ -64,8 +67,8 @@
  :deps
         {org.clojure/clojure                 {:mvn/version "1.10.1"}
 
-         thosmos/util                        {:local/root "../../clojure/thosmos.util"}
-         ;thosmos/util                        {:mvn/version "0.1.8" :exclusions [com.datomic/datomic-free]}
+         ;thosmos/util                        {:local/root "../../clojure/thosmos.util"}
+         thosmos/util                        {:mvn/version "0.1.8" :exclusions [com.datomic/datomic-free]}
 
          ;; time
          tick                                {:mvn/version "0.4.21-alpha"}
@@ -84,8 +87,8 @@
          hicada                              {:mvn/version "0.1.8"}
 
          ;; fulcro
-         com.fulcrologic/fulcro              {:local/root "/Users/thomas/Develop/cljs/fulcro/fulcro"}
-         ;com.fulcrologic/fulcro              {:mvn/version "3.1.4"}
+         ;com.fulcrologic/fulcro              {:local/root "/Users/thomas/Develop/cljs/fulcro/fulcro"}
+         com.fulcrologic/fulcro              {:mvn/version "3.1.6"}
          com.fulcrologic/fulcro-garden-css   {:mvn/version "3.0.7" :exclusions [garden]}
          com.fulcrologic/semantic-ui-wrapper {:mvn/version "1.0.0"}
          garden                              {:mvn/version "1.3.9"}

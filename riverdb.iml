@@ -75,7 +75,7 @@
     <orderEntry type="library" name="Deps: org.apache.activemq/artemis-commons:1.4.0" level="project" />
     <orderEntry type="library" name="Deps: ch.qos.logback/logback-core:1.2.3" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/clojurescript:1.10.597" level="project" />
-    <orderEntry type="library" name="Deps: Local thosmos/util" level="project" />
+    <orderEntry type="library" name="Deps: thosmos/util:0.1.8" level="project" />
     <orderEntry type="library" name="Deps: slingshot:0.12.2" level="project" />
     <orderEntry type="library" name="Deps: org.eclipse.jetty.websocket/websocket-api:9.4.18.v20190429" level="project" />
     <orderEntry type="library" name="Deps: org.eclipse.jetty.alpn/alpn-api:1.1.3.v20160715" level="project" />
@@ -119,7 +119,7 @@
     <orderEntry type="library" name="Deps: com.taoensso/truss:1.5.0" level="project" />
     <orderEntry type="library" name="Deps: ring/ring-headers:0.3.0" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/google-closure-library-third-party:0.0-20191016-6ae1f72f" level="project" />
-    <orderEntry type="library" name="Deps: Local com.fulcrologic/fulcro" level="project" />
+    <orderEntry type="library" name="Deps: com.fulcrologic/fulcro:3.1.6" level="project" />
     <orderEntry type="library" name="Deps: hiccup:1.0.5" level="project" />
     <orderEntry type="library" name="Deps: binaryage/env-config:0.2.2" level="project" />
     <orderEntry type="library" name="Deps: riddley:0.1.12" level="project" />
