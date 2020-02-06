@@ -1,6 +1,8 @@
 (ns riverdb.util
+  #?(:cljs (:require-macros [riverdb.util]))
   #?(:cljs (:refer-clojure :exclude [uuid]))
   (:require
+    #?(:clj [dotenv])
     #?(:cljs [goog.object :as gobj])
     [com.fulcrologic.guardrails.core :refer [>defn]]
     [clojure.spec.alpha :as s])

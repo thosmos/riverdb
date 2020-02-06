@@ -35,6 +35,7 @@
     [riverdb.ui.theta :refer [ThetaRoot]]
     [riverdb.ui.user]
     [theta.log :as log :refer [debug]]
+    [theta.util :as tutil]
     [com.fulcrologic.fulcro.components :as om]
     [com.fulcrologic.fulcro.data-fetch :as f]))
 
@@ -234,7 +235,7 @@
 
 
 (dr/defrouter TopRouter [this props]
-  {:router-targets [Main Signup SignupSuccess ThetaRoot Projects TacReportPage DataVizPage SiteVisitsPage]
+  {:router-targets        [Main Signup SignupSuccess ThetaRoot Projects TacReportPage DataVizPage SiteVisitsPage]
    :shouldComponentUpdate (fn [_ _ _] true)})
 (def ui-top-router (comp/factory TopRouter))
 
@@ -260,20 +261,20 @@
 (def ui-agency-menu (comp/factory AgencyMenu))
 
 (defsc TopChrome [this {:root/keys [ready router current-session login activity agency-menu tx-result] :as props}]
-  {:ident         (fn [] [:component/id :top-chrome])
-   :query         [{:root/router (comp/get-query TopRouter)}
-                   {:root/current-session (comp/get-query Session)}
-                   [:root/ready '_]
-                   {:root/login (comp/get-query Login)}
-                   {:root/activity (comp/get-query Activity)}
-                   {:root/agency-menu (comp/get-query AgencyMenu)}
-                   {[:root/tx-result '_] (comp/get-query TxResult)}]
-   :initial-state {:root/router          {}
-                   :root/ready           false
-                   :root/login           {}
-                   :root/current-session {}
-                   :root/activity        {}
-                   :root/agency-menu     {}}
+  {:ident                 (fn [] [:component/id :top-chrome])
+   :query                 [{:root/router (comp/get-query TopRouter)}
+                           {:root/current-session (comp/get-query Session)}
+                           [:root/ready '_]
+                           {:root/login (comp/get-query Login)}
+                           {:root/activity (comp/get-query Activity)}
+                           {:root/agency-menu (comp/get-query AgencyMenu)}
+                           {[:root/tx-result '_] (comp/get-query TxResult)}]
+   :initial-state         {:root/router          {}
+                           :root/ready           false
+                           :root/login           {}
+                           :root/current-session {}
+                           :root/activity        {}
+                           :root/agency-menu     {}}
    :shouldComponentUpdate (fn [_ _ _] true)}
   (let [current-route (dr/current-route this this)
         ;_             (println "TOP CHROME" ready tx-result (keys props))
@@ -286,14 +287,15 @@
         (dom/a :.item {:classes [(when (= :main current-tab) "active")]
                        :href    "/"} "RiverDB Admin")
         (when (and ready logged-in?)
+          [(dom/a :.item {:key  "tac" :classes [(when (= :tac-report current-tab) "active")]
+                          :href "/tac-report"} "TAC Report")
+           (dom/a :.item {:key  "dataviz" :classes [(when (= :dataviz current-tab) "active")]
+                          :href "/dataviz"} "Dataviz")])
+        (when (and ready logged-in? (= tutil/app-env "dev"))
           [(dom/a :.item {:key  "theta" :classes [(when (= :theta current-tab) "active")]
                           :href "/theta/index"} "Theta")
            (dom/a :.item {:key  "projects" :classes [(when (= :projects current-tab) "active")]
                           :href "/projects"} "Projects")
-           (dom/a :.item {:key  "tac" :classes [(when (= :tac-report current-tab) "active")]
-                          :href "/tac-report"} "TAC Report")
-           (dom/a :.item {:key  "dataviz" :classes [(when (= :dataviz current-tab) "active")]
-                          :href "/dataviz"} "Dataviz")
            (dom/a :.item {:key  "sitevisit" :classes [(when (= :sitevisit current-tab) "active")]
                           :href "/sitevisit/list"} "Sitevisits")])
         (div :.right.menu
@@ -311,8 +313,8 @@
 (def ui-top-chrome (comp/factory TopChrome))
 
 (defsc Root [this {:root/keys [top-chrome]}]
-  {:query         [{:root/top-chrome (comp/get-query TopChrome)}]
-   :initial-state {:root/top-chrome {}}
+  {:query                 [{:root/top-chrome (comp/get-query TopChrome)}]
+   :initial-state         {:root/top-chrome {}}
    :shouldComponentUpdate (fn [_ _ _] true)}
 
   (inj/style-element {:component Root})

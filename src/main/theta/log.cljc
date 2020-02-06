@@ -1,27 +1,56 @@
 (ns theta.log
-  #?(:cljs (:require-macros [theta.log])))
-  ;#?(:clj (:require)))
-            ;[environ.core :refer [env]]
-            ;[dotenv]
-            ;[clojure.tools.logging :as log])))
-
-;#?(:clj
-;   (defn set-level! [level]))
-
-;(defonce log-level (atom 0))
-;
-;#?(:clj
-;   (defn set-level! [level]
-;     (reset! log-level (if (number? level)
-;                         level
-;                         (try (Integer/parseInt level)
-;                              (catch Exception _ 0))))))
+  #?(:cljs (:require-macros [theta.log]))
+  (:require
+    [theta.util]
+    #?@(:clj
+        [[dotenv]
+         [clojure.tools.logging :as log]])))
 
 #?(:clj
    (defn cljs?
      "A CLJ macro helper. `env` is the macro's `&env` value. Returns true when expanding a macro while compiling CLJS."
      [env]
      (boolean (:ns env))))
+
+#?(:clj (def log-level (Integer/parseInt (or (dotenv/env :LOG_LEVEL) "0"))))
+;#?(:clj (println "LOADING theta.log at log-level: " log-level))
+
+#?(:clj
+   (defn set-level!
+     "overrides the level at run time"
+     [level]
+     (def log-level level)))
+
+#?(:clj (defmacro debug [& args]
+          (when (<= log-level 1)
+            (if (cljs? &env)
+              `(do (~'js/console.debug ~@args) nil)
+              `(log/debug ~@args)))))
+#?(:clj (defmacro info [& args]
+          (when (<= log-level 2)
+            (if (cljs? &env)
+              `(do (~'js/console.log ~@args) nil)
+              `(log/info ~@args)))))
+#?(:clj (defmacro warn [& args]
+          (when (<= log-level 3)
+            (if (cljs? &env)
+              `(do (~'js/console.warn ~@args) nil)
+              `(log/warn ~@args)))))
+#?(:clj (defmacro error [& args]
+          (when (<= log-level 4)
+            (if (cljs? &env)
+              `(do (~'js/console.error ~@args) nil)
+              `(log/error ~@args)))))
+
+
+
+(defn test-logs []
+  (theta.log/debug "testing log debug")
+  (theta.log/info "testing log info")
+  (theta.log/warn "testing log warn")
+  (theta.log/error "testing log error"))
+
+
 
 ;(defmacro functionize [macro]
 ;  `(fn [& args#] (eval (cons '~macro args#))))
@@ -49,32 +78,9 @@
 ;         ;   ;(println "CREATING CLJ log macro" (str ~fn-name))
 ;         ;   (eval (apply list (symbol (str "log/" ~f)) msgs#)))))))
 
-;#?(:clj (println "LOADING theta.log at log-level: " (or (dotenv/env :LOG_LEVEL) 0)))
 
 ;#?(:clj (deflogmacro debug 1 'debug))
 ;#?(:clj (deflogmacro info 2 'info))
 ;#?(:clj (deflogmacro warn 3 'warn))
 ;#?(:clj (deflogmacro error 4 'error))
 
-#?(:clj (defmacro debug [& args]
-          (if (cljs? &env)
-            `(do (~'js/console.debug ~@args) nil)
-            `(.println System/out  ~@args))))
-#?(:clj (defmacro info [& args]
-          (if (cljs? &env)
-            `(do (~'js/console.log ~@args) nil)
-            `(.println System/out  ~@args))))
-#?(:clj (defmacro warn [& args]
-          (if (cljs? &env)
-            `(do (~'js/console.warn ~@args) nil)
-            `(.println System/out  ~@args))))
-#?(:clj (defmacro error [& args]
-          (if (cljs? &env)
-            `(do (~'js/console.error ~@args) nil)
-            `(.println System/out  ~@args))))
-
-(defn test-logs []
-  (theta.log/debug "testing log debug")
-  (theta.log/info "testing log info")
-  (theta.log/warn "testing log warn")
-  (theta.log/error "testing log error"))
