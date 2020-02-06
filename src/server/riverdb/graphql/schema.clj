@@ -554,12 +554,12 @@
                                   :offset {:type    'Int
                                            :default 0}}}
 
-                   :line_snap
-                   {:type        :line_snap
-                    :resolve     :resolve-line-snap
-                    :description "calc the nearest stream and point on its line"
-                    :args        {:lat {:type 'Float}
-                                  :lon {:type 'Float}}}
+                   ;:line_snap
+                   ;{:type        :line_snap
+                   ; :resolve     :resolve-line-snap
+                   ; :description "calc the nearest stream and point on its line"
+                   ; :args        {:lat {:type 'Float}
+                   ;               :lon {:type 'Float}}}
 
                    :current_user
                    {:type        :user
@@ -632,11 +632,11 @@
   (let [schemas (merge-schemas)]
     (save-schemas schemas)))
 
-(defn load-all-schemas []
-  (debug "Loading resources/schemas.edn ...")
-  (try
-    (edn/read-string (slurp "resources/schemas.edn"))
-    (catch Exception ex (error "No resources/schemas.edn!" ex))))
+;(defn load-all-schemas []
+;  (debug "Loading resources/schemas.edn ...")
+;  (try
+;    (edn/read-string (slurp "resources/schemas.edn"))
+;    (catch Exception ex (error "No resources/schemas.edn!" ex))))
 
 ;(defn load-all-schemas [])
 ;(merge-schemas))
