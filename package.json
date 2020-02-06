@@ -52,5 +52,5 @@
     "client/clj": "shadow-cljs clj-repl"
   },
   "author": "Thomas Spellman <thomas@thosmos.com>",
-  "license": "Eclipse Public License"
+  "license": "GNU AFFERO GENERAL PUBLIC LICENSE, Version 3, 19 November 2007"
 }

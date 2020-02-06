@@ -10,7 +10,7 @@ endif::[]
 
 == TLDR Quick Start
 
-These notes are mainly for my self at this point... The main thing missing is a process for setting up a fresh install and the data needed to run it.  That's the next TODO 
+The main thing missing is a process for setting up a fresh install.  For now, you can just ask for a copy of the database from @thosmos
 
 == Admin UI
 ```Shell
@@ -22,7 +22,6 @@ yarn
 yarn main
 ```
 
-
 == Backend Server
 
 Install Clojure CLI on Mac OS:
@@ -32,12 +31,6 @@ brew install clojure
 Other OS: https://clojure.org/guides/getting_started
 
 === Install and run Datomic:
-
-Get the database zip from a project member
-```
-unzip riverdb-backup-data.zip
-```
-
 
 Run Datomic Free https://my.datomic.com/downloads/free
 ```
@@ -53,7 +46,7 @@ bin/transactor config/samples/free-transactor-template.properties
 # otherwise you'll need to override the PATH and JAVA_HOME to use 1.8:
 PATH=/Library/Java/JavaVirtualMachines/jdk1.8.0_172.jdk/Contents/Home/bin:$PATH JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_172.jdk/Contents/Home/  bin/transactor config/samples/free-transactor-template.properties
 ```
-(or Datomic Pro if you know what you're doing https://docs.datomic.com/on-prem/dev-setup.html)
+(or Datomic Pro if you wish https://docs.datomic.com/on-prem/dev-setup.html)
 
 
 Set some environment variables like `Datomic_URI` in `.env` or in the shell
@@ -63,7 +56,7 @@ DATOMIC_URI=datomic:free://localhost:4334/riverdb
 PORT=8989
 ```
 
-Start the backend server in a REPL:
+Start the backend server REPL:
 ```Shell
 clj -A:dev:server
 
@@ -73,6 +66,7 @@ user=> (start)
 ## After modifications of the backend code:
 user=> (restart)
 ```
+
 
 Browse to: [http://localhost:8989](http://localhost:8989)
 
