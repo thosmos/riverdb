@@ -10,9 +10,22 @@ endif::[]
 
 == TLDR Quick Start
 
-The main thing missing is a process for setting up a fresh install.  For now, you can just ask for a copy of the database from @thosmos
+The main thing missing is a process for setting up a fresh install.  For now, you can just ask for a copy of the database from https://gitlab.com/thosmos[@thosmos]
 
-== Admin UI
+=== Ensure you have a Java JDK
+```
+javac -version
+```
+
+=== Install Clojure CLI
+
+Install Clojure CLI on Mac OS:
+```Shell
+brew install clojure
+```
+Other OS: https://clojure.org/guides/getting_started
+
+=== Admin UI
 ```Shell
 # Load all JS deps from package.json.
 yarn
@@ -22,25 +35,17 @@ yarn
 yarn main
 ```
 
-== Backend Server
+=== Datomic
 
-Install Clojure CLI on Mac OS:
-```Shell
-brew install clojure
-```
-Other OS: https://clojure.org/guides/getting_started
-
-=== Install and run Datomic:
-
-Run Datomic Free https://my.datomic.com/downloads/free
+Download Datomic Free https://my.datomic.com/downloads/free
 ```
 unzip datomic-free-0.9.5703.21.zip
 cd datomic-free-0.9.5703.21
 
-# Get the database zip from a project member
+# Get the data zip from a project member
 unzip ../riverdb-backup-data.zip
 
-# if you're using JDK 1.8, then:
+# if you're using JDK 1.8, then just:
 bin/transactor config/samples/free-transactor-template.properties
 
 # otherwise you'll need to override the PATH and JAVA_HOME to use 1.8:
@@ -48,15 +53,21 @@ PATH=/Library/Java/JavaVirtualMachines/jdk1.8.0_172.jdk/Contents/Home/bin:$PATH 
 ```
 (or Datomic Pro if you wish https://docs.datomic.com/on-prem/dev-setup.html)
 
+=== Backend Server
 
-Set some environment variables like `Datomic_URI` in `.env` or in the shell
+Change some defaults using environment variables like `DATOMIC_URI` in an `.env` file or in the shell (the following are the defaults)
 ```
 APP_ENV=dev
 DATOMIC_URI=datomic:free://localhost:4334/riverdb
 PORT=8989
 ```
 
-Start the backend server REPL:
+run the server:
+```
+clojure -A:server:run
+```
+
+OR start the server in a REPL:
 ```Shell
 clj -A:dev:server
 
@@ -68,12 +79,13 @@ user=> (restart)
 ```
 
 
-Browse to: [http://localhost:8989](http://localhost:8989)
+
+Browse to the app at: http://localhost:8989
 
 
 === The client build server
 
-Load the http://localhost:9630[client build manager UI] (http://localhost:9630)
+Optionally open the http://localhost:9630[client build manager UI]
 There you can recompile or trigger release builds
 
 //http://localhost:8989[Main App] (http://localhost:8989)
@@ -81,13 +93,15 @@ There you can recompile or trigger release builds
 //http://localhost:8023[Workspaces] (http://localhost:8023)
 
 === Clojurescript REPL:
+
 You can execute CLJS code in a REPL running in the browser environment
-1. Open a remote nREPL to `localhost:9000`
-2. Execute `(shadow/repl :main)`
-3. Test with `(js/alert "Hello from the CLJS REPL")`
+
+. Open a remote nREPL to http://localhost:9000[localhost:9000]
+. Execute `(shadow/repl :main)`
+. Test with `(js/alert "Hello from the CLJS REPL")`
 
 
-== A More Detailed Setting Up Description ...
+= A More Detailed Setting Up Description ...
 
 The shadow-cljs compiler uses all js dependencies through
 NPM. If we use a library that is in cljsjs we will also have to add
