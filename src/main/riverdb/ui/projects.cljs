@@ -198,10 +198,10 @@
                          (set-value! this k new-v)))})))))
 
 (defn rui-bigdec [this k opts]
-  (let [props   (comp/props this)
-        value   (get props k)
-        label   (get opts :label (clojure.string/capitalize (name k)))
-        opts    (dissoc opts :label)]
+  (let [props (comp/props this)
+        value (get props k)
+        label (get opts :label (clojure.string/capitalize (name k)))
+        opts  (dissoc opts :label)]
     (div :.field {}
       (dom/label {} label)
       (ui-input
@@ -210,18 +210,18 @@
                        (.-rep value)
                        (or value ""))
            :onChange (fn [e]
-                       (let [val (transit/bigdec (.. e -target -value))
+                       (let [val   (transit/bigdec (.. e -target -value))
                              new-v (if (= (.-rep val) "")
                                      nil
                                      val)]
-                        (debug "Set BigDecimal" k new-v
-                         (set-value! this k new-v))))})))))
+                         (debug "Set BigDecimal" k new-v
+                            (set-value! this k new-v))))})))))
 
 (defn rui-int [this k opts]
-  (let [props   (comp/props this)
-        value   (get props k)
-        label   (get opts :label (clojure.string/capitalize (name k)))
-        opts    (dissoc opts :label)]
+  (let [props (comp/props this)
+        value (get props k)
+        label (get opts :label (clojure.string/capitalize (name k)))
+        opts  (dissoc opts :label)]
     (div :.field {}
       (dom/label {} label)
       (ui-input
@@ -251,8 +251,8 @@
   (let [edn-val (try (edn/read-string props) (catch js/Object ex nil))
         {:keys [threshold range rds]} edn-val
         thresh? (some? threshold)
-        range? (and (not thresh?) (some? range))
-        rds? (and (not thresh?) (some? rds))]
+        range?  (and (not thresh?) (some? range))
+        rds?    (and (not thresh?) (some? rds))]
     (div :.field
       (dom/label {} "Precision")
       (div {}
@@ -309,7 +309,7 @@
    :initial-state {:riverdb.entity/ns :entity.ns/parameter
                    :parameter/name    ""
                    :ui/editing        false
-                   :ui/saving false
+                   :ui/saving         false
                    :parameter/active  false}
    :form-fields   #{:parameter/constituentlookupRef
                     :parameter/samplingdevicelookupRef
@@ -336,18 +336,25 @@
             (dom/label {} "Default Device")
             (ui-theta-options
               (comp/computed
-                {:riverdb.entity/ns :entity.ns/samplingdevicelookup :ui/value (:db/id samplingdevicelookupRef)}
+                {:riverdb.entity/ns :entity.ns/samplingdevicelookup
+                 :value             (:db/id samplingdevicelookupRef)
+                 :opts              {:clearable true}}
                 {:onChange #(do
                               (debug "OPTION CHANGE Default Device" %)
                               (set-ref! this :parameter/samplingdevicelookupRef %))}))))
         (div :.field {}
           (dom/label {} "Constituent")
-          (ui-theta-options {:riverdb.entity/ns :entity.ns/constituentlookup :ui/value (:db/id constituentlookupRef)}))
+          (ui-theta-options
+            (comp/computed
+              {:riverdb.entity/ns :entity.ns/constituentlookup :value (:db/id constituentlookupRef)}
+              {:onChange #(do
+                            (debug "OPTION CHANGE Parameter Constituent" %)
+                            (set-ref! this :parameter/constituentlookupRef %))})))
         (div :.fields {}
-         (div :.field {} (rui-bigdec this :parameter/low {:style {:width 100}}))
-         (div :.field {} (rui-bigdec this :parameter/high {:style {:width 100}}))
-         (div :.field {} (rui-int this :parameter/replicates {:style {:width 100}}))
-         (div :.field {} (rui-input this :parameter/precisionCode {:label "Precision" :style {:width 200}})))
+          (div :.field {} (rui-bigdec this :parameter/low {:style {:width 100}}))
+          (div :.field {} (rui-bigdec this :parameter/high {:style {:width 100}}))
+          (div :.field {} (rui-int this :parameter/replicates {:style {:width 100}}))
+          (div :.field {} (rui-input this :parameter/precisionCode {:label "Precision" :style {:width 200}})))
         (div :.field {} (ui-precision this precisionCode))
         (when saving
           "SAVING")
@@ -418,7 +425,7 @@
               (span "ID " ProjectID)))
           (rui-input this :projectslookup/QAPPVersion {:label "QAPP"})
 
-          (ui-header {} "Parameters")
+          (ui-header {} "Measurements")
           (div :.ui.segment {:style {:padding 10}}
             (doall
               (vec (for [p Parameters]

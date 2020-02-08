@@ -293,7 +293,7 @@
                           :href "/dataviz"} "Dataviz")])
         (when (and ready logged-in? (= tutil/app-env "dev"))
           [(dom/a :.item {:key  "theta" :classes [(when (= :theta current-tab) "active")]
-                          :href "/theta/index"} "Theta")
+                          :href "/theta/index"} "Entities")
            (dom/a :.item {:key  "projects" :classes [(when (= :projects current-tab) "active")]
                           :href "/projects"} "Projects")
            (dom/a :.item {:key  "sitevisit" :classes [(when (= :sitevisit current-tab) "active")]

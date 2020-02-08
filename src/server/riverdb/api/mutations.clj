@@ -89,27 +89,32 @@
         attrs    (get ent-spec :entity/attrs)]
     (vec
       (for [[k v] diff]
-        (let [attr-spec    (get attrs k)
-              attr-type    (:attr/type attr-spec)
+        (let [attr-spec (get attrs k)
+              attr-type (:attr/type attr-spec)
               ;_ (debug "DIFF->TXD" k attr-type v)
-              spec-ref?    (= :ref attr-type)
-              spec-bigdec? (= :bigdec attr-type)
+              ref?    (= :ref attr-type)
               ;; get the diff's :after value
-              val          (:after v)
-              retract?     (nil? val)]
-          ;_            (debug "DIFF" k "VAL" val)
-          ;val-map?     (map? val)]
-          ;val-ref?     (and
-          ;               val-map?
-          ;               spec-ref?
-          ;               (= (count val) 1)
-          ;               (some? (:db/id val)))]
-          (if retract?
-            [:db/retract db-id k (:before v)]
-            (case attr-type
-              :ref
-              [:db/add db-id k (parse-long (:db/id val))]
-              [:db/add db-id k val])))))))
+              val       (if ref?
+                          (parse-long (:db/id (:after v)))
+                          (:after v))
+              retract?  (nil? val)
+              op-key    (if retract? :db/retract :db/add)
+              val (if retract?
+                    (if ref?
+                      (parse-long (:db/id (:before v)))
+                      (:before v))
+                    val)]
+
+          [op-key db-id k val]
+          #_(if retract?
+              (case attr-type
+                :ref
+                [:db/retract db-id k (parse-long (:db/id (:before v)))]
+                [:db/retract db-id k (:before v)])
+              (case attr-type
+                :ref
+                [:db/add db-id k (parse-long (:db/id val))]
+                [:db/add db-id k val])))))))
 
 
 

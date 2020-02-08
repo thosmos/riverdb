@@ -86,12 +86,13 @@
         :post-mutation        `theta-post-load
         :post-mutation-params {:target-ident target-ident :text-key text-key}}))))
 
-(defsc ThetaOptions [this {:ui/keys [value] :as props} {:keys [onChange]}]
+(defsc ThetaOptions [this {:keys [value opts] :as props} {:keys [onChange onAddItem add-form-class]}]
   {:ident             [:riverdb.theta.options/ns :riverdb.entity/ns]
    :query             [:riverdb.entity/ns
-                       :ui/value]
-   :pre-merge         (fn [{:keys [data-tree current-normalized state-map query] :as env}]
-                        (debug "PRE-MERGE ThetaOptions" current-normalized query))
+                       :value
+                       :opts]
+   ;:pre-merge         (fn [{:keys [data-tree current-normalized state-map query] :as env}]
+   ;                     (debug "PRE-MERGE ThetaOptions" current-normalized query))
    :componentDidMount (fn [this]
                         (let [props     (comp/props this)
                               ident     (comp/ident this props)
@@ -120,23 +121,33 @@
         theta-nmKey (get theta-spec :entity/nameKey)
         app-state   (fapp/current-state SPA)
         ref-props   (get-in app-state this-ident)
-        {:ui/keys [options loading]} ref-props]
+        {:ui/keys [options loading]} ref-props
+        {:keys [multiple clearable allowAdditions additionPosition style]} opts]
     (debug "RENDER ThetaOptions" this-ident "theta-k:" theta-k "nmKey:" theta-nmKey "value:" value "loading:" loading)
-    (ui-dropdown {:loading      loading
-                  :search       true
-                  :selection    true
-                  :tabIndex     -1
-                  :options      options
-                  :value        (or value "")
-
-                  ;:fluid        true
-                  :autoComplete "off"
-                  :style        {:width "auto" :minWidth "10em"}
-                  :onChange     (fn [_ d]
-                                  (when-let [value (-> d .-value)]
-                                    (log/debug "RefInput change" value)
-                                    (when onChange
-                                      (onChange value))))})))
+    (ui-dropdown {:loading          loading
+                  :search           true
+                  :selection        true
+                  :multiple         (or multiple false)
+                  :clearable        (or clearable false)
+                  :allowAdditions   (or allowAdditions false)
+                  :additionPosition (or additionPosition "bottom")
+                  :tabIndex         -1
+                  :options          options
+                  :value            (or value "")
+                  :autoComplete     "off"
+                  :style            (or style {:width "auto" :minWidth "10em"})
+                  :onChange         (fn [_ d]
+                                      (when-let [value (-> d .-value)]
+                                        (let [value  (if (= value "") nil value)
+                                              isNew? false]
+                                          (log/debug "RefInput change" value)
+                                          (when onChange
+                                            (onChange value)))))
+                  :onAddItem        (fn [_ d]
+                                      (let [value (-> d .-value)]
+                                        (log/debug "onAddItem" value)
+                                        (when onAddItem
+                                          (onAddItem value))))})))
 
 (def ui-theta-options (comp/factory ThetaOptions {:keyfn :riverdb.entity/ns}))
 

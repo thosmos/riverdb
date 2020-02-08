@@ -3,8 +3,12 @@
   :entity/ns :entity.ns/agencylookup,
   :entity/pks [:agencylookup/AgencyCode],
   :entity/prKeys
-  [:agencylookup/Active :agencylookup/AgencyCode :agencylookup/Name :agencylookup/NameShort :agencylookup/WebAddress],
-  :entity/nameKey :agencylookup/AgencyCode
+  [:agencylookup/Active
+   :agencylookup/AgencyCode
+   :agencylookup/Name
+   :agencylookup/NameShort
+   :agencylookup/WebAddress],
+  :entity/nameKey :agencylookup/AgencyCode,
   :entity/attrs
   [#:attr{:name "Active",
           :key :agencylookup/Active,
@@ -109,7 +113,12 @@
           :position 7,
           :cardinality :one,
           :type :string,
-          :strlen 10}]}
+          :strlen 10}
+   #:attr{:name "uuid",
+          :key :agencylookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "analytelookup",
   :entity/name "Analyte",
   :entity/ns :entity.ns/analytelookup,
@@ -195,13 +204,21 @@
           :position 5,
           :cardinality :one,
           :type :string,
-          :strlen 25}]}
+          :strlen 25}
+   #:attr{:name "uuid",
+          :key :analytelookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "batchquallookup",
   :entity/name "Batch Qualifier",
   :entity/ns :entity.ns/batchquallookup,
   :entity/pks [:batchquallookup/BatchQualRowID],
-  :entity/prKeys [:batchquallookup/Active :batchquallookup/BatchQualCode :batchquallookup/BatchQualifier],
-  :entity/nameKey :batchquallookup/BatchQualCode
+  :entity/prKeys
+  [:batchquallookup/Active
+   :batchquallookup/BatchQualCode
+   :batchquallookup/BatchQualifier],
+  :entity/nameKey :batchquallookup/BatchQualCode,
   :entity/attrs
   [#:attr{:name "Active",
           :key :batchquallookup/Active,
@@ -226,13 +243,21 @@
           :position 3,
           :cardinality :one,
           :type :string,
-          :strlen 150}]}
+          :strlen 150}
+   #:attr{:name "uuid",
+          :key :batchquallookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "batchvallookup",
   :entity/name "Batch Val",
   :entity/ns :entity.ns/batchvallookup,
   :entity/pks [:batchvallookup/BatchVerRowID],
-  :entity/prKeys [:batchvallookup/Active :batchvallookup/BatchValCode :batchvallookup/BatchVerification],
-  :entity/nameKey :batchvallookup/BatchValCode
+  :entity/prKeys
+  [:batchvallookup/Active
+   :batchvallookup/BatchValCode
+   :batchvallookup/BatchVerification],
+  :entity/nameKey :batchvallookup/BatchValCode,
   :entity/attrs
   [#:attr{:name "Active",
           :key :batchvallookup/Active,
@@ -257,15 +282,21 @@
           :position 3,
           :cardinality :one,
           :type :string,
-          :strlen 100}]}
+          :strlen 100}
+   #:attr{:name "uuid",
+          :key :batchvallookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "compliancelevellookup",
   :entity/name "Compliance Level",
   :entity/ns :entity.ns/compliancelevellookup,
   :entity/pks [:compliancelevellookup/ComplianceLevelRowID],
-  :entity/prKeys [:compliancelevellookup/Active
-                  :compliancelevellookup/ComplianceCode
-                  :compliancelevellookup/ComplianceDescr],
-  :entity/nameKey :compliancelevellookup/ComplianceCode
+  :entity/prKeys
+  [:compliancelevellookup/Active
+   :compliancelevellookup/ComplianceCode
+   :compliancelevellookup/ComplianceDescr],
+  :entity/nameKey :compliancelevellookup/ComplianceCode,
   :entity/attrs
   [#:attr{:name "Active",
           :key :compliancelevellookup/Active,
@@ -290,128 +321,136 @@
           :primary true,
           :identity true,
           :cardinality :one,
-          :type :long}]}
- {:db/id          "constituentlookup",
-  :entity/name    "Constituent",
-  :entity/ns      :entity.ns/constituentlookup,
-  :entity/lookup  :constituentlookup/ConstituentCode,
-  :entity/pks     [:constituentlookup/ConstituentRowID],
+          :type :long}
+   #:attr{:name "uuid",
+          :key :compliancelevellookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
+ {:db/id "constituentlookup",
+  :entity/name "Constituent",
+  :entity/ns :entity.ns/constituentlookup,
+  :entity/lookup :constituentlookup/ConstituentCode,
+  :entity/pks [:constituentlookup/ConstituentRowID],
   :entity/prKeys
-                  [:constituentlookup/Name
-                   :constituentlookup/Active
-                   :constituentlookup/AnalyteCode
-                   :constituentlookup/ConstituentCode
-                   :constituentlookup/FractionCode
-                   :constituentlookup/MatrixCode
-                   :constituentlookup/MethodCode
-                   :constituentlookup/UnitCode],
-  :entity/nameKey :constituentlookup/Name
+  [:constituentlookup/Name
+   :constituentlookup/Active
+   :constituentlookup/AnalyteCode
+   :constituentlookup/ConstituentCode
+   :constituentlookup/FractionCode
+   :constituentlookup/MatrixCode
+   :constituentlookup/MethodCode
+   :constituentlookup/UnitCode],
+  :entity/nameKey :constituentlookup/Name,
   :entity/attrs
-                  [#:attr{:name        "DerivedName",
-                          :key         :constituentlookup/DerivedName,
-                          :cardinality :one,
-                          :type        :string
-                          :derived     true
-                          :deriveFn    "(fn [{:constituentlookup/keys [AnalyteCode MatrixCode UnitCode]}]
-                                         (str
-                                           (:analytelookup/AnalyteName AnalyteCode)
-                                           (:matrixlookup/MatrixName MatrixCode)
-                                           (:unitlookup/Unit UnitCode)))"
-                          :deriveAttrs [:constituentlookup/AnalyteCode
-                                        :constituentlookup/MatrixCode
-                                        :constituentlookup/UnitCode]}
-                   #:attr{:name        "Active",
-                          :key         :constituentlookup/Active,
-                          :position    8,
-                          :cardinality :one,
-                          :type        :boolean}
-                   #:attr{:name        "AnalyteCode",
-                          :key         :constituentlookup/AnalyteCode,
-                          :position    5,
-                          :cardinality :one,
-                          :type        :ref,
-                          :ref         #:entity{:ns :entity.ns/analytelookup},
-                          :refPrKey    :analytelookup/AnalyteName,
-                          :refKey      :entity.ns/analytelookup}
-                   #:attr{:name        "ConstituentCode",
-                          :key         :constituentlookup/ConstituentCode,
-                          :position    12,
-                          :cardinality :one,
-                          :identity    true,
-                          :type        :string,
-                          :strlen      20}
-                   #:attr{:name        "ConstituentRowID",
-                          :key         :constituentlookup/ConstituentRowID,
-                          :position    1,
-                          :primary     true,
-                          :identity    true,
-                          :cardinality :one,
-                          :type        :long}
-                   #:attr{:name        "DeviceType",
-                          :key         :constituentlookup/DeviceType,
-                          :position    9,
-                          :cardinality :one,
-                          :type        :ref,
-                          :ref         #:entity{:ns :entity.ns/samplingdevicelookup},
-                          :refPrKey    :samplingdevicelookup/SampleDevice,
-                          :refKey      :entity.ns/samplingdevicelookup}
-                   #:attr{:name        "FractionCode",
-                          :key         :constituentlookup/FractionCode,
-                          :position    6,
-                          :cardinality :one,
-                          :type        :ref,
-                          :ref         #:entity{:ns :entity.ns/fractionlookup},
-                          :refPrKey    :fractionlookup/FractionName,
-                          :refKey      :entity.ns/fractionlookup}
-                   #:attr{:name        "HighValue",
-                          :key         :constituentlookup/HighValue,
-                          :position    12,
-                          :cardinality :one,
-                          :type        :bigdec}
-                   #:attr{:name        "LowValue",
-                          :key         :constituentlookup/LowValue,
-                          :position    13,
-                          :cardinality :one,
-                          :type        :bigdec}
-                   #:attr{:name        "MatrixCode",
-                          :key         :constituentlookup/MatrixCode,
-                          :position    3,
-                          :cardinality :one,
-                          :type        :ref,
-                          :ref         #:entity{:ns :entity.ns/matrixlookup},
-                          :refPrKey    :matrixlookup/MatrixName,
-                          :refKey      :entity.ns/matrixlookup}
-                   #:attr{:name        "MaxValue",
-                          :key         :constituentlookup/MaxValue,
-                          :position    10,
-                          :cardinality :one,
-                          :type        :bigdec}
-                   #:attr{:name        "MethodCode",
-                          :key         :constituentlookup/MethodCode,
-                          :position    4,
-                          :cardinality :one,
-                          :type        :ref,
-                          :ref         #:entity{:ns :entity.ns/methodlookup},
-                          :refPrKey    :methodlookup/MethodName,
-                          :refKey      :entity.ns/methodlookup}
-                   #:attr{:name        "MinValue",
-                          :key         :constituentlookup/MinValue,
-                          :position    11,
-                          :cardinality :one,
-                          :type        :bigdec}
-                   #:attr{:name        "Name",
-                          :key         :constituentlookup/Name,
-                          :position    2,
-                          :cardinality :one,
-                          :type        :string}
-                   #:attr{:name        "UnitCode",
-                          :key         :constituentlookup/UnitCode,
-                          :position    7,
-                          :cardinality :one,
-                          :type        :ref,
-                          :ref         #:entity{:ns :entity.ns/unitlookup},
-                          :refPrKey    :unitlookup/Unit,
-                          :refKey      :entity.ns/unitlookup}]}
+  [#:attr{:name "Active",
+          :key :constituentlookup/Active,
+          :position 8,
+          :cardinality :one,
+          :type :boolean}
+   #:attr{:name "AnalyteCode",
+          :key :constituentlookup/AnalyteCode,
+          :position 5,
+          :cardinality :one,
+          :type :ref,
+          :ref #:entity{:ns :entity.ns/analytelookup},
+          :refPrKey :analytelookup/AnalyteName,
+          :refKey :entity.ns/analytelookup}
+   #:attr{:name "ConstituentCode",
+          :key :constituentlookup/ConstituentCode,
+          :position 12,
+          :cardinality :one,
+          :identity true,
+          :type :string,
+          :strlen 20}
+   #:attr{:name "ConstituentRowID",
+          :key :constituentlookup/ConstituentRowID,
+          :position 1,
+          :primary true,
+          :identity true,
+          :cardinality :one,
+          :type :long}
+   #:attr{:name "DerivedName",
+          :key :constituentlookup/DerivedName,
+          :cardinality :one,
+          :type :string,
+          :derived true,
+          :deriveFn
+          "(fn [{:constituentlookup/keys [AnalyteCode MatrixCode UnitCode]}]\n                                         (str\n                                           (:analytelookup/AnalyteName AnalyteCode)\n                                           (:matrixlookup/MatrixName MatrixCode)\n                                           (:unitlookup/Unit UnitCode)))",
+          :deriveAttrs
+          [:constituentlookup/AnalyteCode
+           :constituentlookup/MatrixCode
+           :constituentlookup/UnitCode]}
+   #:attr{:name "DeviceType",
+          :key :constituentlookup/DeviceType,
+          :position 9,
+          :cardinality :one,
+          :type :ref,
+          :ref #:entity{:ns :entity.ns/samplingdevicelookup},
+          :refPrKey :samplingdevicelookup/SampleDevice,
+          :refKey :entity.ns/samplingdevicelookup}
+   #:attr{:name "FractionCode",
+          :key :constituentlookup/FractionCode,
+          :position 6,
+          :cardinality :one,
+          :type :ref,
+          :ref #:entity{:ns :entity.ns/fractionlookup},
+          :refPrKey :fractionlookup/FractionName,
+          :refKey :entity.ns/fractionlookup}
+   #:attr{:name "HighValue",
+          :key :constituentlookup/HighValue,
+          :position 12,
+          :cardinality :one,
+          :type :bigdec}
+   #:attr{:name "LowValue",
+          :key :constituentlookup/LowValue,
+          :position 13,
+          :cardinality :one,
+          :type :bigdec}
+   #:attr{:name "MatrixCode",
+          :key :constituentlookup/MatrixCode,
+          :position 3,
+          :cardinality :one,
+          :type :ref,
+          :ref #:entity{:ns :entity.ns/matrixlookup},
+          :refPrKey :matrixlookup/MatrixName,
+          :refKey :entity.ns/matrixlookup}
+   #:attr{:name "MaxValue",
+          :key :constituentlookup/MaxValue,
+          :position 10,
+          :cardinality :one,
+          :type :bigdec}
+   #:attr{:name "MethodCode",
+          :key :constituentlookup/MethodCode,
+          :position 4,
+          :cardinality :one,
+          :type :ref,
+          :ref #:entity{:ns :entity.ns/methodlookup},
+          :refPrKey :methodlookup/MethodName,
+          :refKey :entity.ns/methodlookup}
+   #:attr{:name "MinValue",
+          :key :constituentlookup/MinValue,
+          :position 11,
+          :cardinality :one,
+          :type :bigdec}
+   #:attr{:name "Name",
+          :key :constituentlookup/Name,
+          :position 2,
+          :cardinality :one,
+          :type :string}
+   #:attr{:name "UnitCode",
+          :key :constituentlookup/UnitCode,
+          :position 7,
+          :cardinality :one,
+          :type :ref,
+          :ref #:entity{:ns :entity.ns/unitlookup},
+          :refPrKey :unitlookup/Unit,
+          :refKey :entity.ns/unitlookup}
+   #:attr{:name "uuid",
+          :key :constituentlookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "corrections",
   :entity/name "Corrections",
   :entity/ns :entity.ns/corrections,
@@ -476,18 +515,103 @@
           :position 5,
           :cardinality :one,
           :type :string,
-          :strlen 50}]}
+          :strlen 50}
+   #:attr{:name "uuid",
+          :key :corrections/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
+ {:db/id "samplingdevicelookup",
+  :entity/name "Device Type",
+  :entity/ns :entity.ns/samplingdevicelookup,
+  :entity/pks [:samplingdevicelookup/SamplingDeviceCode],
+  :entity/prKeys
+  [:samplingdevicelookup/Active
+   :samplingdevicelookup/SampleDevice
+   :samplingdevicelookup/DeviceMax
+   :samplingdevicelookup/DeviceMin],
+  :entity/nameKey :samplingdevicelookup/SampleDevice,
+  :entity/attrs
+  [#:attr{:name "Active",
+          :key :samplingdevicelookup/Active,
+          :position 6,
+          :cardinality :one,
+          :type :boolean}
+   #:attr{:name "Constituent",
+          :key :samplingdevicelookup/Constituent,
+          :position 11,
+          :cardinality :one,
+          :type :ref,
+          :ref #:entity{:ns :entity.ns/constituentlookup},
+          :refKey :entity.ns/constituentlookup}
+   #:attr{:name "Max",
+          :key :samplingdevicelookup/DeviceMax,
+          :position 9,
+          :cardinality :one,
+          :type :bigdec}
+   #:attr{:name "Min",
+          :key :samplingdevicelookup/DeviceMin,
+          :position 10,
+          :cardinality :one,
+          :type :bigdec}
+   #:attr{:name "QAmax",
+          :key :samplingdevicelookup/QAmax,
+          :position 7,
+          :cardinality :one,
+          :type :bigdec}
+   #:attr{:name "QAmin",
+          :key :samplingdevicelookup/QAmin,
+          :position 8,
+          :cardinality :one,
+          :type :bigdec}
+   #:attr{:name "SampleDevice",
+          :key :samplingdevicelookup/SampleDevice,
+          :position 2,
+          :cardinality :one,
+          :type :string,
+          :strlen 50}
+   #:attr{:name "SampleDeviceDescr",
+          :key :samplingdevicelookup/SampleDeviceDescr,
+          :position 4,
+          :cardinality :one,
+          :type :string,
+          :strlen 100}
+   #:attr{:name "SamplingDeviceCode",
+          :key :samplingdevicelookup/SamplingDeviceCode,
+          :position 1,
+          :primary true,
+          :identity true,
+          :cardinality :one,
+          :type :long}
+   #:attr{:name "SamplingMatrix",
+          :key :samplingdevicelookup/SamplingMatrix,
+          :position 5,
+          :cardinality :one,
+          :type :string,
+          :strlen 50}
+   #:attr{:name "SerialNumber",
+          :key :samplingdevicelookup/SerialNumber,
+          :position 3,
+          :cardinality :one,
+          :type :string,
+          :strlen 30}
+   #:attr{:name "uuid",
+          :key :samplingdevicelookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "digestextractlookup",
   :entity/name "Digest Extract",
   :entity/ns :entity.ns/digestextractlookup,
   :entity/pks [:digestextractlookup/DigestExtractRowID],
-  :entity/prKeys [:digestextractlookup/Active
-                  :digestextractlookup/DigestExtractCode
-                  :digestextractlookup/DigestExtractInstrument
-                  :digestextractlookup/DigestExtractType
-                  :digestextractlookup/DigestExtractDescr
-                  :digestextractlookup/DigestExtractMethod],
-  :entity/nameKey :digestextractlookup/DigestExtractMethod
+  :entity/prKeys
+  [:digestextractlookup/Active
+   :digestextractlookup/DigestExtractCode
+   :digestextractlookup/DigestExtractInstrument
+   :digestextractlookup/DigestExtractType
+   :digestextractlookup/DigestExtractDescr
+   :digestextractlookup/DigestExtractMethod],
+  :entity/nameKey :digestextractlookup/DigestExtractMethod,
   :entity/attrs
   [#:attr{:name "Active",
           :key :digestextractlookup/Active,
@@ -535,13 +659,21 @@
           :position 7,
           :cardinality :one,
           :type :string,
-          :strlen 50}]}
+          :strlen 50}
+   #:attr{:name "uuid",
+          :key :digestextractlookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "eventtypelookup",
   :entity/name "Event Type",
   :entity/ns :entity.ns/eventtypelookup,
   :entity/pks [:eventtypelookup/EventType],
-  :entity/prKeys [:eventtypelookup/Active :eventtypelookup/EventType :eventtypelookup/EventDescr],
-  :entity/nameKey :eventtypelookup/EventType
+  :entity/prKeys
+  [:eventtypelookup/Active
+   :eventtypelookup/EventType
+   :eventtypelookup/EventDescr],
+  :entity/nameKey :eventtypelookup/EventType,
   :entity/attrs
   [#:attr{:name "Active",
           :key :eventtypelookup/Active,
@@ -561,17 +693,23 @@
           :identity true,
           :cardinality :one,
           :type :string,
-          :strlen 20}]}
+          :strlen 20}
+   #:attr{:name "uuid",
+          :key :eventtypelookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "fieldobsresult",
   :entity/name "Field Obs Result",
   :entity/ns :entity.ns/fieldobsresult,
   :entity/pks [:fieldobsresult/FieldObsResultRowID],
-  :entity/prKeys [:fieldobsresult/TextResult
-                  :fieldobsresult/IntResult
-                  :fieldobsresult/ConstituentRowID
-                  :fieldobsresult/FieldObsResultComments
-                  :fieldobsresult/SampleRowID],
-  :entity/nameKey :fieldobsresult/TextResult
+  :entity/prKeys
+  [:fieldobsresult/TextResult
+   :fieldobsresult/IntResult
+   :fieldobsresult/ConstituentRowID
+   :fieldobsresult/FieldObsResultComments
+   :fieldobsresult/SampleRowID],
+  :entity/nameKey :fieldobsresult/TextResult,
   :entity/attrs
   [#:attr{:name "Constituent",
           :key :fieldobsresult/ConstituentRowID,
@@ -580,6 +718,11 @@
           :type :ref,
           :ref #:entity{:ns :entity.ns/constituentlookup},
           :refKey :entity.ns/constituentlookup}
+   #:attr{:name "Int Result",
+          :key :fieldobsresult/IntResult,
+          :position 6,
+          :cardinality :one,
+          :type :long}
    #:attr{:name "Result Comments",
           :key :fieldobsresult/FieldObsResultComments,
           :position 5,
@@ -591,11 +734,6 @@
           :position 1,
           :primary true,
           :identity true,
-          :cardinality :one,
-          :type :long}
-   #:attr{:name "Int Result",
-          :key :fieldobsresult/IntResult,
-          :position 6,
           :cardinality :one,
           :type :long}
    #:attr{:name "Sample",
@@ -610,14 +748,22 @@
           :position 4,
           :cardinality :one,
           :type :string,
-          :strlen 80}]}
+          :strlen 80}
+   #:attr{:name "uuid",
+          :key :fieldobsresult/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "fieldobsvarlookup",
   :entity/name "Field Obs Var",
   :entity/ns :entity.ns/fieldobsvarlookup,
   :entity/pks [:fieldobsvarlookup/FieldObsVarRowId],
-  :entity/prKeys [:fieldobsvarlookup/Active :fieldobsvarlookup/AnalyteName
-                  :fieldobsvarlookup/ValueCode :fieldobsvarlookup/ValueCodeDescr],
-  :entity/nameKey :fieldobsvarlookup/ValueCode
+  :entity/prKeys
+  [:fieldobsvarlookup/Active
+   :fieldobsvarlookup/AnalyteName
+   :fieldobsvarlookup/ValueCode
+   :fieldobsvarlookup/ValueCodeDescr],
+  :entity/nameKey :fieldobsvarlookup/ValueCode,
   :entity/attrs
   [#:attr{:name "Active",
           :key :fieldobsvarlookup/Active,
@@ -648,7 +794,12 @@
           :position 4,
           :cardinality :one,
           :type :string,
-          :strlen 100}]}
+          :strlen 100}
+   #:attr{:name "uuid",
+          :key :fieldobsvarlookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "fieldresequiplookup",
   :entity/name "Field Res Equip",
   :entity/ns :entity.ns/fieldresequiplookup,
@@ -682,22 +833,37 @@
           :type :ref,
           :ref #:entity{:ns :entity.ns/samplingdevicelookup},
           :strlen 50,
-          :refKey :entity.ns/samplingdevicelookup}]}
+          :refKey :entity.ns/samplingdevicelookup}
+   #:attr{:name "uuid",
+          :key :fieldresequiplookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "fieldresult",
   :entity/name "Field Result",
   :entity/ns :entity.ns/fieldresult,
   :entity/lookup :fieldresult/SampleRowID,
   :entity/pks [:fieldresult/FieldResultRowID],
-  :entity/prKeys [:fieldresult/ResultTime :fieldresult/Result
-                  :fieldresult/FieldReplicate :fieldresult/SigFig
-                  :fieldresult/QACode :fieldresult/QAFlag],
-  :entity/nameKey :fieldresult/Result
+  :entity/prKeys
+  [:fieldresult/ResultTime
+   :fieldresult/Result
+   :fieldresult/FieldReplicate
+   :fieldresult/SigFig
+   :fieldresult/QACode
+   :fieldresult/QAFlag],
+  :entity/nameKey :fieldresult/Result,
   :entity/attrs
   [#:attr{:name "Calibration Date",
           :key :fieldresult/CalibrationDate,
           :position 11,
           :cardinality :one,
           :type :instant}
+   #:attr{:name "Comments",
+          :key :fieldresult/FieldResultComments,
+          :position 12,
+          :cardinality :one,
+          :type :string,
+          :strlen 100}
    #:attr{:name "Compliance Code",
           :key :fieldresult/ComplianceCode,
           :position 10,
@@ -713,24 +879,20 @@
           :type :ref,
           :ref #:entity{:ns :entity.ns/constituentlookup},
           :refKey :entity.ns/constituentlookup}
-   #:attr{:name "Replicate",
-          :key :fieldresult/FieldReplicate,
-          :position 4,
+   #:attr{:name "Device ID",
+          :key :fieldresult/SamplingDeviceID,
+          :position 13,
           :cardinality :one,
-          :type :long}
-   #:attr{:name "Comments",
-          :key :fieldresult/FieldResultComments,
-          :position 12,
+          :type :ref,
+          :ref #:entity{:ns :entity.ns/samplingdevice},
+          :refKey :entity.ns/samplingdevice}
+   #:attr{:name "Device Type",
+          :key :fieldresult/SamplingDeviceCode,
+          :position 8,
           :cardinality :one,
-          :type :string,
-          :strlen 100}
-   #:attr{:name "RowID",
-          :key :fieldresult/FieldResultRowID,
-          :position 1,
-          :primary true,
-          :identity true,
-          :cardinality :one,
-          :type :long}
+          :type :ref,
+          :ref #:entity{:ns :entity.ns/samplingdevicelookup},
+          :refKey :entity.ns/samplingdevicelookup}
    #:attr{:name "QA Code",
           :key :fieldresult/QACode,
           :position 9,
@@ -742,6 +904,11 @@
    #:attr{:name "QA Flag",
           :key :fieldresult/QAFlag,
           :position 14,
+          :cardinality :one,
+          :type :long}
+   #:attr{:name "Replicate",
+          :key :fieldresult/FieldReplicate,
+          :position 4,
           :cardinality :one,
           :type :long}
    #:attr{:name "Res Qual Code",
@@ -764,6 +931,13 @@
           :cardinality :one,
           :type :string,
           :strlen 20}
+   #:attr{:name "RowID",
+          :key :fieldresult/FieldResultRowID,
+          :position 1,
+          :primary true,
+          :identity true,
+          :cardinality :one,
+          :type :long}
    #:attr{:name "Sample",
           :key :fieldresult/SampleRowID,
           :position 2,
@@ -771,25 +945,16 @@
           :type :ref,
           :ref #:entity{:ns :entity.ns/sample},
           :refKey :entity.ns/sample}
-   #:attr{:name "Device Type",
-          :key :fieldresult/SamplingDeviceCode,
-          :position 8,
-          :cardinality :one,
-          :type :ref,
-          :ref #:entity{:ns :entity.ns/samplingdevicelookup},
-          :refKey :entity.ns/samplingdevicelookup}
-   #:attr{:name "Device ID",
-          :key :fieldresult/SamplingDeviceID,
-          :position 13,
-          :cardinality :one,
-          :type :ref,
-          :ref #:entity{:ns :entity.ns/samplingdevice},
-          :refKey :entity.ns/samplingdevice}
    #:attr{:name "Sig Fig",
           :key :fieldresult/SigFig,
           :position 7,
           :cardinality :one,
-          :type :long}]}
+          :type :long}
+   #:attr{:name "uuid",
+          :key :fieldresult/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "fractionlookup",
   :entity/name "Fraction",
   :entity/ns :entity.ns/fractionlookup,
@@ -820,13 +985,21 @@
           :position 2,
           :cardinality :one,
           :type :string,
-          :strlen 50}]}
+          :strlen 50}
+   #:attr{:name "uuid",
+          :key :fractionlookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "gpsdevicelookup",
   :entity/name "GPS Device",
   :entity/ns :entity.ns/gpsdevicelookup,
   :entity/pks [:gpsdevicelookup/GPSDeviceRowID],
-  :entity/prKeys [:gpsdevicelookup/Active :gpsdevicelookup/GPSDeviceID :gpsdevicelookup/GPSDeviceCode],
-  :entity/nameKey :gpsdevicelookup/GPSDeviceID
+  :entity/prKeys
+  [:gpsdevicelookup/Active
+   :gpsdevicelookup/GPSDeviceID
+   :gpsdevicelookup/GPSDeviceCode],
+  :entity/nameKey :gpsdevicelookup/GPSDeviceID,
   :entity/attrs
   [#:attr{:name "Active",
           :key :gpsdevicelookup/Active,
@@ -856,13 +1029,23 @@
           :primary true,
           :identity true,
           :cardinality :one,
-          :type :long}]}
+          :type :long}
+   #:attr{:name "uuid",
+          :key :gpsdevicelookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "labbatch",
   :entity/name "Lab Batch",
   :entity/ns :entity.ns/labbatch,
   :entity/pks [:labbatch/LabBatchRowID],
-  :entity/prKeys [:labbatch/LabBatch :labbatch/BatchQualCode :labbatch/AgencyCode :labbatch/SubmittingAgency :labbatch/LabBatchComments],
-  :entity/nameKey :labbatch/LabBatch
+  :entity/prKeys
+  [:labbatch/LabBatch
+   :labbatch/BatchQualCode
+   :labbatch/AgencyCode
+   :labbatch/SubmittingAgency
+   :labbatch/LabBatchComments],
+  :entity/nameKey :labbatch/LabBatch,
   :entity/attrs
   [#:attr{:name "AgencyCode",
           :key :labbatch/AgencyCode,
@@ -912,14 +1095,23 @@
           :position 3,
           :cardinality :one,
           :type :string,
-          :strlen 20}]}
+          :strlen 20}
+   #:attr{:name "uuid",
+          :key :labbatch/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "labresult",
   :entity/name "Lab Result",
   :entity/ns :entity.ns/labresult,
   :entity/lookup :labresult/LabResultRowID,
   :entity/pks [:labresult/LabResultRowID],
-  :entity/prKeys [:labresult/AnalysisDate :labresult/Result :labresult/QAFlag :labresult/QACode],
-  :entity/nameKey :labresult/Result
+  :entity/prKeys
+  [:labresult/AnalysisDate
+   :labresult/Result
+   :labresult/QAFlag
+   :labresult/QACode],
+  :entity/nameKey :labresult/Result,
   :entity/attrs
   [#:attr{:name "AnalysisDate",
           :key :labresult/AnalysisDate,
@@ -1065,7 +1257,12 @@
           :key :labresult/SigFig,
           :position 15,
           :cardinality :one,
-          :type :long}]}
+          :type :long}
+   #:attr{:name "uuid",
+          :key :labresult/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "matrixlookup",
   :entity/name "Matrix",
   :entity/ns :entity.ns/matrixlookup,
@@ -1103,7 +1300,12 @@
           :cardinality :one,
           :identity true,
           :type :string,
-          :strlen 10}]}
+          :strlen 10}
+   #:attr{:name "uuid",
+          :key :matrixlookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "methodlookup",
   :entity/name "Method",
   :entity/ns :entity.ns/methodlookup,
@@ -1165,7 +1367,12 @@
           :position 6,
           :cardinality :one,
           :type :string,
-          :strlen 15}]}
+          :strlen 15}
+   #:attr{:name "uuid",
+          :key :methodlookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "missingvaluelookup",
   :entity/name "Missing Value",
   :entity/ns :entity.ns/missingvaluelookup,
@@ -1207,13 +1414,49 @@
           :primary true,
           :identity true,
           :cardinality :one,
-          :type :long}]}
+          :type :long}
+   #:attr{:name "uuid",
+          :key :missingvaluelookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
+ {:db/id "paramline",
+  :entity/name "Param Line",
+  :entity/ns :entity.ns/paramline,
+  :entity/pks [:paramline/uuid],
+  :entity/prKeys [:paramline/label],
+  :entity/nameKey :paramline/label,
+  :entity/attrs
+  [#:attr{:name "CSS",
+          :key :paramline/css,
+          :cardinality :one,
+          :type :string,
+          :doc "CSS"}
+   #:attr{:name "Color",
+          :key :paramline/color,
+          :cardinality :one,
+          :type :string,
+          :doc "Default color"}
+   #:attr{:name "Label",
+          :key :paramline/label,
+          :cardinality :one,
+          :type :string,
+          :doc "label for this parameter"}
+   #:attr{:name "Value",
+          :key :paramline/value,
+          :cardinality :one,
+          :type :bigdec}
+   #:attr{:name "uuid",
+          :key :paramline/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "parameter",
   :entity/name "Parameter",
   :entity/ns :entity.ns/parameter,
   :entity/pks [:parameter/uuid],
   :entity/prKeys [:parameter/active],
-  :entity/nameKey :parameter/name
+  :entity/nameKey :parameter/name,
   :entity/attrs
   [#:attr{:name "Active",
           :key :parameter/active,
@@ -1264,57 +1507,27 @@
           :cardinality :one,
           :type :string,
           :doc "EDN that describes the precision"}
-   #:attr{:name "UUID",
-          :key :parameter/uuid,
-          :cardinality :one,
-          :identity true,
-          :type :uuid}
    #:attr{:name "Replicates",
           :key :parameter/replicates,
           :cardinality :one,
           :identity true,
-          :type :long
-          :doc "The number of samples taken for this parameter"}]}
- {:db/id "paramline",
-  :entity/name "Param Line",
-  :entity/ns :entity.ns/paramline,
-  :entity/pks [:paramline/uuid],
-  :entity/prKeys [:paramline/label],
-  :entity/nameKey :paramline/label
-  :entity/attrs
-  [#:attr{:name "CSS",
-          :key :paramline/css,
-          :cardinality :one,
-          :type :string,
-          :doc "CSS"}
-   #:attr{:name "Color",
-          :key :paramline/color,
-          :cardinality :one,
-          :type :string,
-          :doc "Default color"}
-   #:attr{:name "Label",
-          :key :paramline/label,
-          :cardinality :one,
-          :type :string,
-          :doc "label for this parameter"}
-   #:attr{:name "UUID",
-          :key :paramline/uuid,
-          :cardinality :one,
+          :type :long,
+          :doc "The number of samples taken for this parameter"}
+   #:attr{:name "uuid",
+          :key :parameter/uuid,
           :identity true,
-          :type :uuid}
-   #:attr{:name "Value",
-          :key :paramline/value,
           :cardinality :one,
-          :type :bigdec}]}
+          :type :uuid}]}
  {:db/id "parentprojectlookup",
   :entity/name "Parent Project",
   :entity/ns :entity.ns/parentprojectlookup,
   :entity/pks [:parentprojectlookup/ParentProjectRowID],
-  :entity/prKeys [:parentprojectlookup/ParentProjectID
-                  :parentprojectlookup/ParentProjectName
-                  :parentprojectlookup/OrgNameorID
-                  :parentprojectlookup/StartDate],
-  :entity/nameKey :parentprojectlookup/ParentProjectName
+  :entity/prKeys
+  [:parentprojectlookup/ParentProjectID
+   :parentprojectlookup/ParentProjectName
+   :parentprojectlookup/OrgNameorID
+   :parentprojectlookup/StartDate],
+  :entity/nameKey :parentprojectlookup/ParentProjectName,
   :entity/attrs
   [#:attr{:name "Address 1",
           :key :parentprojectlookup/Address1,
@@ -1334,6 +1547,12 @@
           :cardinality :one,
           :type :string,
           :strlen 255}
+   #:attr{:name "Comments",
+          :key :parentprojectlookup/ParentProjectComments,
+          :position 20,
+          :cardinality :one,
+          :type :string,
+          :strlen 250}
    #:attr{:name "DQO level",
           :key :parentprojectlookup/DQOlevel,
           :position 18,
@@ -1346,12 +1565,36 @@
           :cardinality :one,
           :type :string,
           :strlen 150}
+   #:attr{:name "Email",
+          :key :parentprojectlookup/ProjEmail,
+          :position 10,
+          :cardinality :one,
+          :type :string,
+          :strlen 150}
    #:attr{:name "External File Name",
           :key :parentprojectlookup/ExternalFileName,
           :position 19,
           :cardinality :one,
           :type :string,
           :strlen 255}
+   #:attr{:name "ID",
+          :key :parentprojectlookup/ParentProjectID,
+          :position 2,
+          :cardinality :one,
+          :type :string,
+          :strlen 25}
+   #:attr{:name "Lead",
+          :key :parentprojectlookup/ProjLead,
+          :position 8,
+          :cardinality :one,
+          :type :string,
+          :strlen 100}
+   #:attr{:name "Name",
+          :key :parentprojectlookup/ParentProjectName,
+          :position 3,
+          :cardinality :one,
+          :type :string,
+          :strlen 150}
    #:attr{:name "Notes",
           :key :parentprojectlookup/Notes,
           :position 16,
@@ -1364,24 +1607,18 @@
           :cardinality :one,
           :type :string,
           :strlen 255}
-   #:attr{:name "Comments",
-          :key :parentprojectlookup/ParentProjectComments,
-          :position 20,
+   #:attr{:name "Phone",
+          :key :parentprojectlookup/ProjPhon,
+          :position 9,
           :cardinality :one,
           :type :string,
-          :strlen 250}
-   #:attr{:name "ID",
-          :key :parentprojectlookup/ParentProjectID,
-          :position 2,
+          :strlen 20}
+   #:attr{:name "Purpose",
+          :key :parentprojectlookup/Purpose,
+          :position 7,
           :cardinality :one,
           :type :string,
-          :strlen 25}
-   #:attr{:name "Name",
-          :key :parentprojectlookup/ParentProjectName,
-          :position 3,
-          :cardinality :one,
-          :type :string,
-          :strlen 150}
+          :strlen 255}
    #:attr{:name "RowID",
           :key :parentprojectlookup/ParentProjectRowID,
           :position 1,
@@ -1389,41 +1626,17 @@
           :identity true,
           :cardinality :one,
           :type :long}
-   #:attr{:name "Email",
-          :key :parentprojectlookup/ProjEmail,
-          :position 10,
+   #:attr{:name "Start Date",
+          :key :parentprojectlookup/StartDate,
+          :position 5,
           :cardinality :one,
-          :type :string,
-          :strlen 150}
-   #:attr{:name "Lead",
-          :key :parentprojectlookup/ProjLead,
-          :position 8,
-          :cardinality :one,
-          :type :string,
-          :strlen 100}
-   #:attr{:name "Phone",
-          :key :parentprojectlookup/ProjPhon,
-          :position 9,
-          :cardinality :one,
-          :type :string,
-          :strlen 20}
+          :type :instant}
    #:attr{:name "Type",
           :key :parentprojectlookup/ProjType,
           :position 4,
           :cardinality :one,
           :type :string,
           :strlen 50}
-   #:attr{:name "Purpose",
-          :key :parentprojectlookup/Purpose,
-          :position 7,
-          :cardinality :one,
-          :type :string,
-          :strlen 255}
-   #:attr{:name "Start Date",
-          :key :parentprojectlookup/StartDate,
-          :position 5,
-          :cardinality :one,
-          :type :instant}
    #:attr{:name "URL",
           :key :parentprojectlookup/URL,
           :position 15,
@@ -1435,15 +1648,17 @@
           :position 14,
           :cardinality :one,
           :type :string,
-          :strlen 15}]}
+          :strlen 15}
+   #:attr{:name "uuid",
+          :key :parentprojectlookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "person",
   :entity/name "Person",
   :entity/ns :entity.ns/person,
   :entity/pks [:person/PersonID],
-  :entity/prKeys
-  [:person/PersonID :person/FName :person/LName :person/IsStaff],
-  :entity/prnFn
-  "(fn [{:person/keys [LName FName]}] (str LName \", \" FName))",
+  :entity/prKeys [:person/Name :person/IsStaff :person/Agency],
   :entity/nameKey :person/Name,
   :entity/attrs
   [#:attr{:name "Agency",
@@ -1477,7 +1692,7 @@
           :derived true,
           :position 2,
           :deriveFn
-          "(fn [{:person/keys [LName FName]}] (str LName \", \" FName))",
+          "(fn [{:person/keys [FName LName]}] (str FName \" \" LName))",
           :cardinality :one}
    #:attr{:name "PersonID",
           :key :person/PersonID,
@@ -1485,15 +1700,19 @@
           :primary true,
           :identity true,
           :cardinality :one,
-          :type :long}]}
+          :type :long}
+   #:attr{:name "uuid",
+          :key :person/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "preplookup",
   :entity/name "Prep",
   :entity/ns :entity.ns/preplookup,
   :entity/pks [:preplookup/PrepRowID],
-  :entity/prKeys [:preplookup/Active
-                  :preplookup/PrepCode
-                  :preplookup/Preparation],
-  :entity/nameKey :preplookup/PrepCode
+  :entity/prKeys
+  [:preplookup/Active :preplookup/PrepCode :preplookup/Preparation],
+  :entity/nameKey :preplookup/PrepCode,
   :entity/attrs
   [#:attr{:name "Active",
           :key :preplookup/Active,
@@ -1522,7 +1741,12 @@
           :position 3,
           :cardinality :one,
           :type :string,
-          :strlen 30}]}
+          :strlen 30}
+   #:attr{:name "uuid",
+          :key :preplookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "projectslookup",
   :entity/name "Projects",
   :entity/ns :entity.ns/projectslookup,
@@ -1533,7 +1757,7 @@
    :projectslookup/Name
    :projectslookup/AgencyCode
    :projectslookup/AgencyRef],
-  :entity/nameKey :projectslookup/ProjectID
+  :entity/nameKey :projectslookup/ProjectID,
   :entity/attrs
   [#:attr{:name "Active",
           :key :projectslookup/Active,
@@ -1618,15 +1842,20 @@
           :key :projectslookup/Stations,
           :cardinality :many,
           :type :ref,
-          :ref {:entity/ns :entity.ns/stationlookup}
-          :refKey :entity.ns/stationlookup
-          :doc "Each project has a set of stations"}]}
+          :ref #:entity{:ns :entity.ns/stationlookup},
+          :refKey :entity.ns/stationlookup,
+          :doc "Each project has a set of stations"}
+   #:attr{:name "uuid",
+          :key :projectslookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "qalookup",
   :entity/name "QA",
   :entity/ns :entity.ns/qalookup,
   :entity/pks [:qalookup/QARowID],
   :entity/prKeys [:qalookup/QARowID],
-  :entity/nameKey :qalookup/QACode
+  :entity/nameKey :qalookup/QACode,
   :entity/attrs
   [#:attr{:name "Active",
           :key :qalookup/Active,
@@ -1669,13 +1898,18 @@
           :position 6,
           :cardinality :one,
           :type :string,
-          :strlen 25}]}
+          :strlen 25}
+   #:attr{:name "uuid",
+          :key :qalookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "resquallookup",
   :entity/name "Res Qual",
   :entity/ns :entity.ns/resquallookup,
   :entity/pks [:resquallookup/ResQualCode],
   :entity/prKeys [:resquallookup/ResQualCode],
-  :entity/nameKey :resquallookup/ResQualCode
+  :entity/nameKey :resquallookup/ResQualCode,
   :entity/attrs
   [#:attr{:name "Active",
           :key :resquallookup/Active,
@@ -1713,20 +1947,26 @@
           :position 5,
           :cardinality :one,
           :type :string,
-          :strlen 25}]}
+          :strlen 25}
+   #:attr{:name "uuid",
+          :key :resquallookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "sample",
   :entity/name "Sample",
   :entity/lookup :sample/SampleTypeCode,
   :entity/ns :entity.ns/sample,
   :entity/pks [:sample/SampleRowID],
-  :entity/prKeys [:sample/SampleDate
-                  :sample/SampleReplicate
-                  :sample/EventType
-                  :sample/QCCheck
-                  :sample/SampleComplete
-                  :sample/SampleTime
-                  :sample/SampleTypeCode],
-  :entity/nameKey :sample/SampleDate
+  :entity/prKeys
+  [:sample/SampleDate
+   :sample/SampleReplicate
+   :sample/EventType
+   :sample/QCCheck
+   :sample/SampleComplete
+   :sample/SampleTime
+   :sample/SampleTypeCode],
+  :entity/nameKey :sample/SampleDate,
   :entity/attrs
   [#:attr{:name "DepthSampleCollection",
           :key :sample/DepthSampleCollection,
@@ -1823,7 +2063,12 @@
           :position 8,
           :cardinality :one,
           :type :string,
-          :strlen 2}]}
+          :strlen 2}
+   #:attr{:name "uuid",
+          :key :sample/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "sampledetail",
   :entity/name "Sample Detail",
   :entity/ns :entity.ns/sampledetail,
@@ -1971,15 +2216,26 @@
           :position 14,
           :cardinality :one,
           :type :string,
-          :strlen 20}]}
+          :strlen 20}
+   #:attr{:name "uuid",
+          :key :sampledetail/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "sampletypelookup",
   :entity/name "Sample Type",
   :entity/ns :entity.ns/sampletypelookup,
   :entity/pks [:sampletypelookup/SampleTypeCode],
-  :entity/prKeys [:sampletypelookup/Active :sampletypelookup/SampleTypeCode :sampletypelookup/CollectionType
-                  :sampletypelookup/EventType1 :sampletypelookup/EventType2 :sampletypelookup/EventType3
-                  :sampletypelookup/EventType4 :sampletypelookup/SampleTypeDescr],
-  :entity/nameKey :sampletypelookup/SampleTypeCode
+  :entity/prKeys
+  [:sampletypelookup/Active
+   :sampletypelookup/SampleTypeCode
+   :sampletypelookup/CollectionType
+   :sampletypelookup/EventType1
+   :sampletypelookup/EventType2
+   :sampletypelookup/EventType3
+   :sampletypelookup/EventType4
+   :sampletypelookup/SampleTypeDescr],
+  :entity/nameKey :sampletypelookup/SampleTypeCode,
   :entity/attrs
   [#:attr{:name "Active",
           :key :sampletypelookup/Active,
@@ -2029,7 +2285,12 @@
           :position 2,
           :cardinality :one,
           :type :string,
-          :strlen 150}]}
+          :strlen 150}
+   #:attr{:name "uuid",
+          :key :sampletypelookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "samplingdevice",
   :entity/name "Sampling Device",
   :entity/ns :entity.ns/samplingdevice,
@@ -2056,88 +2317,52 @@
           :primary true,
           :identity true,
           :cardinality :one,
-          :type :long}]}
- {:db/id "samplingdevicelookup",
-  :entity/name "Device Type",
-  :entity/ns :entity.ns/samplingdevicelookup,
-  :entity/pks [:samplingdevicelookup/SamplingDeviceCode],
-  :entity/prKeys [:samplingdevicelookup/Active
-                  :samplingdevicelookup/SampleDevice
-                  :samplingdevicelookup/DeviceMax
-                  :samplingdevicelookup/DeviceMin],
-  :entity/nameKey :samplingdevicelookup/SampleDevice,
+          :type :long}
+   #:attr{:name "uuid",
+          :key :samplingdevice/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
+ {:db/id "seasonlookup",
+  :entity/name "Season",
+  :entity/ns :entity.ns/seasonlookup,
+  :entity/pks [:seasonlookup/SeasonCode],
+  :entity/prKeys
+  [:seasonlookup/Active :seasonlookup/SeasonCode :seasonlookup/Season],
+  :entity/nameKey :seasonlookup/Season,
   :entity/attrs
   [#:attr{:name "Active",
-          :key :samplingdevicelookup/Active,
-          :position 6,
+          :key :seasonlookup/Active,
+          :position 3,
           :cardinality :one,
           :type :boolean}
-   #:attr{:name "Constituent",
-          :key :samplingdevicelookup/Constituent,
-          :position 11,
-          :cardinality :one,
-          :type :ref,
-          :ref #:entity{:ns :entity.ns/constituentlookup},
-          :refKey :entity.ns/constituentlookup}
-   #:attr{:name "Max",
-          :key :samplingdevicelookup/DeviceMax,
-          :position 9,
-          :cardinality :one,
-          :type :bigdec}
-   #:attr{:name "Min",
-          :key :samplingdevicelookup/DeviceMin,
-          :position 10,
-          :cardinality :one,
-          :type :bigdec}
-   #:attr{:name "QAmax",
-          :key :samplingdevicelookup/QAmax,
-          :position 7,
-          :cardinality :one,
-          :type :bigdec}
-   #:attr{:name "QAmin",
-          :key :samplingdevicelookup/QAmin,
-          :position 8,
-          :cardinality :one,
-          :type :bigdec}
-   #:attr{:name "SampleDevice",
-          :key :samplingdevicelookup/SampleDevice,
+   #:attr{:name "Season",
+          :key :seasonlookup/Season,
           :position 2,
           :cardinality :one,
           :type :string,
           :strlen 50}
-   #:attr{:name "SampleDeviceDescr",
-          :key :samplingdevicelookup/SampleDeviceDescr,
-          :position 4,
-          :cardinality :one,
-          :type :string,
-          :strlen 100}
-   #:attr{:name "SamplingDeviceCode",
-          :key :samplingdevicelookup/SamplingDeviceCode,
+   #:attr{:name "SeasonCode",
+          :key :seasonlookup/SeasonCode,
           :position 1,
           :primary true,
           :identity true,
           :cardinality :one,
           :type :long}
-   #:attr{:name "SamplingMatrix",
-          :key :samplingdevicelookup/SamplingMatrix,
-          :position 5,
+   #:attr{:name "uuid",
+          :key :seasonlookup/uuid,
+          :identity true,
           :cardinality :one,
-          :type :string,
-          :strlen 50}
-   #:attr{:name "SerialNumber",
-          :key :samplingdevicelookup/SerialNumber,
-          :position 3,
-          :cardinality :one,
-          :type :string,
-          :strlen 30}]}
+          :type :uuid}]}
  {:db/id "seasondetaillookup",
   :entity/name "Season Detail",
   :entity/ns :entity.ns/seasondetaillookup,
   :entity/pks [:seasondetaillookup/SeasonRowID],
-  :entity/prKeys [:seasondetaillookup/Active
-                  :seasondetaillookup/SeasonCode
-                  :seasondetaillookup/SeasonDescr],
-  :entity/nameKey :seasondetaillookup/SeasonCode
+  :entity/prKeys
+  [:seasondetaillookup/Active
+   :seasondetaillookup/SeasonCode
+   :seasondetaillookup/SeasonDescr],
+  :entity/nameKey :seasondetaillookup/SeasonCode,
   :entity/attrs
   [#:attr{:name "Active",
           :key :seasondetaillookup/Active,
@@ -2169,33 +2394,12 @@
           :primary true,
           :identity true,
           :cardinality :one,
-          :type :long}]}
- {:db/id "seasonlookup",
-  :entity/name "Season",
-  :entity/ns :entity.ns/seasonlookup,
-  :entity/pks [:seasonlookup/SeasonCode],
-  :entity/prKeys
-  [:seasonlookup/Active :seasonlookup/SeasonCode :seasonlookup/Season],
-  :entity/nameKey :seasonlookup/Season
-  :entity/attrs
-  [#:attr{:name "Active",
-          :key :seasonlookup/Active,
-          :position 3,
-          :cardinality :one,
-          :type :boolean}
-   #:attr{:name "Season",
-          :key :seasonlookup/Season,
-          :position 2,
-          :cardinality :one,
-          :type :string,
-          :strlen 50}
-   #:attr{:name "SeasonCode",
-          :key :seasonlookup/SeasonCode,
-          :position 1,
-          :primary true,
+          :type :long}
+   #:attr{:name "uuid",
+          :key :seasondetaillookup/uuid,
           :identity true,
           :cardinality :one,
-          :type :long}]}
+          :type :uuid}]}
  {:db/id "sitevisit",
   :entity/name "Site Visit",
   :entity/ns :entity.ns/sitevisit,
@@ -2209,7 +2413,7 @@
    :sitevisit/QACheck
    :sitevisit/StationFailCode
    :sitevisit/VisitType],
-  :entity/nameKey :sitevisit/SiteVisitDate
+  :entity/nameKey :sitevisit/SiteVisitDate,
   :entity/attrs
   [#:attr{:name "Agency",
           :key :sitevisit/AgencyCode,
@@ -2268,6 +2472,11 @@
           :doc "Who did the data entry for this sitevisit?",
           :ref #:entity{:ns :entity.ns/person},
           :refKey :entity.ns/person}
+   #:attr{:name "Date",
+          :key :sitevisit/SiteVisitDate,
+          :position 2,
+          :cardinality :one,
+          :type :instant}
    #:attr{:name "Datum",
           :key :sitevisit/Datum,
           :position 16,
@@ -2279,6 +2488,13 @@
           :position 33,
           :cardinality :one,
           :type :boolean}
+   #:attr{:name "Fail Reason",
+          :key :sitevisit/StationFailCode,
+          :position 37,
+          :cardinality :one,
+          :type :ref,
+          :ref #:entity{:ns :entity.ns/stationfaillookup},
+          :refKey :entity.ns/stationfaillookup}
    #:attr{:name "GPS Device Code",
           :key :sitevisit/GPSDeviceCode,
           :position 15,
@@ -2296,6 +2512,13 @@
           :cardinality :one,
           :type :string,
           :strlen 2}
+   #:attr{:name "ID",
+          :key :sitevisit/StationID,
+          :position 22,
+          :cardinality :one,
+          :type :ref,
+          :ref #:entity{:ns :entity.ns/stationlookup},
+          :refKey :entity.ns/stationlookup}
    #:attr{:name "Lat",
           :key :sitevisit/Lat,
           :position 4,
@@ -2358,6 +2581,13 @@
           :doc "Who did QA for this sitevisit?",
           :ref #:entity{:ns :entity.ns/person},
           :refKey :entity.ns/person}
+   #:attr{:name "SVID",
+          :key :sitevisit/SiteVisitID,
+          :position 1,
+          :primary true,
+          :identity true,
+          :cardinality :one,
+          :type :long}
    #:attr{:name "Samples",
           :key :sitevisit/Samples,
           :type :ref,
@@ -2369,7 +2599,7 @@
           :key :sitevisit/Visitors,
           :cardinality :many,
           :type :ref,
-          :ref {:entity/ns :entity.ns/person},
+          :ref #:entity{:ns :entity.ns/person},
           :doc "Who were the ones who visited the site?",
           :refKey :entity.ns/person}
    #:attr{:name "Season",
@@ -2379,32 +2609,6 @@
           :type :ref,
           :ref #:entity{:ns :entity.ns/seasonlookup},
           :refKey :entity.ns/seasonlookup}
-   #:attr{:name "Date",
-          :key :sitevisit/SiteVisitDate,
-          :position 2,
-          :cardinality :one,
-          :type :instant}
-   #:attr{:name "SVID",
-          :key :sitevisit/SiteVisitID,
-          :position 1,
-          :primary true,
-          :identity true,
-          :cardinality :one,
-          :type :long}
-   #:attr{:name "Fail Reason",
-          :key :sitevisit/StationFailCode,
-          :position 37,
-          :cardinality :one,
-          :type :ref,
-          :ref #:entity{:ns :entity.ns/stationfaillookup},
-          :refKey :entity.ns/stationfaillookup}
-   #:attr{:name "ID",
-          :key :sitevisit/StationID,
-          :position 22,
-          :cardinality :one,
-          :type :ref,
-          :ref #:entity{:ns :entity.ns/stationlookup},
-          :refKey :entity.ns/stationlookup}
    #:attr{:name "Stream Width",
           :key :sitevisit/StreamWidth,
           :position 13,
@@ -2469,9 +2673,9 @@
           :type :boolean}
    #:attr{:name "uuid",
           :key :sitevisit/uuid,
+          :identity true,
           :cardinality :one,
-          :type :uuid,
-          :identity true}]}
+          :type :uuid}]}
  {:db/id "sitevisitgroup",
   :entity/name "Sitevisit Group",
   :entity/ns :entity.ns/sitevisitgroup,
@@ -2490,50 +2694,51 @@
           :position 2,
           :cardinality :one,
           :type :string,
-          :strlen 45}]}
- {:db/id "sitevisittype",
-  :entity/name "Visit Type",
-  :entity/ns :entity.ns/sitevisittype,
-  :entity/pks [:sitevisittype/name],
-  :entity/prKeys [:sitevisittype/name],
-  :entity/enumField :sitevisittype/name,
-  :entity/nameKey :sitevisittype/name,
-  :entity/attrs
-  [#:attr{:name "name",
-          :key :sitevisittype/name,
+          :strlen 45}
+   #:attr{:name "uuid",
+          :key :sitevisitgroup/uuid,
           :identity true,
+          :cardinality :one,
+          :type :uuid}]}
+ {:db/id "statmethlookup",
+  :entity/name "Stat Method",
+  :entity/ns :entity.ns/statmethlookup,
+  :entity/pks [:statmethlookup/StatMethodRowID],
+  :entity/prKeys
+  [:statmethlookup/Active
+   :statmethlookup/StatMethCode
+   :statmethlookup/StatMethDescr],
+  :entity/nameKey :statmethlookup/StatMethCode,
+  :entity/attrs
+  [#:attr{:name "Active",
+          :key :statmethlookup/Active,
+          :position 4,
+          :cardinality :one,
+          :type :boolean}
+   #:attr{:name "StatMethCode",
+          :key :statmethlookup/StatMethCode,
           :position 2,
           :cardinality :one,
           :type :string,
-          :strlen 45}]}
- {:db/id "stationfaillookup",
-  :entity/name "Station Fail",
-  :entity/nameKey :stationfaillookup/FailureReason,
-  :entity/ns :entity.ns/stationfaillookup,
-  :entity/pks [:stationfaillookup/StationFailCode],
-  :entity/prKeys
-  [:stationfaillookup/Active
-   :stationfaillookup/StationFailCode
-   :stationfaillookup/FailureReason],
-  :entity/attrs
-  [#:attr{:name "Active",
-          :key :stationfaillookup/Active,
+          :strlen 10}
+   #:attr{:name "StatMethDescr",
+          :key :statmethlookup/StatMethDescr,
           :position 3,
-          :cardinality :one,
-          :type :boolean}
-   #:attr{:name "FailureReason",
-          :key :stationfaillookup/FailureReason,
-          :position 2,
           :cardinality :one,
           :type :string,
           :strlen 150}
-   #:attr{:name "StationFailCode",
-          :key :stationfaillookup/StationFailCode,
+   #:attr{:name "StatMethodRowID",
+          :key :statmethlookup/StatMethodRowID,
           :position 1,
           :primary true,
           :identity true,
           :cardinality :one,
-          :type :long}]}
+          :type :long}
+   #:attr{:name "uuid",
+          :key :statmethlookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:entity/prKeys
                   [:stationlookup/Active
                    :stationlookup/StationID
@@ -2747,43 +2952,48 @@
                           :type :ref,
                           :ref #:entity{:ns :entity.ns/wbtypelookup},
                           :strlen 5,
-                          :refKey :entity.ns/wbtypelookup}],
+                          :refKey :entity.ns/wbtypelookup}
+                   #:attr{:name "uuid",
+                          :key :stationlookup/uuid,
+                          :identity true,
+                          :cardinality :one,
+                          :type :uuid}],
   :db/id "stationlookup",
   :entity/prnFn
                   "(fn [{:stationlookup/keys [StationID StationName]}] (str StationID \": \" StationName))"}
- {:db/id "statmethlookup",
-  :entity/name "Stat Method",
-  :entity/ns :entity.ns/statmethlookup,
-  :entity/pks [:statmethlookup/StatMethodRowID],
-  :entity/prKeys [:statmethlookup/Active
-                  :statmethlookup/StatMethCode
-                  :statmethlookup/StatMethDescr],
-  :entity/nameKey :statmethlookup/StatMethCode
+ {:db/id "stationfaillookup",
+  :entity/name "Station Fail",
+  :entity/nameKey :stationfaillookup/FailureReason,
+  :entity/ns :entity.ns/stationfaillookup,
+  :entity/pks [:stationfaillookup/StationFailCode],
+  :entity/prKeys
+  [:stationfaillookup/Active
+   :stationfaillookup/StationFailCode
+   :stationfaillookup/FailureReason],
   :entity/attrs
   [#:attr{:name "Active",
-          :key :statmethlookup/Active,
-          :position 4,
+          :key :stationfaillookup/Active,
+          :position 3,
           :cardinality :one,
           :type :boolean}
-   #:attr{:name "StatMethCode",
-          :key :statmethlookup/StatMethCode,
+   #:attr{:name "FailureReason",
+          :key :stationfaillookup/FailureReason,
           :position 2,
           :cardinality :one,
           :type :string,
-          :strlen 10}
-   #:attr{:name "StatMethDescr",
-          :key :statmethlookup/StatMethDescr,
-          :position 3,
-          :cardinality :one,
-          :type :string,
           :strlen 150}
-   #:attr{:name "StatMethodRowID",
-          :key :statmethlookup/StatMethodRowID,
+   #:attr{:name "StationFailCode",
+          :key :stationfaillookup/StationFailCode,
           :position 1,
           :primary true,
           :identity true,
           :cardinality :one,
-          :type :long}]}
+          :type :long}
+   #:attr{:name "uuid",
+          :key :stationfaillookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "unitlookup",
   :entity/name "Unit",
   :entity/ns :entity.ns/unitlookup,
@@ -2808,7 +3018,12 @@
           :primary true,
           :identity true,
           :cardinality :one,
-          :type :long}]}
+          :type :long}
+   #:attr{:name "uuid",
+          :key :unitlookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "unitslookup",
   :entity/name "Units",
   :entity/ns :entity.ns/unitslookup,
@@ -2856,14 +3071,22 @@
           :type :ref,
           :ref #:entity{:ns :entity.ns/variableslookup},
           :strlen 25,
-          :refKey :entity.ns/variableslookup}]}
+          :refKey :entity.ns/variableslookup}
+   #:attr{:name "uuid",
+          :key :unitslookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "variablecodeslookup",
   :entity/name "Variable Codes",
   :entity/ns :entity.ns/variablecodeslookup,
   :entity/pks [:variablecodeslookup/VariableCodesLookUpRowID],
-  :entity/prKeys [:variablecodeslookup/Active :variablecodeslookup/CodeListName
-                  :variablecodeslookup/ValueCode :variablecodeslookup/CodeDescription],
-  :entity/nameKey :variablecodeslookup/CodeListName
+  :entity/prKeys
+  [:variablecodeslookup/Active
+   :variablecodeslookup/CodeListName
+   :variablecodeslookup/ValueCode
+   :variablecodeslookup/CodeDescription],
+  :entity/nameKey :variablecodeslookup/CodeListName,
   :entity/attrs
   [#:attr{:name "Active",
           :key :variablecodeslookup/Active,
@@ -2894,16 +3117,22 @@
           :primary true,
           :identity true,
           :cardinality :one,
-          :type :long}]}
+          :type :long}
+   #:attr{:name "uuid",
+          :key :variablecodeslookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "variableslookup",
   :entity/name "Variables",
   :entity/ns :entity.ns/variableslookup,
   :entity/pks [:variableslookup/VariablesLookUpRowID],
-  :entity/prKeys [:variableslookup/Active
-                  :variableslookup/VariableName
-                  :variableslookup/VariableType
-                  :variableslookup/Description],
-  :entity/nameKey :variableslookup/VariableName
+  :entity/prKeys
+  [:variableslookup/Active
+   :variableslookup/VariableName
+   :variableslookup/VariableType
+   :variableslookup/Description],
+  :entity/nameKey :variableslookup/VariableName,
   :entity/attrs
   [#:attr{:name "Active",
           :key :variableslookup/Active,
@@ -2933,13 +3162,38 @@
           :primary true,
           :identity true,
           :cardinality :one,
-          :type :long}]}
+          :type :long}
+   #:attr{:name "uuid",
+          :key :variableslookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
+ {:db/id "sitevisittype",
+  :entity/name "Visit Type",
+  :entity/ns :entity.ns/sitevisittype,
+  :entity/pks [:sitevisittype/name],
+  :entity/prKeys [:sitevisittype/name],
+  :entity/enumField :sitevisittype/name,
+  :entity/nameKey :sitevisittype/name,
+  :entity/attrs
+  [#:attr{:name "name",
+          :key :sitevisittype/name,
+          :identity true,
+          :position 2,
+          :cardinality :one,
+          :type :string,
+          :strlen 45}
+   #:attr{:name "uuid",
+          :key :sitevisittype/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "wbtypelookup",
   :entity/name "Wb Type",
   :entity/ns :entity.ns/wbtypelookup,
   :entity/pks [:wbtypelookup/WBTypeRowID],
   :entity/prKeys [:wbtypelookup/WBType :wbtypelookup/WBTypeDescr],
-  :entity/nameKey :wbtypelookup/WBType
+  :entity/nameKey :wbtypelookup/WBType,
   :entity/attrs
   [#:attr{:name "WBType",
           :key :wbtypelookup/WBType,
@@ -2959,4 +3213,9 @@
           :primary true,
           :identity true,
           :cardinality :one,
-          :type :long}]}]
+          :type :long}
+   #:attr{:name "uuid",
+          :key :wbtypelookup/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}]

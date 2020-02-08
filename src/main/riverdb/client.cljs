@@ -13,10 +13,14 @@
     [riverdb.ui.session :as ui-session]
     [riverdb.ui.routes :as routes]
     [riverdb.ui.project-years :as py]
+    [riverdb.model :as model]
     [taoensso.timbre :as log]
     [com.fulcrologic.fulcro.algorithms.denormalize :as fdn]
     [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
-    [com.fulcrologic.fulcro.inspect.inspect-client :as inspect]))
+    [com.fulcrologic.fulcro.inspect.inspect-client :as inspect]
+    [com.fulcrologic.rad.attributes :as attr]
+    [com.fulcrologic.rad.form :as form]
+    [com.fulcrologic.rad.rendering.semantic-ui.semantic-ui-controls :as sui]))
 
 (defn ^:export refresh []
   (log/info "Hot code Remount")
@@ -39,6 +43,10 @@
      :actor/project-years   py/ProjectYears
      :actor/globals         globals/Globals}
     {:desired-path (some-> js/window .-location .-pathname)})
+
+  (form/install-ui-controls! SPA sui/all-controls)
+  (attr/register-attributes! model/all-attributes)
+
   (app/mount! SPA root/Root "app" {:initialize-state? false}))
 
 (comment

@@ -369,7 +369,7 @@
                    :com.wsscode.pathom.core/reader-error nil}}
   (let [error (or error reader-error)]
     (debug "TxResult" error)
-    (div {:style {:position "absolute" :top "50px" :left 0 :right 0 :maxWidth 500 :margin "auto"}}
+    (div {:style {:position "fixed" :top "50px" :left 0 :right 0 :maxWidth 500 :margin "auto"}}
       (if error
         (ui-message {:error true}
           (div :.content {}

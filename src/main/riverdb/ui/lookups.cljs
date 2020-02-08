@@ -703,9 +703,6 @@
    :db/id
    :riverdb.entity/ns
    :person/Agency
-   :person/FName
-   :person/IsStaff
-   :person/LName
    :person/Name
    :person/PersonID]}
  (do

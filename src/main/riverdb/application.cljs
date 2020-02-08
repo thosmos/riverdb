@@ -1,8 +1,11 @@
 (ns riverdb.application
-  (:require [com.fulcrologic.fulcro.networking.http-remote :as net]
-            [com.fulcrologic.fulcro.application :as app]
+  (:require [com.fulcrologic.fulcro.application :as app]
+            [com.fulcrologic.fulcro.data-fetch :as df]
+            [com.fulcrologic.fulcro.networking.http-remote :as net]
             [com.fulcrologic.fulcro.rendering.keyframe-render2 :as kf2]
+            [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
             [com.wsscode.pathom.core :as p]
+            [edn-query-language.core :as eql]
             [theta.log :as log :refer [debug]]))
 
 (def secured-request-middleware
@@ -39,7 +42,23 @@
                                  (or
                                    (app/default-remote-error? result)
                                    (contains-error? body)))
-                :optimized-render! kf2/render!}))
+                :optimized-render! kf2/render!
+                :global-eql-transform (fn [ast]
+                                        (let [kw-namespace (fn [k] (and (keyword? k) (namespace k)))
+                                              mutation?    (symbol? (:dispatch-key ast))]
+                                          (cond-> (df/elide-ast-nodes ast
+                                                    (fn [k]
+                                                      (let [ns (some-> k kw-namespace)]
+                                                        (or
+                                                          (= k '[:com.fulcrologic.fulcro.ui-state-machines/asm-id _])
+                                                          (= k df/marker-table)
+                                                          (= k ::fs/config)
+                                                          (and
+                                                            (string? ns)
+                                                            (= "ui" ns))))))
+                                            mutation? (update :children conj (eql/expr->ast :tempids)))))}))
+                ;:client-did-mount     (fn [app]
+                ;                        (auth/start! app [LoginForm]))}))
 
 (comment
   (-> SPA (::app/runtime-atom) deref ::app/indexes))

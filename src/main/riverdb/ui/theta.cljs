@@ -96,7 +96,7 @@
 
 
 (defn ref-input [refKey value onChange]
-  (ui-theta-options (comp/computed {:riverdb.entity/ns refKey :ui/value value} {:onChange onChange})))
+  (ui-theta-options (comp/computed {:riverdb.entity/ns refKey :value value} {:onChange onChange})))
 
 (defn default-filter-value [type]
   (case type
@@ -477,8 +477,8 @@
    :query         [:ui/ready]
    :initial-state {:ui/ready true}
    :route-segment ["index"]}
-  (div
-    (h3 "Thetas")
+  (div :.ui.segment
+    (h3 "Tables")
     (doall
       (for [[k v] look/specs-map]
         (let [k-nm (name k)]
