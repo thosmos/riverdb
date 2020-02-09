@@ -50,7 +50,7 @@
 (defn merge-ident!
   "Merge some data at an ident"
   [ident props & targets]
-  (debug "merge-ident!" targets)
+  (debug "merge-ident!" ident "targets:" targets)
   (let [params {:ident ident :props props}
         params (if targets
                  (assoc params :targets targets)

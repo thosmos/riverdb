@@ -4,6 +4,7 @@
   "description": "A River Science Data Management System",
   "private": true,
   "dependencies": {
+    "big.js": "^5.2.2",
     "create-react-context": "^0.3.0",
     "fsevents": "^2.1.2",
     "highlight.js": "^9.13.1",

@@ -33,6 +33,6 @@
   "a single root query of some things at initial session"
   [this props]
   {:ident (fn [] [:component/id :globals])
-   :query [{:db-idents (comp/get-query DBIdents)}
-           {:meta-entities (comp/get-query Entity)}
-           {:meta-global-attrs (comp/get-query Attribute)}]})
+   :query [{:db-idents (comp/get-query DBIdents)}]})
+           ;{:meta-entities (comp/get-query Entity)}
+           ;{:meta-global-attrs (comp/get-query Attribute)}]})

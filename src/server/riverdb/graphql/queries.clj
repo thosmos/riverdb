@@ -13,7 +13,7 @@
             [riverdb.state :as st :refer [db cx]]
             [riverdb.station]
             [riverdb.model.user :as user]
-            [riverdb.api.riverdb :as riverdb]
+            [riverdb.api.tac-report :as tac-report]
             [thosmos.util :as tu]))
 
 
@@ -63,7 +63,8 @@
                      (merge
                        {:toDate toDate}))
 
-        svs        (riverdb/get-sitevisit-summaries (db) opts)
+        svs        (tac-report/get-sitevisit-summaries (db) opts)
+
 
         limit      (get args :limit)
         offset     (get args :offset)

@@ -47,9 +47,9 @@
     [riverdb.ui.session :refer [ui-session Session]]
     [riverdb.ui.style :as style]
     [riverdb.ui.tac-report-page :refer [TacReportPage]]
+    [riverdb.ui.theta-edit :refer [ThetaEditor]]
     [riverdb.ui.user]
     [theta.log :as log :refer [debug]]
-    ;[theta.ui.dnd :refer [ui-droppable]]
     [goog.object :as gob]
     [cljsjs.react-grid-layout]
     [nubank.workspaces.ui.core :as uc]))
@@ -73,7 +73,8 @@
                :padding         20
                :whiteSpace      "nowrap"
                :display         (if show "block" "none")
-               :backgroundColor "white"}}
+               :backgroundColor "white"
+               :zIndex 1000}}
       (div {:style {:marginBottom 5}}
         (dom/b {} "Select Columns"))
 
@@ -278,8 +279,6 @@
                                route-ident [:riverdb.theta.list/ns ident-val]]
                            (dr/route-deferred route-ident
                              #(let [theta-k      (keyword "entity.ns" theta-ns)
-                                    ;;FIXME load spec over the wire at session start ???
-                                    ;; it'd be nice to be able to change the spec without rebuilding the UI
                                     theta-spec   (get look/specs-map theta-k)
                                     theta-prKeys (:entity/prKeys theta-spec)
                                     app-state    (fapp/current-state SPA)
@@ -445,7 +444,6 @@
               (div :.item {}
                 (dom/span {:style {}} "Results Per Page")
                 (ui-input {:style        {:width 70}
-                           :defaultValue (str limit)
                            :value        (str (if (= limit -1) "" limit))
                            :onChange     (fn [e]
                                            (let [value (-> e .-target .-value)
@@ -485,7 +483,7 @@
           (div {:key k-nm} (dom/a {:href (str "/theta/list/" k-nm)} k-nm)))))))
 
 (dr/defrouter ThetaRouter [this props]
-  {:router-targets [Thetas ThetaList]})
+  {:router-targets [Thetas ThetaList ThetaEditor]})
 
 (def ui-theta-router (comp/factory ThetaRouter))
 

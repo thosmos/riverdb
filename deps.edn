@@ -30,9 +30,10 @@
                                    clj-commons/pushy           {:mvn/version "0.3.10"}}}
 
          :rad       {:extra-paths ["src/rad"]
-                     :extra-deps  {com.fulcrologic/fulcro-rad         {:local/root "/Users/thomas/Develop/cljs/fulcro/fulcro-rad"}
-                                   com.fulcrologic/fulcro-rad-datomic {:local/root "/Users/thomas/Develop/cljs/fulcro/fulcro-rad-datomic"
-                                                                       :exclusions [org.postgresql/postgresql com.datomic/datomic-pro]}}}
+                     :extra-deps  {com.fulcrologic/fulcro-rad         {:local/root "/Users/thomas/Develop/cljs/fulcro/fulcro-rad"}}}
+         :rad-server {:extra-deps {com.fulcrologic/fulcro-rad-datomic
+                                   {:local/root "/Users/thomas/Develop/cljs/fulcro/fulcro-rad-datomic"
+                                    :exclusions [org.postgresql/postgresql com.datomic/datomic-pro]}}}
 
          :server    {:extra-paths ["src/server"]
                      :extra-deps  {com.datomic/datomic-free         {:mvn/version "0.9.5697" :exclusions [org.slf4j/slf4j-nop]}

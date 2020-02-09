@@ -63,10 +63,10 @@
 
           rez    (if (or limit offset)
                    (limit-fn limit offset rez)
-                   rez)
+                   rez)]
 
           ;_      (debug "FIRST RESULT AFTER LIMIT APPLIED" (first rez))
 
-          ]
+
       rez)
     (catch Exception ex (debug "ERROR: " (.getMessage ex)))))

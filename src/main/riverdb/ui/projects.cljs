@@ -1,6 +1,7 @@
 (ns riverdb.ui.projects
   (:require
     [clojure.string :as str]
+    [cljs.tools.reader.edn :as edn]
     [cognitect.transit :as transit]
     [com.fulcrologic.fulcro.application :as app]
     [com.fulcrologic.fulcro.dom :as dom :refer [div ul li p h3 button label span table tr th td thead tbody]]
@@ -15,6 +16,8 @@
     [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
     [com.fulcrologic.fulcro-css.css :as css]
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
+    [com.fulcrologic.rad.rendering.semantic-ui.decimal-field :refer [ui-decimal-input]]
+    [com.fulcrologic.rad.type-support.decimal :as dec :refer [numeric]]
     [com.fulcrologic.semantic-ui.elements.loader.ui-loader :refer [ui-loader]]
     [com.fulcrologic.semantic-ui.modules.dimmer.ui-dimmer :refer [ui-dimmer]]
     [com.fulcrologic.semantic-ui.elements.input.ui-input :refer [ui-input]]
@@ -26,6 +29,8 @@
     [com.fulcrologic.semantic-ui.collections.form.ui-form-field :refer [ui-form-field]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-input :refer [ui-form-input]]
     [com.fulcrologic.semantic-ui.modules.checkbox.ui-checkbox :refer [ui-checkbox]]
+    [com.fulcrologic.semantic-ui.elements.icon.ui-icon :refer [ui-icon]]
+    [com.fulcrologic.semantic-ui.modules.popup.ui-popup :refer [ui-popup]]
     [riverdb.application :refer [SPA]]
     [riverdb.roles :as roles]
     [riverdb.api.mutations :as rm]
@@ -39,13 +44,15 @@
     [riverdb.ui.session :refer [ui-session Session]]
     [riverdb.ui.tac-report-page :refer [TacReportPage]]
     [riverdb.ui.user]
+    [riverdb.ui.util :as ui-util :refer [make-validator]]
     [theta.log :as log :refer [debug]]
     [com.fulcrologic.fulcro.components :as om]
     [com.fulcrologic.fulcro.data-fetch :as f]
     [goog.object :as gob]
     [com.fulcrologic.fulcro.data-fetch :as df]
-    [cljs.tools.reader.edn :as edn]))
+    [cljs.spec.alpha :as s]))
 
+(cljs.reader/register-tag-parser! 'bigdec numeric)
 
 ;; TASK per group
 
@@ -100,40 +107,6 @@
      :validity validity
      :invalid? is-invalid?
      :value    value}))
-
-;[:db/id
-; :riverdb.entity/ns
-; :constituentlookup/Name
-; :constituentlookup/Active
-; {:constituentlookup/AnalyteCode [:db/id :analytelookup/AnalyteName]}
-; :constituentlookup/ConstituentCode
-; {:constituentlookup/FractionCode [:db/id :fractionlookup/FractionName]}
-; {:constituentlookup/MatrixCode [:db/id :matrixlookup/MatrixName]}
-; {:constituentlookup/MethodCode [:db/id :methodlookup/MethodName]}
-; {:constituentlookup/UnitCode [:db/id :unitlookup/Unit]}]
-
-;(defsc ConstituentForm [this {:constituentlookup/keys [Name]}]
-;  {:ident [:org.riverdb.db.constituentlookup/gid :db/id]
-;   :query [fs/form-config-join
-;           :db/id
-;           :riverdb.entity/ns
-;           :constituentlookup/Active
-;           :constituentlookup/AnalyteCode
-;           :constituentlookup/ConstituentCode
-;           :constituentlookup/ConstituentRowID
-;           {:constituentlookup/DeviceType (comp/get-query looks/samplingdevicelookup)}
-;           :constituentlookup/FractionCode
-;           :constituentlookup/HighValue
-;           :constituentlookup/LowValue
-;           :constituentlookup/MatrixCode
-;           :constituentlookup/MaxValue
-;           :constituentlookup/MethodCode
-;           :constituentlookup/MinValue
-;           :constituentlookup/Name
-;           :constituentlookup/UnitCode]}
-;  (div Name))
-;(def ui-constituent-form (comp/factory ConstituentForm {:keyfn :db/id}))
-
 
 
 (defn set-ref! [this k id]
@@ -215,7 +188,7 @@
                                      nil
                                      val)]
                          (debug "Set BigDecimal" k new-v
-                            (set-value! this k new-v))))})))))
+                           (set-value! this k new-v))))})))))
 
 (defn rui-int [this k opts]
   (let [props (comp/props this)
@@ -246,39 +219,92 @@
                                    (log/debug "change" k value)
                                    (set-value! this k value))})))))
 
-(defn ui-precision [this props]
-  (debug "PRECISION" props)
-  (let [edn-val (try (edn/read-string props) (catch js/Object ex nil))
-        {:keys [threshold range rds]} edn-val
-        thresh? (some? threshold)
-        range?  (and (not thresh?) (some? range))
-        rds?    (and (not thresh?) (some? rds))]
+(defn parse-float [str]
+  (let [res (js/parseFloat str)]
+    (if (js/Number.isNaN res)
+      nil
+      res)))
+
+(s/def ::range number?)
+(s/def ::rsd number?)
+(s/def ::threshold number?)
+(s/def :parameter/precisionCode (s/nilable (s/keys :opt-un [::range ::rsd ::threshold])))
+
+(defn parameter-valid [form field]
+  (let [v (get form field)]
+    (case field
+      :parameter/precisionCode
+      (let [edn-val (try (cljs.reader/read-string v) (catch js/Object ex nil))
+            {:keys [threshold range rsd]} edn-val]
+        (cond
+          (and (some? threshold) (or (not range) (not rsd)))
+          {:msg "If Threshold is set, then both Range and RSD must also be set"}
+          (and (not threshold) (some? range) (some? rsd))
+          {:msg "If Threshold is not set, then either Range or RSD can be set, but not both"}
+          (not (s/valid? field edn-val))
+          {:msg (str "All values must be numbers")}
+          :else
+          true)))))
+
+(def validator (make-validator parameter-valid))
+
+(defn ui-precision [this attr-k]
+  (let [props (comp/props this)
+        this-ident (comp/get-ident this)
+        str-val   (attr-k props)
+        _         (debug "PRECISION STR" str-val)
+        edn-val   (try (cljs.reader/read-string str-val) (catch js/Object ex nil))
+        _         (debug "PRECISION EDN" edn-val)
+        {:keys [threshold range rsd]} edn-val
+        range     (str range)
+        rsd       (str rsd)
+        threshold (str threshold)
+        save-edn  (fn [edn]
+                    (set-value! this attr-k (pr-str edn)))
+        save-fn   (fn [k]
+                    (fn [e]
+                      (let [val (parse-float (-> e .-target .-value))
+                            edn-val (if val
+                                      (assoc edn-val k val)
+                                      (dissoc edn-val k))]
+                        (save-edn edn-val))))
+        _ (debug "VALID? " (validator props attr-k true))]
     (div :.field
       (dom/label {} "Precision")
-      (div {}
-        (div :.ui.fields {}
-          ;(ui-form-field {:control "Radio" :label "Range"})
-          (ui-form-radio {:label "Range" :checked range?})
-          (div :.field (ui-input {:className "ui small input"
-                                  :value     (or (str range) "")
-                                  :disabled  (not (or range? thresh?))
-                                  :style     {:width 80}})))
-        (div :.ui.fields {}
-          ;(ui-form-field {:control "Radio" :label "Range"})
-          (ui-form-radio {:label "% RDS" :checked rds?})
-          (div :.field (ui-input {:className "ui small input"
-                                  :value     (or (str rds) "")
-                                  :disabled  (not (or rds? thresh?))
-                                  :style     {:width 80}})))
-        #_(div :.item {:key 2} (ui-form-radio {:label "% RDS" :checked rds?}))
-        (div :.ui.fields {}
-          ;(ui-form-field {:control "Radio" :label "Range"})
-          (ui-form-radio {:label "Threshold" :checked thresh?})
-          (div :.field (ui-input {:className "ui small input"
-                                  :value     (or (str threshold) "")
-                                  :disabled  (not thresh?)
-                                  :style     {:width 80}})))
-        #_(div :.item {:key 3} (ui-form-radio {:label "Threshold" :checked thresh?}))))))
+      (let [valid? (validator props attr-k true)]
+        (when (map? valid?)
+          (div (:msg valid?))))
+      (div :.ui.fields {}
+        (div :.field
+          (ui-popup {:trigger (label {} "Range" (dom/sup (ui-icon {:name "info" :size "small" :circular true :style {:marginLeft 5}})))}
+            "Max - Min of sample replicates")
+
+          (ui-input {:className "ui small input"
+                     :value     range
+                     ;:disabled  (not (or range? thresh?))
+                     :onChange  (save-fn :range)
+                     :style     {:width 80}}))
+
+        (div :.field
+          (ui-popup {:trigger (label {} "Threshold" (dom/sup (ui-icon {:name "info" :size "small" :circular true :style {:marginLeft 5}})))}
+            "Range is used if mean is below threshold; % RSD is used if mean is above threshold")
+
+          (ui-input {:className "ui small input"
+                     :value     threshold
+                     ;:disabled  (not thresh?)
+                     :style     {:width 80}
+                     :onChange  (save-fn :threshold)}))
+
+        (div :.field
+          (ui-popup {:trigger (label {} "% RSD" (dom/sup (ui-icon {:name "info" :size "small" :circular true :style {:marginLeft 5}})))}
+            "% Relative Standard Deviation = (StdDev / Mean) * 100")
+
+          (ui-input {:className "ui small input"
+                     :value     rsd
+                     ;:disabled  (not (or rds? thresh?))
+                     :style     {:width 80}
+                     :onChange  (save-fn :rsd)}))))))
+
 
 (defsc ParameterForm [this {:ui/keys        [editing saving]
                             :parameter/keys [active name high low
@@ -305,7 +331,8 @@
                    :parameter/samplingdevicelookupRef
                    :ui/editing
                    :ui/saving]
-   ;[:riverdb.theta.options/ns '_]]
+   ;[:riverdb.theta.options/ns :entity.ns/constituentlookup]
+   ;[:riverdb.theta.options/ns :entity.ns/samplingdevicelookup]]
    :initial-state {:riverdb.entity/ns :entity.ns/parameter
                    :parameter/name    ""
                    :ui/editing        false
@@ -338,7 +365,7 @@
               (comp/computed
                 {:riverdb.entity/ns :entity.ns/samplingdevicelookup
                  :value             (:db/id samplingdevicelookupRef)
-                 :opts              {:clearable true}}
+                 :opts              {:clearable true :load true}}
                 {:onChange #(do
                               (debug "OPTION CHANGE Default Device" %)
                               (set-ref! this :parameter/samplingdevicelookupRef %))}))))
@@ -346,16 +373,20 @@
           (dom/label {} "Constituent")
           (ui-theta-options
             (comp/computed
-              {:riverdb.entity/ns :entity.ns/constituentlookup :value (:db/id constituentlookupRef)}
+              {:riverdb.entity/ns :entity.ns/constituentlookup
+               :value             (:db/id constituentlookupRef)
+               :opts              {:load true}}
               {:onChange #(do
                             (debug "OPTION CHANGE Parameter Constituent" %)
                             (set-ref! this :parameter/constituentlookupRef %))})))
-        (div :.fields {}
-          (div :.field {} (rui-bigdec this :parameter/low {:style {:width 100}}))
-          (div :.field {} (rui-bigdec this :parameter/high {:style {:width 100}}))
-          (div :.field {} (rui-int this :parameter/replicates {:style {:width 100}}))
-          (div :.field {} (rui-input this :parameter/precisionCode {:label "Precision" :style {:width 200}})))
-        (div :.field {} (ui-precision this precisionCode))
+        (div :.fields
+         (div :.field
+           (label {} "Data Quality")
+           (div :.fields {}
+             (div :.field {} (rui-bigdec this :parameter/low {:style {:width 80}}))
+             (div :.field {} (rui-bigdec this :parameter/high {:style {:width 80}}))
+             (div :.field {} (rui-int this :parameter/replicates {:style {:width 80}}))))
+         (ui-precision this :parameter/precisionCode))
         (when saving
           "SAVING")
         (ui-cancel-save this props dirty?
@@ -408,6 +439,7 @@
    :componentDidMount (fn [this]
                         (let [props (comp/props this)]
                           (preload-options :entity.ns/constituentlookup)
+                          (preload-options :entity.ns/samplingdevicelookup)
                           (fm/set-value! this :ui/ready true)))}
   (let [dirty? (some? (seq (fs/dirty-fields props false)))
         _      (debug "DIRTY?" dirty? (fs/dirty-fields props false))]
@@ -425,7 +457,7 @@
               (span "ID " ProjectID)))
           (rui-input this :projectslookup/QAPPVersion {:label "QAPP"})
 
-          (ui-header {} "Measurements")
+          (ui-header {} "Measurements" (button :.ui.button.seconary.float.right {:style {:float "right"}} "Add"))
           (div :.ui.segment {:style {:padding 10}}
             (doall
               (vec (for [p Parameters]

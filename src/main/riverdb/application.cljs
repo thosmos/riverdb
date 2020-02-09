@@ -6,6 +6,7 @@
             [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
             [com.wsscode.pathom.core :as p]
             [edn-query-language.core :as eql]
+            [com.fulcrologic.fulcro.algorithms.form-state :as fs]
             [theta.log :as log :refer [debug]]))
 
 (def secured-request-middleware

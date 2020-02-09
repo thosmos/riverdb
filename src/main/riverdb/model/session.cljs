@@ -68,6 +68,8 @@
                                        (comp/get-query (uism/actor-class env :actor/current-session))
                                        (uism/actor->ident env :actor/current-session)
                                        (::uism/state-map env))
+                          globals    (get actor-data [:component/id :globals])
+                          _ (debug "GLOBALS" globals)
                           user       (get-in actor-data [:account/auth :user])
                           roles      (roles/user->roles user)
                           agencies   (when roles (roles/roles->agencies2 roles))
@@ -77,7 +79,7 @@
                         {:params        {:agencies [agencyCode]}
                          :target        [:component/id :proj-years :agency-project-years]
                          :post-mutation `rm/process-project-years})
-                      (df/load! SPA [:component/id :globals] globals/Globals)
+                      #_(df/load! SPA [:component/id :globals] globals/Globals)
                       (debug "AUTH STUFF" agencyCode (keys env))
                       (assoc-in env [::uism/state-map :riverdb.ui.root/current-agency]
                         [:org.riverdb.db.agencylookup/gid (:db/id agency)]))))

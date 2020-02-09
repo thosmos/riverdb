@@ -34,6 +34,7 @@
     [riverdb.ui.tac-report-page :refer [TacReportPage]]
     [riverdb.ui.theta :refer [ThetaRoot]]
     [riverdb.ui.user]
+    [riverdb.ui :refer [PersonForm PersonList]]
     [theta.log :as log :refer [debug]]
     [theta.util :as tutil]
     [com.fulcrologic.fulcro.components :as om]
@@ -229,13 +230,16 @@
             ;(dom/li nil (dom/a #js {:className "" :onClick #(r/nav-to! this :main)} (tr "Main")))
             ;(dom/li nil (dom/a #js {:className "" :onClick #(r/nav-to! this :preferences)} (tr "Preferences")))
             (dom/li (dom/a {:href "/tac-report"} "TAC Report"))
-            (dom/li (dom/a {:href "/dataviz"} "Data Viz"))))))))
+            (dom/li (dom/a {:href "/dataviz"} "Data Viz"))
+
+            (dom/li (dom/a {:href "/people"} "People"))))))))
 ;(dom/li nil (dom/a #js {:className "" :onClick #(r/nav-to! this :stations-page)} (tr "Stations")))
 ;(dom/li (dom/a {:href "https://dev.riverdb.org/rimdb/"} "Data Entry")))))))))
 
 
 (dr/defrouter TopRouter [this props]
-  {:router-targets        [Main Signup SignupSuccess ThetaRoot Projects TacReportPage DataVizPage SiteVisitsPage]
+  {:router-targets        [Main Signup SignupSuccess ThetaRoot Projects TacReportPage
+                           DataVizPage SiteVisitsPage PersonList PersonForm]
    :shouldComponentUpdate (fn [_ _ _] true)})
 (def ui-top-router (comp/factory TopRouter))
 

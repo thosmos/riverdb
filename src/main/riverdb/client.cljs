@@ -45,7 +45,7 @@
     {:desired-path (some-> js/window .-location .-pathname)})
 
   (form/install-ui-controls! SPA sui/all-controls)
-  (attr/register-attributes! model/all-attributes)
+  ;(attr/register-attributes! model/all-attributes)
 
   (app/mount! SPA root/Root "app" {:initialize-state? false}))
 

@@ -246,6 +246,114 @@
      result)))
 
 
+(defn get-sitevisits2
+  ([db {:keys [year agency fromDate toDate station stationCode projectID] :as opts}]
+   ;agency fromDate toDate station
+   ;(debug "get-sitevisits" db opts)
+   (let [fromDate (if (some? fromDate)
+                    fromDate
+                    (when year
+                      (jt/zoned-date-time year)))
+         toDate   (if (some? toDate)
+                    toDate
+                    (when year
+                      (jt/plus fromDate (jt/years 1))))
+
+         q        {:find  ['[(pull ?sv [:db/id
+                                        [:sitevisit/SiteVisitID :as :svid]
+                                        [:sitevisit/SiteVisitDate :as :date]
+                                        [:sitevisit/Time :as :time]
+                                        [:sitevisit/Notes :as :notes]
+                                        {[:sitevisit/StationID :as :station] [:db/id
+                                                                              [:stationlookup/StationID :as :station_id]
+                                                                              [:stationlookup/StationCode :as :station_code]
+                                                                              [:stationlookup/RiverFork :as :river_fork]
+                                                                              [:stationlookup/ForkTribGroup :as :trib_group]]}
+                                        {[:sitevisit/StationFailCode :as :failcode] [[:stationfaillookup/FailureReason :as :reason]]}
+                                        {:sample/_SiteVisitID
+                                         [{:fieldresult/_SampleRowID
+                                           [:db/id :fieldresult/Result :fieldresult/FieldReplicate
+                                            {:fieldresult/ConstituentRowID
+                                             [:db/id ;:constituentlookup/HighValue :constituentlookup/LowValue
+                                              {:constituentlookup/AnalyteCode [:analytelookup/AnalyteShort]}
+                                              {:constituentlookup/MatrixCode [:matrixlookup/MatrixShort]}
+                                              {:constituentlookup/UnitCode [:unitlookup/Unit]}]}
+                                            {[:fieldresult/SamplingDeviceID :as :device]
+                                             [[:samplingdevice/CommonID :as :id]
+                                              {[:samplingdevice/DeviceType :as :type] [[:samplingdevicelookup/SampleDevice :as :name]]}]}]}]}]) ...]]
+                   :in    '[$]
+                   :where '[]
+                   :args  [db]}
+
+
+         q        (cond-> q
+
+                    ;; if station
+                    station
+                    (->
+                      (update :where #(-> %
+                                        (conj '[?st :stationlookup/StationID ?station])
+                                        (conj '[?sv :sitevisit/StationID ?st])))
+                      (update :in conj '?station)
+                      (update :args conj station))
+
+                    ;; if stationCode
+                    stationCode
+                    (->
+                      (update :where #(-> %
+                                        (conj '[?st :stationlookup/StationCode ?stationCode])
+                                        (conj '[?sv :sitevisit/StationID ?st])))
+                      (update :in conj '?stationCode)
+                      (update :args conj stationCode))
+
+                    agency
+                    (->
+                      (update :where #(-> %
+                                        (conj '[?pj :projectslookup/AgencyCode ?agency])
+                                        (conj '[?sv :sitevisit/ProjectID ?pj])))
+                      (update :in conj '?agency)
+                      (update :args conj agency))
+
+                    projectID
+                    (->
+                      (update :where #(-> %
+                                        (conj '[?pj :projectslookup/ProjectID ?projectID])
+                                        (conj '[?sv :sitevisit/ProjectID ?pj])))
+                      (update :in conj '?projectID)
+                      (update :args conj projectID))
+
+                    ;; If either from- or to- date were passed, join the `sitevisit` entity
+                    ;; and bind its `SiteVisitDate` attribute to the `?date` variable.
+                    (or fromDate toDate)
+                    (update :where conj
+                      '[?sv :sitevisit/SiteVisitDate ?date])
+
+                    ;; If the `fromDate` filter was passed, do the following:
+                    ;; 1. add a parameter placeholder into the query;
+                    ;; 2. add an actual value to the arguments;
+                    ;; 3. add a proper condition against `?date` variable
+                    ;; (remember, it was bound above).
+                    fromDate
+                    (->
+                      (update :in conj '?fromDate)
+                      (update :args conj (jt/java-date fromDate))
+                      (update :where conj
+                        '[(> ?date ?fromDate)]))
+
+                    ;; similar to ?fromDate
+                    toDate
+                    (->
+                      (update :in conj '?toDate)
+                      (update :args conj (jt/java-date toDate))
+                      (update :where conj
+                        '[(< ?date ?toDate)]))
+
+                    ;; last one, in case there are no conditions, get all sitevisits
+                    (empty? (:where q))
+                    (->
+                      (update :where conj '[?sv :sitevisit/StationID])))
+         q        (remap-query q)])))
+
 
 
 (defn filter-sitevisits [svs]
@@ -365,7 +473,10 @@
                   init      (update init analyte-k
                               (fn [k] (-> k
                                         (update :vals conjv Result)
-                                        (assoc :device device))))]
+                                        (assoc :device device)
+                                        (assoc :unit unit)
+                                        (assoc :matrix matrix)
+                                        (assoc :analyte analyte))))]
 
 
               init))
@@ -497,9 +608,8 @@
                   prec-percent (if (> range 0.0) (percent-prec mean stddev) 0.0)
                   prec-unit    range
 
-                  ;; calculate precision thresholds * 2 to convert to +- form of requirements
+                  ;; calculate precision thresholds
                   req-percent  (get-in qapp [:params k :precision :percent])
-
                   req-unit     (get-in qapp [:params k :precision :unit])
 
                   threshold    (if (and req-percent req-unit)
@@ -535,6 +645,8 @@
 
                   v            (merge v {:invalid?    invalid?
                                          :exceedance? exceedance?
+                                         :is_valid (not invalid?)
+                                         :is_exceedance exceedance?
                                          :count       val-count
                                          :max         mx
                                          :min         mn
@@ -547,12 +659,17 @@
                   v            (cond-> v
                                  exceedance?
                                  (merge {:too-low?  too-low?
-                                         :too-high? too-high?})
+                                         :too-high? too-high?
+                                         :is_too_low too-low?
+                                         :is_too_high too-high?})
                                  invalid?
                                  (merge {:incomplete? incomplete?
-                                         :imprecise?  imprecision?})
+                                         :imprecise?  imprecision?
+                                         :is_incomplete incomplete?
+                                         :is_imprecise imprecision?})
                                  (and elide? include-elided?)
-                                 (assoc :orig-vals orig-vals))]
+                                 (merge {:orig-vals orig-vals
+                                         :orig_vals orig-vals}))]
 
               [k v])))
 
@@ -616,6 +733,51 @@
 
         sv)
       (catch Exception ex (println "Error in create-param-summaries" ex)))))
+
+(defn create-sitevisit-summaries2
+  "create summary info per sitevisit"
+  [sitevisits]
+  (for [sv sitevisits]
+    (try
+      (let [
+            ;_        (debug "processing SV " (get-in sv [:sitevisit/StationID
+            ;                                    :stationlookup/StationID]))
+
+            ;; remap nested values to root
+            sv  (-> sv
+                  (assoc :trib (get-in sv [:station :trib]))
+                  (assoc :fork (get-in sv [:station :river_fork]))
+                  ;(assoc :station (get-in sv [:station :db/id]))
+                  (assoc :failcode (get-in sv [:failcode :reason])))
+
+            ;; pull out fieldresult list
+            frs (get-in sv [:sample/_SiteVisitID 0 :fieldresult/_SampleRowID])
+            ;; restrict to water samples (no air)
+            ;frs (filter #(= "H2O" (get-in % [:fieldresult/ConstituentRowID
+            ;                                 :constituentlookup/MatrixCode
+            ;                                 :matrixlookup/MatrixShort])) frs)
+
+            ;; toss velocity
+            ;frs (remove #(= "Velocity" (get-in % [:fieldresult/ConstituentRowID
+            ;                                      :constituentlookup/AnalyteCode
+            ;                                      :analytelookup/AnalyteShort])) frs)
+
+            ;_   (debug "reduce FRs to param sums")
+            frs (reduce-fieldresults-to-map frs)
+            ;_   (debug "calc param sums")
+            frs (calc-param-summaries frs)
+            ;; remove the list of samples and add the new param map
+            ;_   (debug "move FRS")
+            sv  (-> sv
+                  (dissoc :sample/_SiteVisitID)
+                  (assoc :fieldresults frs))
+            ;_   (debug "count valid params")
+            ;; count valid params
+
+            sv  (calc-sitevisit-stats sv)]
+
+        sv)
+      (catch Exception ex (debug "Error in create-param-summaries" ex)))))
 
 
 (defn read-csv [filename]
@@ -1055,7 +1217,13 @@
 
 
 
-
+(defn get-sitevisit-summaries [db opts]
+  ;(debug "get-sitevisit-summaries opts: " opts)
+  (let [sitevisits (get-sitevisits2 db opts)
+        sitevisits (filter-empty-fieldresults sitevisits)
+        sitevisits (create-sitevisit-summaries2 sitevisits)
+        sitevisits (util/sort-maps-by sitevisits [:date :site])]
+    sitevisits))
 
 
 

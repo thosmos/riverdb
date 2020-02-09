@@ -102,3 +102,9 @@
                      :filt filt
                      :attr (comp/get-initial-state Attribute attr)})})
 (def ui-filter (comp/factory Filter))
+
+
+(defsc Root [this {people :people}]
+  {:query         [{:people (comp/get-query Person)}]
+   :initial-state {:people [{:id 0 :name "Sally" :city "Nowhere" :state "GA"}
+                            {:id 1 :name "Tom" :city "There" :state "OH"}]}})
