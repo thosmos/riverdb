@@ -19,10 +19,12 @@
     [com.fulcrologic.semantic-ui.modules.dimmer.ui-dimmer :refer [ui-dimmer]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form :refer [ui-form]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-input :refer [ui-form-input]]
+    [com.fulcrologic.semantic-ui.modules.modal.ui-modal :refer [ui-modal]]
     [riverdb.application :refer [SPA]]
     [riverdb.model.session :as session]
     [riverdb.roles :as roles]
     [riverdb.api.mutations :as rm :refer [TxResult ui-tx-result]]
+    [riverdb.ui.bench :refer [Bench ui-bench]]
     [riverdb.ui.lookups :as looks]
     [riverdb.ui.dataviz-page :refer [DataVizPage]]
     [riverdb.ui.components :refer [ui-treeview]]
@@ -225,14 +227,18 @@
             (p {} "Please log in")
             (ui-login-form login-form))
 
-          (dom/ul
-            ;; More nav links here
-            ;(dom/li nil (dom/a #js {:className "" :onClick #(r/nav-to! this :main)} (tr "Main")))
-            ;(dom/li nil (dom/a #js {:className "" :onClick #(r/nav-to! this :preferences)} (tr "Preferences")))
-            (dom/li (dom/a {:href "/tac-report"} "TAC Report"))
-            (dom/li (dom/a {:href "/dataviz"} "Data Viz"))
+          (div {}
+            (dom/ul
+              ;; More nav links here
+              ;(dom/li nil (dom/a #js {:className "" :onClick #(r/nav-to! this :main)} (tr "Main")))
+              ;(dom/li nil (dom/a #js {:className "" :onClick #(r/nav-to! this :preferences)} (tr "Preferences")))
+              (dom/li (dom/a {:href "/tac-report"} "TAC Report"))
+              (dom/li (dom/a {:href "/dataviz"} "Data Viz"))
 
-            (dom/li (dom/a {:href "/people"} "People"))))))))
+              (dom/li (dom/a {:href "/people"} "People")))
+            #_(ui-modal {:open true :dimmer true :content "Hello Modal"})))))))
+            ;(ui-bench)))))))
+
 ;(dom/li nil (dom/a #js {:className "" :onClick #(r/nav-to! this :stations-page)} (tr "Stations")))
 ;(dom/li (dom/a {:href "https://dev.riverdb.org/rimdb/"} "Data Entry")))))))))
 
@@ -249,7 +255,7 @@
    :ident         (fn [] [:component/id :activity])
    :initial-state {}}
   (let [loading? (boolean (seq active-remotes))]
-    (debug "ACTIVITY" active-remotes)
+    ;(debug "ACTIVITY" active-remotes)
     (when loading?
       (debug "LOADING ...")
       (dom/i :.ui.spinner.loading.icon))))
@@ -303,7 +309,7 @@
            (dom/a :.item {:key  "sitevisit" :classes [(when (= :sitevisit current-tab) "active")]
                           :href "/sitevisit/list"} "Sitevisits")])
         (div :.right.menu
-          (div :.item (ui-activity {}))
+          ;(div :.item (ui-activity {}))
           (ui-agency-menu agency-menu)
           (ui-login login)))
       (if ready

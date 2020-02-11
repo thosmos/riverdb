@@ -5,13 +5,14 @@
     [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
+    [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
     [com.fulcrologic.fulcro.application :as fapp]
     [com.fulcrologic.fulcro-css.css :as css]
+    [com.fulcrologic.fulcro-css.localized-dom :as ldom]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
     [com.fulcrologic.fulcro.data-fetch :as f]
     [com.fulcrologic.fulcro.dom :as dom :refer [div ul li p h1 h2 h3 button label span select option
                                                 table thead tbody th tr td]]
-    [com.fulcrologic.fulcro-css.localized-dom :as ldom]
     [com.fulcrologic.fulcro.dom.html-entities :as htmle]
     [com.fulcrologic.fulcro.dom.events :as evt]
     [com.fulcrologic.fulcro.mutations :as fm :refer [defmutation]]
@@ -40,27 +41,148 @@
     [goog.object :as gob]
     [riverdb.application :refer [SPA]]
     [riverdb.roles :as roles]
-    [riverdb.api.mutations :as rm]
+    [riverdb.api.mutations :as rm :refer [TxResult ui-tx-result]]
     [riverdb.ui.lookup :as look :refer [get-refNameKey get-refNameKeys]]
     [riverdb.ui.lookups :as looks]
     [riverdb.ui.lookup-options :refer [ThetaOptions ui-theta-options]]
-    [riverdb.ui.dataviz-page :refer [DataVizPage]]
-    [riverdb.ui.components :refer [ui-treeview]]
-    [riverdb.ui.components.drag :refer [useDroppable useDraggable]]
     [riverdb.ui.components.grid-layout :as grid]
     [riverdb.ui.routes]
-    [riverdb.ui.sitevisits-page :refer [SiteVisitsPage]]
     [riverdb.ui.session :refer [ui-session Session]]
     [riverdb.ui.style :as style]
-    [riverdb.ui.tac-report-page :refer [TacReportPage]]
     [riverdb.ui.user]
     [riverdb.ui.util :refer [make-tempid]]
     [theta.log :as log :refer [debug]]))
 
-(defsc AddPersonModal [this props computed]
-  {:ident (fn [] [:org.riverdb.db.person/gid :db/id])
-   :query [:db/id
-           :person/uuid
-           :person/Name
-           :person/IsStaff]
-   :initial-state {:db/id (make-tempid)}})
+(fm/defmutation cancel-add [{:keys [form-ident lookup-key orig]}]
+  (action [{:keys [state]}]
+    (debug "CANCEL ADD")))
+
+
+
+(defsc AddPersonModal [this {:person/keys [FName LName Name Agency uuid]
+                             :ui/keys [show orig field-k options-target]
+                             :keys [root/tx-result] :as props}
+                       {:keys [post-save-mutation
+                               post-save-params
+                               onCancel] :as computed}]
+  {:ident             [:org.riverdb.db.person/gid :db/id]
+   :query             [fs/form-config-join
+                       :db/id
+                       :riverdb.entity/ns
+                       :person/uuid
+                       :person/FName
+                       :person/LName
+                       :person/Name
+                       :person/Agency
+                       :ui/field-k
+                       :ui/show
+                       :ui/orig
+                       :ui/options-target
+                       {[:root/tx-result '_] (comp/get-query TxResult)}]
+   :initial-state     {:db/id             (make-tempid)
+                       :riverdb.entity/ns :entity.ns/person
+                       :person/uuid       (or :param/uuid (tempid/tempid))
+                       :person/Name       :param/name
+                       :person/LName      :param/lname
+                       :person/FName      :param/fname
+                       :person/Agency     :param/agency
+                       :ui/orig           :param/orig
+                       :ui/field-k    :param/field-k
+                       :ui/options-target :param/options-target
+                       :ui/show           true}
+   :form-fields       #{:person/FName :person/LName :person/Name :person/Agency
+                        :person/uuid :riverdb.entity/ns}
+   :componentDidMount (fn [this]
+                        (let [{:person/keys [Name]} (comp/props this)]
+                          (debug "DID MOUNT ADD PERSON" Name)))}
+  (let [dirty-fields (fs/dirty-fields props false)
+        dirty?       (some? (seq dirty-fields))
+        this-ident   (comp/get-ident this)
+        update-name  (fn [fname lname]
+                       (let [fname (clojure.string/trim (or fname ""))
+                             lname (clojure.string/trim (or lname ""))
+                             space (and (not= fname "") (not= lname ""))
+                             nm    (str fname (when space " ") lname)]
+                         (fm/set-string! this :person/Name :value nm)
+                         (fm/set-string! this :person/FName :value fname)
+                         (fm/set-string! this :person/LName :value lname)))]
+
+    (ui-modal {:open show} ;:dimmer false}
+      (ui-modal-header {:content (str "Add Person \"" Name "\"")})
+      (ui-modal-content {}
+        (when (not (empty? tx-result))
+          (ui-tx-result tx-result))
+        (ui-form {}
+          (div :.ui.fields {}
+            (ui-form-input {:label "First Name" :value (or FName "") :onChange #(update-name (-> % .-target .-value) LName)})
+            (ui-form-input {:label "Last Name" :value (or LName "") :onChange #(update-name FName (-> % .-target .-value))})
+            (div :.field
+              (dom/label {} "Agency")
+              (ui-input {:disabled true :value (or (:agencylookup/AgencyCode Agency) "")}))
+            (div :.field
+              (dom/label {} "UUID")
+              (ui-input {:disabled true :value (str (or uuid ""))})))
+
+             ;(div :.field
+             ;  (dom/label {} "Staff?")
+             ;  (ui-checkbox {:checked (or IsStaff false) :onChange #(fm/toggle! this :person/IsStaff)})))
+          (div :.ui.fields {}
+            (dom/button :.ui.button.secondary
+              {:onClick #(do
+                           (debug "CANCEL!" dirty? (fs/dirty-fields props false))
+                           (do
+                             (debug "CLOSE")
+                             (comp/transact! this
+                               `[(rm/reset-form {:ident ~this-ident})])
+                             (fm/set-value! this :ui/show false)
+                             (when onCancel
+                               (onCancel {:orig orig :field-k field-k}))))}
+
+              "Cancel")
+
+            (dom/button :.ui.button.primary
+              {:disabled (not dirty?)
+               :onClick  #(let [dirty-fields (fs/dirty-fields props true)]
+                            (debug "SAVE!" dirty? dirty-fields)
+                            (comp/transact! this
+                              `[(rm/save-entity {:ident         ~this-ident
+                                                 :diff          ~dirty-fields
+                                                 :post-mutation ~post-save-mutation
+                                                 :post-params   ~(merge
+                                                                   post-save-params
+                                                                   {:ent-ns         :entity.ns/person
+                                                                    :field-k        field-k
+                                                                    :orig           orig
+                                                                    :new-name       Name
+                                                                    :options-target options-target})})]))}
+
+              "Save")))))))
+(def ui-add-person-modal (comp/factory AddPersonModal {:keyfn :db/id}))
+
+;(defmutation add-person [{:keys [ident props]}]
+;  (action [{:keys [state]}]
+;    (swap! state
+;      (fn [st]
+;        (-> st
+;          (rm/merge-ident* ident props))))))
+
+(defn add-person* [state-map new-name target field-k options-target]
+  (let [orig new-name
+        new-name   (str/trim new-name)
+        names      (str/split new-name #"\ ")
+        fname      (first names)
+        lname      (str/join " " (rest names))
+        agency     (select-keys (get-in state-map (:riverdb.ui.root/current-agency state-map)) [:db/id :agencylookup/AgencyCode])
+        new-person (->>
+                     (comp/get-initial-state AddPersonModal {:name new-name
+                                                             :fname fname
+                                                             :lname lname
+                                                             :orig orig
+                                                             :agency agency
+                                                             :field-k field-k
+                                                             :options-target options-target
+                                                             :uuid #uuid"5e42012b-0f44-452e-a3f2-9d7768811732"})
+                     (fs/add-form-config AddPersonModal))]
+    (debug "add-person*" new-person)
+    (merge/merge-component state-map AddPersonModal new-person :replace target)))
+

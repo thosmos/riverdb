@@ -86,7 +86,8 @@
         :post-mutation        `theta-post-load
         :post-mutation-params {:target-ident target-ident :text-key text-key}}))))
 
-(defsc ThetaOptions [this {:keys [value] :as props} {:keys [onChange changeParams onAddItem add-form-class opts]}]
+(defsc ThetaOptions [this {:keys [value] :as props}
+                     {:keys [onChange changeParams onAddItem addParams opts]}]
   {:ident             [:riverdb.theta.options/ns :riverdb.entity/ns]
    :query             [:riverdb.entity/ns
                        :value
@@ -143,7 +144,7 @@
         {:ui/keys [options loading]} ref-props
         {:keys [multiple clearable allowAdditions additionPosition style]} opts
         show?       (some? (and (not loading) (not-empty options)))]
-    ;(debug "RENDER ThetaOptions" this-ident "theta-k:" theta-k "nmKey:" theta-nmKey "value:" value "loading:" loading)
+    ;(debug "RENDER ThetaOptions" this-ident "k:" theta-k "nmKey:" theta-nmKey "value:" value "loading:" loading)
     (ui-dropdown {:loading          (not show?)
                   :search           true
                   :selection        true
@@ -169,7 +170,12 @@
                                       (let [value (-> d .-value)]
                                         (log/debug "onAddItem" value)
                                         (when onAddItem
-                                          (onAddItem value))))})))
+                                          (let [tx-params (merge addParams
+                                                            {:v             value
+                                                             :options-target (conj this-ident :ui/options)})
+                                                txd `[(~onAddItem ~tx-params)]]
+                                            (debug "TXD" txd)
+                                            (comp/transact! SPA txd)))))})))
 
 (def ui-theta-options (comp/factory ThetaOptions {:keyfn :riverdb.entity/ns}))
 

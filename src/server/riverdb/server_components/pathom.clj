@@ -59,6 +59,7 @@
                                                               pc/parallel-reader
                                                               pc/open-ident-reader
                                                               p/env-placeholder-reader]
+                                    ::pc/mutation-join-globals [:tempids]
                                     ::p/placeholder-prefixes #{">"}}
                        ::p/plugins [(pc/connect-plugin {::pc/register all-resolvers})
                                     (p/env-wrap-plugin (fn [env]

@@ -329,9 +329,7 @@
 
 (defmutation reset-form [{:keys [ident]}]
   (action [{:keys [state]}]
-    (swap! state (fn [s]
-                   (-> s
-                     (fs/pristine->entity* ident))))))
+    (swap! state fs/pristine->entity* ident)))
 
 
 (defn clear-tx-result* [state]
@@ -369,7 +367,7 @@
                    :com.wsscode.pathom.core/reader-error nil}}
   (let [error (or error reader-error)]
     (debug "TxResult" error)
-    (div {:style {:position "fixed" :top "50px" :left 0 :right 0 :maxWidth 500 :margin "auto"}}
+    (div {:style {:position "fixed" :top "50px" :left 0 :right 0 :maxWidth 500 :margin "auto" :zIndex 1000}}
       (if error
         (ui-message {:error true}
           (div :.content {}
@@ -400,17 +398,28 @@
   [{:keys [ident diff] :as params}]
   (action [{:keys [state]}]
     (debug "SAVE ENTITY DIFF" ident diff)
-    (set-saving! ident true))
-  (remote [env] true)
+    (swap! state set-saving* ident true))
+  (remote [env]
+    (update-in env [:ast :params] #(-> %
+                                     (dissoc :post-mutation)
+                                     (dissoc :post-params))))
   (ok-action [{:keys [state] :as env}]
-    (debug "OK ACTION" (keys env))
+    (debug "OK ACTION"  (keys env))
+    (debug ":tempid->realid" (:tempid->realid env))
+    (debug "TRANSACTED AST"  (:transacted-ast env))
     (js/setTimeout clear-tx-result! 2000)
-    (swap! state
-      (fn [s]
-        (-> s
-          (fs/entity->pristine* ident)
-          (set-saving* ident false)
-          (show-tx-result* {:result "Save Succeeded"})))))
+    (let [tempid (get-in env [:transacted-ast :params :ident 1])
+          new-id (get-in env [:tempid->realid tempid])
+          {:keys [post-mutation post-params]} (get-in env [:transacted-ast :params])
+          params (assoc post-params :new-id new-id)
+          txd `[(~post-mutation ~params)]]
+      (comp/transact! SPA txd)
+      (swap! state
+        (fn [s]
+          (-> s
+            ;(fs/entity->pristine* ident)
+            (set-saving* ident false)
+            (show-tx-result* {:result "Save Succeeded"}))))))
   (error-action [{:keys [app ref result state] :as env}]
     (log/info "Mutation Error Result " ident diff result)
     (swap! state

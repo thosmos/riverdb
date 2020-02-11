@@ -1,10 +1,11 @@
 (ns riverdb.ui.sitevisits-page
   (:require
+    [clojure.string :as str]
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
     [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
-    [com.fulcrologic.fulcro.application :refer [current-state]]
+    [com.fulcrologic.fulcro.application :as fapp :refer [current-state]]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc transact!]]
     [com.fulcrologic.fulcro.data-fetch :as f]
     [com.fulcrologic.fulcro.dom :as dom :refer [div ul li a p h2 h3 button table thead
@@ -24,25 +25,20 @@
     [com.fulcrologic.semantic-ui.collections.table.ui-table :refer [ui-table]]
     [com.fulcrologic.semantic-ui.collections.table.ui-table-body :refer [ui-table-body]]
     [riverdb.application :refer [SPA]]
-    [riverdb.model.sitevisit :as sv]
-    [riverdb.model.user :as user]
     [riverdb.api.mutations :as rm]
     [riverdb.util :refer [sort-maps-by with-index]]
-    [riverdb.ui.components :as c :refer [ui-datepicker]]
+    [riverdb.ui.components :refer [ui-datepicker]]
     [riverdb.ui.globals :refer [Globals]]
     [riverdb.ui.lookup]
     [riverdb.ui.lookup-options :refer [preload-options ui-theta-options ThetaOptions]]
     [riverdb.ui.lookups :as looks]
+    [riverdb.ui.person :refer [AddPersonModal ui-add-person-modal]]
+    [riverdb.ui.project-years :refer [ProjectYears ui-project-years]]
     [riverdb.ui.routes :as routes]
     [riverdb.ui.session :refer [Session]]
-    [riverdb.ui.project-years :refer [ProjectYears ui-project-years]]
     [riverdb.ui.util :refer [make-tempid]]
     [riverdb.util :refer [paginate]]
-    [theta.log :as log :refer [debug info]]
-    [tick.alpha.api :as t]
-    [com.fulcrologic.fulcro.application :as app]
-    [goog.object :as gobj]
-    [com.fulcrologic.fulcro.application :as fapp]))
+    [theta.log :as log :refer [debug info]]))
 
 (declare SVRouter)
 
@@ -213,7 +209,7 @@
         results      (filter #(= (:fieldobsresult/ConstituentRowID %) p-const)
                        (:sample/FieldObsResults sample))
         only-refresh [(comp/get-ident sv-comp)]]
-        ;int-rs (:fieldobsresult/IntResult)]
+    ;int-rs (:fieldobsresult/IntResult)]
     (debug "RENDER SampleObsForm" p-name results)
     (div p-name " " results)))
 (def ui-obs-param-form (comp/factory ObsParamForm {:keyfn :db/id}))
@@ -240,8 +236,8 @@
     (mapv
       #(ui-obs-param-form
          (comp/computed %
-           {:comp                         sv-comp
-            :sample                       props}))
+           {:comp   sv-comp
+            :sample props}))
       obs-params)))
 (def ui-obs-sample-form (comp/factory ObsSampleForm {:keyfn :db/id}))
 
@@ -287,7 +283,7 @@
         t1           (:fieldresult/ResultTime r1)
         t2           (:fieldresult/ResultTime r2)
         t3           (:fieldresult/ResultTime r3)]
-    (debug "RENDER SampleParamForm" v1 v2 v3 t1 t2 t3)
+    ;(debug "RENDER SampleParamForm" v1 v2 v3 t1 t2 t3)
     (tr {:key id}
       (td {:key "name"} p-name)
       (td {:key "inst"}
@@ -337,7 +333,7 @@
                                                    :sampletypelookup/SampleTypeCode "FieldMeasure"}})
    ;:shouldComponentUpdate (fn [_ _ _] true)
    :form-fields   #{:sample/FieldResults}}
-  (debug "RENDER FieldMeasureSampleForm" field-measure-params)
+  ;(debug "RENDER FieldMeasureSampleForm" field-measure-params)
   (table :.ui.very.compact.mini.table {:key "wqtab"}
     (thead {:key 1}
       (tr {}
@@ -401,8 +397,70 @@
 ;  (action [{:keys [state]}]
 ;    (swap! state assoc-in target value)))
 
+;(defsc
+;  person
+;  [_ {:keys [ui/msg ui/name]}]
+;  {:ident [:org.riverdb.db.person/gid :db/id],
+;   :initial-state {:ui/msg "hello", :db/id (tempid), :ui/name "person"},
+;   :query
+;   [:ui/msg
+;    :ui/name
+;    :db/id
+;    :riverdb.entity/ns
+;    :person/Agency
+;    :person/Name
+;    :person/PersonID]}
+;  (do
+;     (log/debug (str "RENDER " name))
+;     (div (str msg " from the " name " component"))))
+
+;(def onAddMonitor
+;  (fn [e]
+;    (debug "ADD MONITOR" e)))
+
+
+
+;(defn add-person* [state-map new-name target]
+;  (let [orig new-name
+;        new-name   (str/trim new-name)
+;        new-person (->>
+;                     (comp/get-initial-state AddPersonModal {:name new-name :orig orig})
+;                     (fs/add-form-config AddPersonModal))]
+;    (debug "add-person*" new-person)
+;    (merge/merge-component state-map AddPersonModal new-person :replace target)))
+
+(fm/defmutation add-option [{:keys [target v field-k ent-ns options-target]}]
+  (action [{:keys [state]}]
+    ;(debug "ADD OPTION" form-ident field-k entity-ns v)
+    (case ent-ns
+      :entity.ns/person
+      (swap! state riverdb.ui.person/add-person* v target field-k options-target))))
+
+(fm/defmutation post-save-mutation [{:keys [form-ident field-k ent-ns orig new-id new-name options-target]}]
+  (action [{:keys [state]}]
+    (debug "POST SAVE MUTATION" form-ident ent-ns field-k orig new-id new-name options-target)
+    (let [st @state
+          field-val     (get-in st (conj form-ident field-k))
+          new-field-val (if (vector? field-val)
+                          (as-> field-val x
+                            (remove #(= (:db/id %) orig) x)
+                            (conj x {:db/id new-id})
+                            (vec x))
+                          {:db/id new-id})
+
+          opts (as-> (get-in st options-target) x
+                 (remove #(= (:key %) new-id) x)
+                 (conj x {:key new-id :value new-id :text new-name}))]
+      (debug "SAVE! NEW VAL" new-field-val)
+      (swap! state
+        (fn [st]
+          (-> st
+            (rm/merge-ident* form-ident {field-k new-field-val})
+            (assoc-in options-target opts)))))))
+
+
 (defsc SiteVisitForm [this
-                      {:ui/keys [ready globals]
+                      {:ui/keys [ready globals add-person-modal]
                        :db/keys [id]
                        :sitevisit/keys [StationID DataEntryDate SiteVisitDate Time
                                         Visitors VisitType StationFailCode
@@ -455,9 +513,10 @@
                            :sitevisit/WaterDepth
                            :sitevisit/WidthMeasured
                            :sitevisit/uuid
-                           {:sitevisit/Visitors (comp/get-query looks/person)}
+                           :sitevisit/Visitors
                            {:sitevisit/Samples (comp/get-query FieldMeasureSampleForm)}
-                           {:ui/globals (comp/get-query Globals)}])
+                           {:ui/globals (comp/get-query Globals)}
+                           {:ui/add-person-modal (comp/get-query AddPersonModal)}])
 
    ;{[:riverdb.theta.options/ns :entity.ns/person] (comp/get-query ThetaOptions)}])
 
@@ -505,17 +564,17 @@
   ;                       (preload-options :entity.ns/person {:limit -1 :filter {:person/Agency (:db/id current-agency)}})))}
 
 
-  ;:pre-merge     (fn [{:keys [current-normalized data-tree] :as env}]
-  ;                 (debug "PREMERGE SiteVisitForm" current-normalized data-tree)
-  ;                 (->> data-tree
-  ;                   (merge current-normalized)
-  ;                   (clojure.walk/postwalk
-  ;                     #(if (= % :com.fulcrologic.fulcro.algorithms.merge/not-found) nil %))))}
+  :pre-merge (fn [{:keys [current-normalized data-tree] :as env}]
+               (debug "PREMERGE SiteVisitForm" current-normalized data-tree)
+               (->> data-tree
+                 (merge current-normalized)
+                 (clojure.walk/postwalk
+                   #(if (= % :com.fulcrologic.fulcro.algorithms.merge/not-found) nil %))))
   (let [isLoading     false ;(not (and station-options person-options sitevisittype-options stationfaillookup-options samplingdevicelookup-options))
         dirty-fields  (fs/dirty-fields props false)
         dirty?        (some? (seq dirty-fields))
         active-params (filter :parameter/active parameters)
-        _             (debug "ACTIVE PARAMS" active-params)
+        ;_             (debug "ACTIVE PARAMS" active-params)
         meas-sample   (first (filter-sample-typecode "FieldMeasure" Samples))
         obs-sample    (first (filter-sample-typecode "FieldObs" Samples))
         labs-sample   (first (filter-sample-typecode "Grab" Samples))
@@ -523,13 +582,27 @@
         default-opts  {:clearable        true
                        :allowAdditions   true
                        :additionPosition "bottom"
-                       :style            {:maxWidth 168}}]
+                       :style            {:maxWidth 168}}
+        cancel-add-fn (fn [{:keys [orig field-k]}]
+                        (let [field-val (get props field-k)
+                              new-val   (if (vector? field-val)
+                                          (vec (remove #(= (:db/id %) orig) field-val))
+                                          nil)]
+                          (debug "CANCEL! NEW VAL" new-val)
+                          (fm/set-value! this field-k new-val)))]
 
-    (debug "RENDER SiteVisitForm" "MEAS" meas-sample "OBS" obs-sample "LABS" labs-sample)
+    ;(debug "RENDER SiteVisitForm" "MEAS" meas-sample "OBS" obs-sample "LABS" labs-sample)
+    ;(debug "ADD-PERSON-MODAL?" add-person-modal "ready" ready)
     ;(debug "RENDER Site Visit Form " id "DIRTY FIELDS" dirty-fields "SAMPLE" fieldmeasure-sample)
     (div :.dimmable.fields {:key "sv-form"}
       (ui-dimmer {:inverted true :active isLoading}
         (ui-loader {:indeterminate true}))
+      (when add-person-modal
+        (ui-add-person-modal
+          (comp/computed add-person-modal
+            {:onCancel           cancel-add-fn
+             :post-save-mutation `post-save-mutation
+             :post-save-params   {:form-ident this-ident}})))
       (ui-form {:key "form" :size "tiny"}
         (div :.dimmable.fields {:key "visitors"}
           (div :.field {:key "people"}
@@ -540,9 +613,12 @@
                   {:riverdb.entity/ns :entity.ns/person
                    :value             (mapv :db/id Visitors)})
                 {:onChange     `set-refs
-                 :changeParams {:ident this-ident :k :sitevisit/Visitors}
-                 ;:onAddItem #(do
-                 ;              (debug "ADD MONITOR" %))
+                 :changeParams {:ident this-ident
+                                :k     :sitevisit/Visitors}
+                 :onAddItem    `add-option
+                 :addParams    {:field-k :sitevisit/Visitors
+                                :ent-ns  :entity.ns/person
+                                :target  (conj this-ident :ui/add-person-modal)}
                  :opts         (merge
                                  default-opts
                                  {:multiple true})})))
@@ -623,7 +699,7 @@
           (div :.field {:key "dedate" :style {:width 180}}
             (label {:style {}} "Data Entry Date")
             (do
-              (debug "RENDER DataEntryDate" DataEntryDate)
+              ;(debug "RENDER DataEntryDate" DataEntryDate)
               (ui-datepicker {:selected DataEntryDate
                               :onChange #(when (inst? %)
                                            (log/debug "date change" %)
@@ -663,7 +739,8 @@
                  :opts         default-opts})))
 
           (div :.field {:key "qadate" :style {:width 180}}
-            (label {:style {}} "QA Date")
+            ;(debug "RENDER QA Date" this-ident (type QADate))
+            (label {:style {} :onClick #(set-value! this :sitevisit/QADate nil)} "QA Date")
             (ui-datepicker {:selected QADate
                             :onChange #(when (inst? %)
                                          (log/debug "QADate change" %)
@@ -717,7 +794,7 @@
                          (debug "CANCEL!" dirty? (fs/dirty-fields props false))
                          (if dirty?
                            (comp/transact! this
-                             `[(rm/reset-form ~{:ident (comp/get-ident this)})])
+                             `[(rm/reset-form {:ident ~this-ident})])
                            (do
                              (fm/set-value! this :ui/editing false)
                              (routes/route-to! "/sitevisit/list"))))}
@@ -768,15 +845,15 @@
 
 
 (fm/defmutation form-ready
-  [{:keys [route-target form-target form-class-key]}]
+  [{:keys [route-target form-ident]}]
   (action [{:keys [state]}]
-    (debug "MUTATION FORM READY" route-target form-target form-class-key)
-    (let [form-class (comp/registry-key->class form-class-key)]
-      (dr/target-ready! SPA route-target)
-      (swap! state (fn [st]
-                     (-> st
-                       (fs/add-form-config* SiteVisitForm form-target)
-                       (assoc-in (conj form-target :ui/ready) true)))))))
+    (debug "MUTATION FORM READY" route-target form-ident)
+    (swap! state
+      (fn [st]
+        (-> st
+          (fs/add-form-config* SiteVisitForm form-ident)
+          (update-in form-ident assoc :ui/ready true))))
+    (dr/target-ready! SPA route-target)))
 
 (fm/defmutation merge-new-sv
   [{:keys [sv-ident]}]
@@ -791,7 +868,7 @@
               :replace [:component/id :sitevisit-editor :sitevisit])
             (walk-ident-refs* sv-ident)
             (fs/add-form-config* SiteVisitForm sv-ident)
-            (assoc-in (conj sv-ident :ui/ready) true)))))))
+            (update-in sv-ident assoc :ui/ready true)))))))
 
 (defsc ParamInfo [this props]
   {:ident [:org.riverdb.db.parameter/gid :db/id]
@@ -854,9 +931,8 @@
                                                             [:riverdb.ui.root/current-sv]
                                                             [:component/id :sitevisit-editor :sitevisit])
                                     :post-mutation        `form-ready
-                                    :post-mutation-params {:route-target   editor-ident
-                                                           :form-target    sv-ident
-                                                           :form-class-key (comp/class->registry-key SiteVisitForm)}}))))))
+                                    :post-mutation-params {:route-target editor-ident
+                                                           :form-ident   sv-ident}}))))))
    :will-leave        (fn [this props]
                         (debug "WILL LEAVE EDITOR")
                         (dr/route-immediate (comp/get-ident this)))
@@ -944,7 +1020,7 @@
                         :.ui.table {:margin-top ".3em"}]]}
   (let [parameters    (get-in current-project [:projectslookup/Parameters])
         person-lookup (get props [:riverdb.theta.options/ns :entity.ns/person])]
-    ;(debug "RENDER SiteVisitsEditor" "CURRENT-PROJECT" current-project)
+    ;(debug "RENDER SiteVisitsEditor" "CURRENT-PROJECT" current-project "add-person-modal" (:ui/add-person-modal sitevisit))
     (div {}
       (ui-sv-form (comp/computed sitevisit {:station-options              station-options
                                             ;:person-options               person-options

@@ -14,9 +14,14 @@
                      :extra-deps  {lambdaisland/kaocha {:mvn/version "0.0-529"}}}
          :dev       {:extra-paths ["src/dev"]
                      :extra-deps  {expound                     {:mvn/version "0.7.2"}
-                                   org.clojure/tools.namespace {:mvn/version "0.3.1"}}}
+                                   org.clojure/tools.namespace {:mvn/version "0.3.1"}
+                                   org.clojure/tools.deps.alpha {:mvn/version "0.8.666"}}}
 
-         :local-dev {:override-deps {thosmos/util {:local/root "/Users/thomas/Develop/clojure/thosmos.util" :exclusions [com.datomic/datomic-free]}}}
+         :local-dev {:override-deps
+                     {thosmos/util {:local/root "/Users/thomas/Develop/clojure/thosmos.util"
+                                    :exclusions [com.datomic/datomic-free]}
+                      com.fulcrologic/fulcro {:local/root "/Users/thomas/Develop/cljs/fulcro/fulcro"}}}
+         :bench {:extra-deps {criterium {:mvn/version "0.4.5"}}}
 
          :guardrail {:extra-deps {com.fulcrologic/guardrails {:mvn/version "0.0.10"}}
                      :jvm-opts   ["-XX:-OmitStackTraceInFastThrow" "-Dguardrails.enabled=true"]}
@@ -52,7 +57,6 @@
                                    org.clojure/core.rrb-vector      {:mvn/version "0.1.1"}
                                    thosmos/domain-spec              {:mvn/version "0.1.2" :exclusions [com.datomic/datomic-free]}
                                    javax.servlet/servlet-api        {:mvn/version "2.5"}
-
                                    ring/ring-core                   {:mvn/version "1.8.0"}
                                    ring/ring-defaults               {:mvn/version "0.3.2"}
                                    commons-codec                    {:mvn/version "1.13"}
