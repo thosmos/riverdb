@@ -2,8 +2,8 @@
   (:require
     [mount.core :refer [defstate args]]
     [com.fulcrologic.fulcro.server.config :refer [load-config!]]
-    [com.fulcrologic.rad.attributes :as attr]
-    [riverdb.model :as model]
+    ;[com.fulcrologic.rad.attributes :as attr]
+    ;[riverdb.model :as model]
     [taoensso.timbre :as log]))
 
 (defn configure-logging! [config]

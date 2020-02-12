@@ -1,7 +1,8 @@
 (ns riverdb.server-components.pathom
   (:require
-    [com.fulcrologic.rad.database-adapters.datomic :as datomic]
-    [com.fulcrologic.rad.pathom :as pathom]
+    ;[com.fulcrologic.rad.database-adapters.datomic :as datomic]
+    ;[com.fulcrologic.rad.pathom :as pathom]
+    ;[com.fulcrologic.rad.form :as form]
     [com.wsscode.pathom.connect :as pc]
     [com.wsscode.pathom.core :as p]
     [com.wsscode.common.async-clj :refer [let-chan]]
@@ -12,9 +13,8 @@
     [riverdb.model.session :as session]
     [riverdb.model.user :as user]
     [riverdb.server-components.config :refer [config]]
-    [riverdb.server-components.auto-resolvers :refer [automatic-resolvers]]
-    [riverdb.server-components.datomic :refer [datomic-connections]]
-    [com.fulcrologic.rad.form :as form]
+    ;[riverdb.server-components.auto-resolvers :refer [automatic-resolvers]]
+    ;[riverdb.server-components.datomic :refer [datomic-connections]]
     [riverdb.state :refer [db cx]]
     [theta.log :as log]))
 
@@ -28,10 +28,10 @@
 
 (def all-resolvers [user/resolvers session/resolvers resolvers/resolvers
                     resolvers/lookup-resolvers resolvers/id-resolvers index-explorer
-                    mutations/mutations
+                    mutations/mutations])
                     ;automatic-resolvers
-                    form/save-form
-                    form/delete-entity])
+                    ;form/save-form
+                    ;form/delete-entity])
 
 (defn preprocess-parser-plugin
   "Helper to create a plugin that can view/modify the env/tx of a top-level request.

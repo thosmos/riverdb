@@ -1,9 +1,11 @@
 (ns riverdb.ui.projects
   (:require
     [clojure.string :as str]
+    [cljs.spec.alpha :as s]
     [cljs.tools.reader.edn :as edn]
     [cognitect.transit :as transit]
     [com.fulcrologic.fulcro.application :as app]
+    [com.fulcrologic.fulcro.data-fetch :as df]
     [com.fulcrologic.fulcro.dom :as dom :refer [div ul li p h3 button label span table tr th td thead tbody]]
     [com.fulcrologic.fulcro.dom.html-entities :as ent]
     [com.fulcrologic.fulcro.dom.events :as evt]
@@ -14,10 +16,10 @@
     [com.fulcrologic.fulcro.mutations :as fm :refer [defmutation]]
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
+    ;[com.fulcrologic.rad.rendering.semantic-ui.decimal-field :refer [ui-decimal-input]]
+    ;[com.fulcrologic.rad.type-support.decimal :as dec :refer [numeric]]
     [com.fulcrologic.fulcro-css.css :as css]
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
-    [com.fulcrologic.rad.rendering.semantic-ui.decimal-field :refer [ui-decimal-input]]
-    [com.fulcrologic.rad.type-support.decimal :as dec :refer [numeric]]
     [com.fulcrologic.semantic-ui.elements.loader.ui-loader :refer [ui-loader]]
     [com.fulcrologic.semantic-ui.modules.dimmer.ui-dimmer :refer [ui-dimmer]]
     [com.fulcrologic.semantic-ui.elements.input.ui-input :refer [ui-input]]
@@ -29,30 +31,27 @@
     [com.fulcrologic.semantic-ui.collections.form.ui-form-field :refer [ui-form-field]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-input :refer [ui-form-input]]
     [com.fulcrologic.semantic-ui.modules.checkbox.ui-checkbox :refer [ui-checkbox]]
+    [com.fulcrologic.semantic-ui.modules.tab.ui-tab :refer [ui-tab]]
+    [com.fulcrologic.semantic-ui.modules.tab.ui-tab-pane :refer [ui-tab-pane]]
     [com.fulcrologic.semantic-ui.elements.icon.ui-icon :refer [ui-icon]]
     [com.fulcrologic.semantic-ui.modules.popup.ui-popup :refer [ui-popup]]
+    [goog.object :as gob]
     [riverdb.application :refer [SPA]]
     [riverdb.roles :as roles]
     [riverdb.api.mutations :as rm]
-    [riverdb.ui.lookups :as looks]
+    [riverdb.ui.agency :refer [Agency]]
     [riverdb.ui.dataviz-page :refer [DataVizPage]]
-    [riverdb.ui.components :refer [ui-treeview]]
-    [riverdb.ui.hicada :refer [html]]
+    [riverdb.ui.lookup :refer [specs-map]]
     [riverdb.ui.lookup-options :refer [ui-theta-options preload-options]]
+    [riverdb.ui.lookups :as looks]
     [riverdb.ui.routes]
     [riverdb.ui.sitevisits-page :refer [SiteVisitsPage]]
     [riverdb.ui.session :refer [ui-session Session]]
     [riverdb.ui.tac-report-page :refer [TacReportPage]]
-    [riverdb.ui.user]
     [riverdb.ui.util :as ui-util :refer [make-validator]]
-    [theta.log :as log :refer [debug]]
-    [com.fulcrologic.fulcro.components :as om]
-    [com.fulcrologic.fulcro.data-fetch :as f]
-    [goog.object :as gob]
-    [com.fulcrologic.fulcro.data-fetch :as df]
-    [cljs.spec.alpha :as s]))
+    [theta.log :as log :refer [debug]]))
 
-(cljs.reader/register-tag-parser! 'bigdec numeric)
+;(cljs.reader/register-tag-parser! 'bigdec numeric)
 
 ;; TASK per group
 
@@ -108,9 +107,13 @@
      :invalid? is-invalid?
      :value    value}))
 
+(defn get-set-val [current id]
+  (if (vector? current)
+    [(first current) id]
+    {:db/id id}))
 
-(defn set-ref! [this k id]
-  (fm/set-value! this k {:db/id id})
+(defn set-ref! [this k val]
+  (fm/set-value! this k val)
   (comp/transact! this `[(fs/mark-complete! {:entity-ident nil :field ~k})]))
 
 (defn set-refs! [this k ids]
@@ -194,7 +197,10 @@
   (let [props (comp/props this)
         value (get props k)
         label (get opts :label (clojure.string/capitalize (name k)))
-        opts  (dissoc opts :label)]
+        popup (:popup opts)
+        opts  (-> opts
+                (dissoc :label)
+                (dissoc :popup))]
     (div :.field {}
       (dom/label {} label)
       (ui-input
@@ -209,7 +215,8 @@
 (defn rui-checkbox [this k opts]
   (let [props (comp/props this)
         value (get props k)
-        label (get opts :label (clojure.string/capitalize (name k)))]
+        label (get opts :label (clojure.string/capitalize (name k)))
+        opts  (dissoc opts :label)]
     (div :.field {:key k}
       (dom/label {} label)
       (ui-checkbox (merge opts
@@ -248,36 +255,42 @@
 
 (def validator (make-validator parameter-valid))
 
+(defn invalid-msg [props attr-k]
+  (let [valid? (validator props attr-k true)]
+    (when (map? valid?)
+      (div {:style {:color "red" :margin 5}} (:msg valid?)))))
+
+(def info-icon
+  (dom/sup (ui-icon {:name "info" :size "small" :circular true :style {:marginLeft 5}})))
+
 (defn ui-precision [this attr-k]
-  (let [props (comp/props this)
+  (let [props      (comp/props this)
         this-ident (comp/get-ident this)
-        str-val   (attr-k props)
-        _         (debug "PRECISION STR" str-val)
-        edn-val   (try (cljs.reader/read-string str-val) (catch js/Object ex nil))
-        _         (debug "PRECISION EDN" edn-val)
+        str-val    (attr-k props)
+        _          (debug "PRECISION STR" str-val)
+        edn-val    (try (cljs.reader/read-string str-val) (catch js/Object ex nil))
+        _          (debug "PRECISION EDN" edn-val)
         {:keys [threshold range rsd]} edn-val
-        range     (str range)
-        rsd       (str rsd)
-        threshold (str threshold)
-        save-edn  (fn [edn]
-                    (set-value! this attr-k (pr-str edn)))
-        save-fn   (fn [k]
-                    (fn [e]
-                      (let [val (parse-float (-> e .-target .-value))
-                            edn-val (if val
-                                      (assoc edn-val k val)
-                                      (dissoc edn-val k))]
-                        (save-edn edn-val))))
-        _ (debug "VALID? " (validator props attr-k true))]
+        range      (str range)
+        rsd        (str rsd)
+        threshold  (str threshold)
+        save-edn   (fn [edn]
+                     (set-value! this attr-k (pr-str edn)))
+        save-fn    (fn [k]
+                     (fn [e]
+                       (let [val     (parse-float (-> e .-target .-value))
+                             edn-val (if val
+                                       (assoc edn-val k val)
+                                       (dissoc edn-val k))]
+                         (save-edn edn-val))))
+        _          (debug "VALID? " (validator props attr-k true))]
     (div :.field
       (dom/label {} "Precision")
-      (let [valid? (validator props attr-k true)]
-        (when (map? valid?)
-          (div (:msg valid?))))
+      (invalid-msg props attr-k)
       (div :.ui.fields {}
         (div :.field
-          (ui-popup {:trigger (label {} "Range" (dom/sup (ui-icon {:name "info" :size "small" :circular true :style {:marginLeft 5}})))}
-            "Max - Min of sample replicates")
+          (ui-popup {:trigger (label {} "Range" info-icon)}
+            "Range = Max - Min of sample replicates")
 
           (ui-input {:className "ui small input"
                      :value     range
@@ -286,31 +299,32 @@
                      :style     {:width 80}}))
 
         (div :.field
-          (ui-popup {:trigger (label {} "Threshold" (dom/sup (ui-icon {:name "info" :size "small" :circular true :style {:marginLeft 5}})))}
-            "Range is used if mean is below threshold; % RSD is used if mean is above threshold")
-
-          (ui-input {:className "ui small input"
-                     :value     threshold
-                     ;:disabled  (not thresh?)
-                     :style     {:width 80}
-                     :onChange  (save-fn :threshold)}))
-
-        (div :.field
-          (ui-popup {:trigger (label {} "% RSD" (dom/sup (ui-icon {:name "info" :size "small" :circular true :style {:marginLeft 5}})))}
+          (ui-popup {:trigger (label {} "% RSD" info-icon)}
             "% Relative Standard Deviation = (StdDev / Mean) * 100")
 
           (ui-input {:className "ui small input"
                      :value     rsd
                      ;:disabled  (not (or rds? thresh?))
                      :style     {:width 80}
-                     :onChange  (save-fn :rsd)}))))))
+                     :onChange  (save-fn :rsd)}))
+
+        (div :.field
+          (ui-popup {:trigger (label {} "Threshold" info-icon)}
+            "If set, Range is used when sample mean is below threshold; % RSD is used when sample mean is above Threshold")
+
+          (ui-input {:className "ui small input"
+                     :value     threshold
+                     ;:disabled  (not thresh?)
+                     :style     {:width 80}
+                     :onChange  (save-fn :threshold)}))))))
 
 
 (defsc ParameterForm [this {:ui/keys        [editing saving]
-                            :parameter/keys [active name high low
+                            :parameter/keys [active name nameShort high low
                                              precisionCode replicates
                                              constituentlookupRef
-                                             samplingdevicelookupRef]
+                                             samplingdevicelookupRef
+                                             sampleTypeRef]
                             :as             props}]
   {:ident         [:org.riverdb.db.parameter/gid :db/id]
    :query         [fs/form-config-join
@@ -322,13 +336,16 @@
                    :parameter/lines
                    :parameter/low
                    :parameter/name
+                   :parameter/nameShort
                    :parameter/precisionCode
                    :parameter/replicates
+                   :parameter/replicatesEntry
+                   :parameter/replicatesElide
                    :parameter/uuid
                    ;; passed to lookup dropdowns
                    :parameter/constituentlookupRef
-                   ;:parameter/constituentlookupRef
                    :parameter/samplingdevicelookupRef
+                   :parameter/sampleTypeRef
                    :ui/editing
                    :ui/saving]
    ;[:riverdb.theta.options/ns :entity.ns/constituentlookup]
@@ -340,53 +357,97 @@
                    :parameter/active  false}
    :form-fields   #{:parameter/constituentlookupRef
                     :parameter/samplingdevicelookupRef
+                    :parameter/sampleTypeRef
                     :parameter/active
                     :parameter/color
                     :parameter/high
                     :parameter/lines
                     :parameter/low
                     :parameter/name
+                    :parameter/nameShort
                     :parameter/replicates
+                    :parameter/replicatesEntry
+                    :parameter/replicatesElide
                     :parameter/precisionCode}
    :pre-merge     (fn [{:keys [current-normalized data-tree] :as env}]
                     (debug "PREMERGE ParameterForm" (:parameter/active data-tree) current-normalized data-tree)
                     (->> data-tree
                       (clojure.walk/postwalk #(if (= % :com.fulcrologic.fulcro.algorithms.merge/not-found) nil %))
                       (merge current-normalized)))}
-  (let [dirty? (some? (seq (fs/dirty-fields props false)))]
+  (let [dirty?         (some? (seq (fs/dirty-fields props false)))
+        param-specs    (get-in specs-map [:entity.ns/parameter :entity/attrs])
+        get-lookup-val (fn [value]
+                         (cond
+                           (map? value)
+                           (:db/id value)
+                           (vector? value)
+                           (second value)
+                           :else ""))]
     (if editing
       (div :.ui.segment {}
+        (ui-header {} name)
         (div :.fields {}
-          (div :.field {} (rui-checkbox this :parameter/active {}))
           (div :.field {} (rui-input this :parameter/name {:required true :style {:width 200}}))
           (div :.field {}
-            (dom/label {} "Default Device")
-            (ui-theta-options
-              (comp/computed
-                {:riverdb.entity/ns :entity.ns/samplingdevicelookup
-                 :value             (:db/id samplingdevicelookupRef)
-                 :opts              {:clearable true :load true}}
-                {:onChange #(do
-                              (debug "OPTION CHANGE Default Device" %)
-                              (set-ref! this :parameter/samplingdevicelookupRef %))}))))
+            (ui-popup
+              {:trigger (rui-input this :parameter/nameShort
+                          {:required true :style {:width 100}
+                           :label    (label {} "Short Name" info-icon)})}
+              (get-in param-specs [:parameter/nameShort :attr/doc])))
+
+          (div :.field {} (rui-checkbox this :parameter/active {})))
+        (div :.field {}
+          (dom/label {} "Sample Type")
+          (ui-theta-options
+            (comp/computed
+              {:riverdb.entity/ns :entity.ns/sampletypelookup
+               :value             (get-lookup-val sampleTypeRef)
+               :opts              {:load true}}
+              {:onChange #(do
+                            (debug "OPTION CHANGE Parameter sampleTypeRef" %)
+                            (set-ref! this :parameter/sampleTypeRef (get-set-val sampleTypeRef %)))})))
         (div :.field {}
           (dom/label {} "Constituent")
           (ui-theta-options
             (comp/computed
               {:riverdb.entity/ns :entity.ns/constituentlookup
-               :value             (:db/id constituentlookupRef)
+               :value             (get-lookup-val constituentlookupRef)
                :opts              {:load true}}
               {:onChange #(do
                             (debug "OPTION CHANGE Parameter Constituent" %)
-                            (set-ref! this :parameter/constituentlookupRef %))})))
-        (div :.fields
-         (div :.field
-           (label {} "Data Quality")
-           (div :.fields {}
-             (div :.field {} (rui-bigdec this :parameter/low {:style {:width 80}}))
-             (div :.field {} (rui-bigdec this :parameter/high {:style {:width 80}}))
-             (div :.field {} (rui-int this :parameter/replicates {:style {:width 80}}))))
-         (ui-precision this :parameter/precisionCode))
+                            (set-ref! this :parameter/constituentlookupRef (get-set-val constituentlookupRef %)))})))
+        (div :.field {}
+          (dom/label {} "Default Device")
+          (ui-theta-options
+            (comp/computed
+              {:riverdb.entity/ns :entity.ns/samplingdevicelookup
+               :value             (get-lookup-val samplingdevicelookupRef)
+               :opts              {:clearable true :load true}}
+              {:onChange #(do
+                            (debug "OPTION CHANGE Default Device" %)
+                            (set-ref! this :parameter/samplingdevicelookupRef (get-set-val samplingdevicelookupRef %)))})))
+        (div :.field
+          (label {} "Data Quality")
+          (div :.fields {}
+            (div :.field {} (rui-bigdec this :parameter/low {:style {:width 80}}))
+            (div :.field {} (rui-bigdec this :parameter/high {:style {:width 80}}))
+            (div :.field {}
+              (ui-popup
+                {:trigger (rui-int this :parameter/replicates {:style {:width 80} :label (label {} "Required Replicates" info-icon)})}
+                (get-in param-specs [:parameter/replicates :attr/doc])))
+            (div :.field {}
+              (ui-popup
+                {:trigger (rui-int this :parameter/replicatesEntry {:label (label {} "Entry Replicates" info-icon) :style {:width 80}})}
+                (get-in param-specs [:parameter/replicatesEntry :attr/doc])))
+            (div :.field {}
+              (ui-popup
+                {:trigger (rui-checkbox this :parameter/replicatesElide {:label (label {} "Elide Outliers?" info-icon)})}
+                (get-in param-specs [:parameter/replicatesElide :attr/doc])))))
+        (ui-precision this :parameter/precisionCode)
+
+        (div :.field {}
+          (label {} "Chart Lines")
+          (div {} "coming soon ..."))
         (when saving
           "SAVING")
         (ui-cancel-save this props dirty?
@@ -415,6 +476,7 @@
                        :projectslookup/Active
                        :projectslookup/Public
                        :projectslookup/QAPPVersion
+                       :projectslookup/qappURL
                        :projectslookup/AgencyRef
                        :riverdb.entity/ns
                        {:stationlookup/_Project (comp/get-query looks/stationlookup-sum)}
@@ -424,6 +486,7 @@
                         :projectslookup/Active
                         :projectslookup/Public
                         :projectslookup/QAPPVersion
+                        :projectslookup/qappURL
                         :projectslookup/Parameters}
    ;:pre-merge         (fn [{:keys [data-tree] :as env}]
    ;                     (debug "PREMERGE ProjectForm" (keys data-tree) (:projectslookup/Active data-tree))
@@ -434,42 +497,67 @@
                           ProjectForm
                           {:riverdb.entity/ns         :entity.ns/projectslookup
                            :projectslookup/Parameters []
-                           :ui/ready                  false
+                           :ui/ready                  true
                            :ui/editing                false}))
    :componentDidMount (fn [this]
                         (let [props (comp/props this)]
-                          (preload-options :entity.ns/constituentlookup)
-                          (preload-options :entity.ns/samplingdevicelookup)
-                          (fm/set-value! this :ui/ready true)))}
+                          #_(fm/set-value! this :ui/ready true)))}
   (let [dirty? (some? (seq (fs/dirty-fields props false)))
         _      (debug "DIRTY?" dirty? (fs/dirty-fields props false))]
-    (if ready
-      (if editing
-        (div :.ui.segment
-          (ui-header {} Name)
-          (if editing
-            (div :.fields {}
-              (rui-input this :projectslookup/ProjectID {:label "ID" :required true})
-              (rui-input this :projectslookup/Name {:required true})
-              (rui-checkbox this :projectslookup/Active {})
-              (rui-checkbox this :projectslookup/Public {}))
-            (div :.fields {}
-              (span "ID " ProjectID)))
-          (rui-input this :projectslookup/QAPPVersion {:label "QAPP"})
+    (debug "RENDER ProjectForm" id ready)
+    (if editing
+      (div :.ui.segment
+        (ui-header {} Name)
+        (if editing
+          (div :.fields {}
+            (ui-popup
+              {:trigger (rui-input this :projectslookup/ProjectID {:label (label {} "ID" info-icon) :disabled true :required true})}
+              "This must be unique across all organizations and must remained unchanged after the project has data.  To change it contact RiverDB Support")
+            (rui-input this :projectslookup/Name {:required true})
+            (rui-checkbox this :projectslookup/Active {})
+            (rui-checkbox this :projectslookup/Public {}))
+          (div :.fields {}
+            (span "ID " ProjectID)))
 
-          (ui-header {} "Measurements" (button :.ui.button.seconary.float.right {:style {:float "right"}} "Add"))
-          (div :.ui.segment {:style {:padding 10}}
-            (doall
-              (vec (for [p Parameters]
-                     (let [p-data (fs/add-form-config ParameterForm p)]
-                       (ui-parameter-form p-data))))))
+        (rui-input this :projectslookup/QAPPVersion {:label "QAPP Version"})
+        (rui-input this :projectslookup/qappURL {:label "QAPP Link"})
 
-          (ui-cancel-save this props dirty? {:cancelAlwaysOn true}))
+        (ui-tab
+          {:panes
+           [{:menuItem "Field Measurements"
+             :render   (fn [] (ui-tab-pane {}
+                                (comp/with-parent-context this
+                                  (doall
+                                    (vec (for [p Parameters]
+                                           (let [p-data (fs/add-form-config ParameterForm p)]
+                                             (ui-parameter-form p-data))))))))}
+            {:menuItem "Field Observations"
+             :render   (fn [] (ui-tab-pane {}
+                                (div :.ui.segment {:style {:padding 10}}
+                                  (div :.field {}
+                                    (label {} "")
+                                    (div {} "coming soon ...")))))}
+            {:menuItem "Grabs"
+             :render   (fn [] (ui-tab-pane {}
+                                (div :.ui.segment {:style {:padding 10}}
+                                  (div :.field {}
+                                    (label {} "")
+                                    (div {} "coming soon ...")))))}
+            {:menuItem "Stations"
+             :render   (fn [] (ui-tab-pane {}
+                                (div :.ui.segment {:style {:padding 10}}
+                                  (div :.field {}
+                                    (label {} "")
+                                    (div {} "coming soon ...")))))}]})
 
-        (div :.ui.segment {}
-          (ui-header {} Name)
-          (button :.ui.button.primary {:onClick #(fm/set-value! this :ui/editing true)} "Edit")))
-      (ui-loader {:active true}))))
+
+
+
+        (ui-cancel-save this props dirty? {:cancelAlwaysOn true}))
+
+      (div :.ui.segment {}
+        (ui-header {} Name)
+        (button :.ui.button.primary {:onClick #(fm/set-value! this :ui/editing true)} "Edit")))))
 
 (def ui-project-form (comp/factory ProjectForm {:keyfn :db/id}))
 
@@ -498,43 +586,61 @@
                    s))))
 
 (defn load-projs [this]
-  (let [props (comp/props this)
-        projs (:org.riverdb.db.projectslookup/gid props)]
-    (when projs
-      (let [ids (mapv first projs)]
-        (df/load! this :org.riverdb.db.projectslookup ProjectForm
-          {:params        {:ids ids}
-           :post-mutation `init-projects-forms})))))
+  (let [props    (comp/props this)
+        ;app-state    (fapp/current-state SPA)
+        ;agency       (:riverdb.ui.root/current-agency props)
+        ;agency-ident (comp/get-ident agency)
+        ;proj-idents  (get-in app-state (conj agency-ident :projectslookup/_AgencyRef))
+        agency   (:riverdb.ui.root/current-agency props)
+        projs    (:projectslookup/_AgencyRef agency)
+        proj-ids (mapv :db/id projs)]
+    (debug "LOAD PROJECTS" proj-ids)
+    (when proj-ids
+      (df/load! this :org.riverdb.db.projectslookup ProjectForm
+        {:params        {:ids proj-ids}
+         :post-mutation `init-projects-forms}))))
 
 
-(defsc Projects [this {:keys [projects ui/ready] :riverdb.ui.root/keys [current-project] :as props}]
+(defsc Projects [this {:keys [ui/ready projects] :riverdb.ui.root/keys [current-agency] :as props}]
   {:ident              (fn [] [:component/id :projects])
    :query              [{:projects (comp/get-query ProjectForm)}
-                        {[:riverdb.ui.root/current-project '_] (comp/get-query ProjectForm)}
-                        [:org.riverdb.db.projectslookup/gid '_]
-                        [:riverdb.ui.root.current-agency '_]
+                        ;{[:riverdb.ui.root/current-project '_] (comp/get-query ProjectForm)}
+                        ;[:org.riverdb.db.projectslookup/gid '_]
+                        {[:riverdb.ui.root/current-agency '_] (comp/get-query Agency)}
                         :ui/ready]
-   :initial-state      {:ui/ready false}
+   :initial-state      {:ui/ready true}
    :route-segment      ["projects"]
    :componentDidUpdate (fn [this prev-props prev-state]
                          (let [props   (comp/props this)
                                diff    (clojure.data/diff prev-props props)
-                               changed (second diff)]
-                           ;_       (debug "DID UPDATE Projects DIFF" diff)]
-                           (when (and
-                                   (:org.riverdb.db.projectslookup/gid props)
-                                   (not (:org.riverdb.db.projectslookup/gid prev-props)))
-                             (load-projs this))))
+                               changed (second diff)
+                               agency? (:riverdb.ui.root/current-agency changed)]))
+   ;(debug "DID UPDATE Projects agency?" agency?)
+   ;(when agency?
+   ;  (load-projs this))))
    :componentDidMount  (fn [this]
-                         (debug "Projects :componentDidMount")
-                         (load-projs this))}
+                         (let [props  (comp/props this)
+                               agency (:riverdb.ui.root/current-agency props)
+                               projs  (:projectslookup/_AgencyRef agency)]
+                           ;agency-ident (comp/get-ident agency)
+                           ;app-state    (fapp/current-state SPA)
+                           ;projs        (get-in app-state (conj agency-ident :projectslookup/_AgencyRef))] ;props (comp/props this)]
+
+                           (preload-options :entity.ns/constituentlookup)
+                           (preload-options :entity.ns/samplingdevicelookup)
+                           (preload-options :entity.ns/sampletypelookup)
+
+                           (debug "DID MOUNT Projects.  Agency?" agency "PROJS?" projs)
+                           (when agency
+                             (load-projs this))))}
   ;:pre-merge         (fn [{:keys [data-tree] :as env}]
   ;                     (debug "PREMERGE Projects" (keys data-tree))
   ;                     #_(postwalk prim/nillify-not-found data-tree)
   ;                     env)}
 
   ;(comp/transact! this `[(init-projects-forms)])))}
-  (let [_ (debug "PROJECTS" projects "KEYS" (keys props))]
+  (let [;projects (get-in current-agency [:projectslookup/_AgencyRef])
+        _ (debug "PROJECTS" projects "READY" ready "KEYS" (keys props))]
     (if ready
       (div :.ui.segment
         (ui-header {} "Projects")
@@ -543,6 +649,6 @@
              (for [pj projects]
                (let [{:keys [db/id ui/hidden] :projectslookup/keys [Name ProjectID Active Public]} pj]
                  (ui-project-form pj))))]))
-      (ui-loader {:active true}))))
+      #_(ui-loader {:active true}))))
 
 (def ui-projects (comp/factory Projects))

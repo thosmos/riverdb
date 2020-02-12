@@ -1,22 +1,19 @@
 (ns
  riverdb.ui.lookups
  (:require
-  [com.fulcrologic.fulcro.components :refer [defsc transact! factory]]
+  [com.fulcrologic.fulcro.components :refer [defsc get-query factory]]
   [com.fulcrologic.fulcro.algorithms.tempid :refer [tempid]]
-  [com.fulcrologic.fulcro.dom :as dom :refer [div]]
-  [com.fulcrologic.fulcro.algorithms.form-state :as fs]
-  [taoensso.timbre :as log]))
+  [com.fulcrologic.fulcro.dom :refer [div]]
+  [theta.log :as log :refer [debug]]))
 
 (defsc
  agencylookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.agencylookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "agencylookup"},
+  {:riverdb.entity/ns :entity.ns/agencylookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :agencylookup/Active
    :agencylookup/AgencyCode
@@ -35,34 +32,34 @@
    :agencylookup/TagLine
    :agencylookup/Telephone
    :agencylookup/WebAddress
-   :agencylookup/Zip]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :agencylookup/Zip
+   :agencylookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  agencylookup-sum
  [_ _]
  {:ident [:org.riverdb.db.agencylookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/agencylookup, :db/id (tempid)},
   :query
   [:db/id
    :riverdb.entity/ns
    :agencylookup/Active
    :agencylookup/AgencyCode
-   :agencylookup/Name]})
+   :agencylookup/Name
+   :agencylookup/NameShort
+   :agencylookup/WebAddress]})
 
 
 (defsc
  analytelookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.analytelookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "analytelookup"},
+  {:riverdb.entity/ns :entity.ns/analytelookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :analytelookup/Active
    :analytelookup/AnalyteCode
@@ -76,118 +73,130 @@
    :analytelookup/Group4
    :analytelookup/Group5
    :analytelookup/Group6
-   :analytelookup/Utility1]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :analytelookup/Utility1
+   :analytelookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  analytelookup-sum
  [_ _]
  {:ident [:org.riverdb.db.analytelookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :analytelookup/AnalyteCode]})
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/analytelookup, :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :analytelookup/AnalyteCode
+   :analytelookup/AnalyteName
+   :analytelookup/AnalyteShort]})
 
 
 (defsc
  batchquallookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.batchquallookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "batchquallookup"},
+  {:riverdb.entity/ns :entity.ns/batchquallookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :batchquallookup/Active
    :batchquallookup/BatchQualCode
    :batchquallookup/BatchQualRowID
-   :batchquallookup/BatchQualifier]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :batchquallookup/BatchQualifier
+   :batchquallookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  batchquallookup-sum
  [_ _]
  {:ident [:org.riverdb.db.batchquallookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :batchquallookup/BatchQualRowID]})
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/batchquallookup, :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :batchquallookup/Active
+   :batchquallookup/BatchQualCode
+   :batchquallookup/BatchQualifier]})
 
 
 (defsc
  batchvallookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.batchvallookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "batchvallookup"},
+  {:riverdb.entity/ns :entity.ns/batchvallookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :batchvallookup/Active
    :batchvallookup/BatchValCode
    :batchvallookup/BatchVerRowID
-   :batchvallookup/BatchVerification]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :batchvallookup/BatchVerification
+   :batchvallookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  batchvallookup-sum
  [_ _]
  {:ident [:org.riverdb.db.batchvallookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :batchvallookup/BatchVerRowID]})
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/batchvallookup, :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :batchvallookup/Active
+   :batchvallookup/BatchValCode
+   :batchvallookup/BatchVerification]})
 
 
 (defsc
  compliancelevellookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.compliancelevellookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "compliancelevellookup"},
+  {:riverdb.entity/ns :entity.ns/compliancelevellookup,
+   :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :compliancelevellookup/Active
    :compliancelevellookup/ComplianceCode
    :compliancelevellookup/ComplianceDescr
-   :compliancelevellookup/ComplianceLevelRowID]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :compliancelevellookup/ComplianceLevelRowID
+   :compliancelevellookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  compliancelevellookup-sum
  [_ _]
  {:ident [:org.riverdb.db.compliancelevellookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/compliancelevellookup,
+   :db/id (tempid)},
   :query
   [:db/id
    :riverdb.entity/ns
-   :compliancelevellookup/ComplianceLevelRowID]})
+   :compliancelevellookup/Active
+   :compliancelevellookup/ComplianceCode
+   :compliancelevellookup/ComplianceDescr]})
 
 
 (defsc
  constituentlookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.constituentlookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "constituentlookup"},
+  {:riverdb.entity/ns :entity.ns/constituentlookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :constituentlookup/Active
    :constituentlookup/AnalyteCode
    :constituentlookup/ConstituentCode
    :constituentlookup/ConstituentRowID
+   :constituentlookup/DerivedName
    :constituentlookup/DeviceType
    :constituentlookup/FractionCode
    :constituentlookup/HighValue
@@ -197,30 +206,37 @@
    :constituentlookup/MethodCode
    :constituentlookup/MinValue
    :constituentlookup/Name
-   :constituentlookup/UnitCode]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :constituentlookup/UnitCode
+   :constituentlookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  constituentlookup-sum
  [_ _]
  {:ident [:org.riverdb.db.constituentlookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/constituentlookup, :db/id (tempid)},
   :query
-  [:db/id :riverdb.entity/ns :constituentlookup/Name fs/form-config-join]})
+  [:db/id
+   :riverdb.entity/ns
+   :constituentlookup/Name
+   :constituentlookup/Active
+   :constituentlookup/AnalyteCode
+   :constituentlookup/ConstituentCode
+   :constituentlookup/FractionCode
+   :constituentlookup/MatrixCode
+   :constituentlookup/MethodCode
+   :constituentlookup/UnitCode]})
 
 
 (defsc
  corrections
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.corrections/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "corrections"},
+  {:riverdb.entity/ns :entity.ns/corrections, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :corrections/AssociatedAgency
    :corrections/ChangedData
@@ -231,29 +247,67 @@
    :corrections/Global
    :corrections/OriginalData
    :corrections/Person
-   :corrections/TableName]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :corrections/TableName
+   :corrections/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  corrections-sum
  [_ _]
  {:ident [:org.riverdb.db.corrections/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/corrections, :db/id (tempid)},
   :query [:db/id :riverdb.entity/ns :corrections/CorrectionsRowID]})
 
 
 (defsc
+ samplingdevicelookup
+ [_ {:keys [riverdb.entity/ns]}]
+ {:ident [:org.riverdb.db.samplingdevicelookup/gid :db/id],
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/samplingdevicelookup,
+   :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :samplingdevicelookup/Active
+   :samplingdevicelookup/Constituent
+   :samplingdevicelookup/DeviceMax
+   :samplingdevicelookup/DeviceMin
+   :samplingdevicelookup/QAmax
+   :samplingdevicelookup/QAmin
+   :samplingdevicelookup/SampleDevice
+   :samplingdevicelookup/SampleDeviceDescr
+   :samplingdevicelookup/SamplingDeviceCode
+   :samplingdevicelookup/SamplingMatrix
+   :samplingdevicelookup/SerialNumber
+   :samplingdevicelookup/uuid]}
+ (debug (str "RENDER " ns)))
+
+(defsc
+ samplingdevicelookup-sum
+ [_ _]
+ {:ident [:org.riverdb.db.samplingdevicelookup/gid :db/id],
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/samplingdevicelookup,
+   :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :samplingdevicelookup/Active
+   :samplingdevicelookup/SampleDevice
+   :samplingdevicelookup/DeviceMax
+   :samplingdevicelookup/DeviceMin]})
+
+
+(defsc
  digestextractlookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.digestextractlookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "digestextractlookup"},
+  {:riverdb.entity/ns :entity.ns/digestextractlookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :digestextractlookup/Active
    :digestextractlookup/DigestExtractCode
@@ -262,236 +316,256 @@
    :digestextractlookup/DigestExtractMethod
    :digestextractlookup/DigestExtractRowID
    :digestextractlookup/DigestExtractType
-   :digestextractlookup/MethodOnFile]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :digestextractlookup/MethodOnFile
+   :digestextractlookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  digestextractlookup-sum
  [_ _]
  {:ident [:org.riverdb.db.digestextractlookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/digestextractlookup, :db/id (tempid)},
   :query
-  [:db/id :riverdb.entity/ns :digestextractlookup/DigestExtractRowID]})
+  [:db/id
+   :riverdb.entity/ns
+   :digestextractlookup/Active
+   :digestextractlookup/DigestExtractCode
+   :digestextractlookup/DigestExtractInstrument
+   :digestextractlookup/DigestExtractType
+   :digestextractlookup/DigestExtractDescr
+   :digestextractlookup/DigestExtractMethod]})
 
 
 (defsc
  eventtypelookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.eventtypelookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "eventtypelookup"},
+  {:riverdb.entity/ns :entity.ns/eventtypelookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :eventtypelookup/Active
    :eventtypelookup/EventDescr
-   :eventtypelookup/EventType]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :eventtypelookup/EventType
+   :eventtypelookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  eventtypelookup-sum
  [_ _]
  {:ident [:org.riverdb.db.eventtypelookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :eventtypelookup/EventType]})
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/eventtypelookup, :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :eventtypelookup/Active
+   :eventtypelookup/EventType
+   :eventtypelookup/EventDescr]})
 
 
 (defsc
  fieldobsresult
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.fieldobsresult/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "fieldobsresult"},
+  {:riverdb.entity/ns :entity.ns/fieldobsresult, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :fieldobsresult/ConstituentRowID
+   :fieldobsresult/IntResult
    :fieldobsresult/FieldObsResultComments
    :fieldobsresult/FieldObsResultRowID
-   :fieldobsresult/IntResult
    :fieldobsresult/SampleRowID
-   :fieldobsresult/TextResult]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :fieldobsresult/TextResult
+   :fieldobsresult/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  fieldobsresult-sum
  [_ _]
  {:ident [:org.riverdb.db.fieldobsresult/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/fieldobsresult, :db/id (tempid)},
   :query
-  [:db/id :riverdb.entity/ns :fieldobsresult/FieldObsResultRowID]})
+  [:db/id
+   :riverdb.entity/ns
+   :fieldobsresult/TextResult
+   :fieldobsresult/IntResult
+   :fieldobsresult/ConstituentRowID
+   :fieldobsresult/FieldObsResultComments
+   :fieldobsresult/SampleRowID]})
 
 
 (defsc
  fieldobsvarlookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.fieldobsvarlookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "fieldobsvarlookup"},
+  {:riverdb.entity/ns :entity.ns/fieldobsvarlookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :fieldobsvarlookup/Active
    :fieldobsvarlookup/AnalyteName
    :fieldobsvarlookup/FieldObsVarRowId
    :fieldobsvarlookup/ValueCode
-   :fieldobsvarlookup/ValueCodeDescr]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :fieldobsvarlookup/ValueCodeDescr
+   :fieldobsvarlookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  fieldobsvarlookup-sum
  [_ _]
  {:ident [:org.riverdb.db.fieldobsvarlookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/fieldobsvarlookup, :db/id (tempid)},
   :query
-  [:db/id :riverdb.entity/ns :fieldobsvarlookup/FieldObsVarRowId]})
+  [:db/id
+   :riverdb.entity/ns
+   :fieldobsvarlookup/Active
+   :fieldobsvarlookup/AnalyteName
+   :fieldobsvarlookup/ValueCode
+   :fieldobsvarlookup/ValueCodeDescr]})
 
 
 (defsc
  fieldresequiplookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.fieldresequiplookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "fieldresequiplookup"},
+  {:riverdb.entity/ns :entity.ns/fieldresequiplookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :fieldresequiplookup/Active
    :fieldresequiplookup/AnalyteName
    :fieldresequiplookup/FieldResEquipRowID
-   :fieldresequiplookup/SampleDevice]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :fieldresequiplookup/SampleDevice
+   :fieldresequiplookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  fieldresequiplookup-sum
  [_ _]
  {:ident [:org.riverdb.db.fieldresequiplookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/fieldresequiplookup, :db/id (tempid)},
   :query
   [:db/id :riverdb.entity/ns :fieldresequiplookup/FieldResEquipRowID]})
 
 
 (defsc
  fieldresult
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.fieldresult/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "fieldresult"},
+  {:riverdb.entity/ns :entity.ns/fieldresult, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :fieldresult/CalibrationDate
+   :fieldresult/FieldResultComments
    :fieldresult/ComplianceCode
    :fieldresult/ConstituentRowID
-   :fieldresult/FieldReplicate
-   :fieldresult/FieldResultComments
-   :fieldresult/FieldResultRowID
+   :fieldresult/SamplingDeviceID
+   :fieldresult/SamplingDeviceCode
    :fieldresult/QACode
    :fieldresult/QAFlag
+   :fieldresult/FieldReplicate
    :fieldresult/ResQualCode
    :fieldresult/Result
    :fieldresult/ResultTime
+   :fieldresult/FieldResultRowID
    :fieldresult/SampleRowID
-   :fieldresult/SamplingDeviceCode
-   :fieldresult/SamplingDeviceID
-   :fieldresult/SigFig]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :fieldresult/SigFig
+   :fieldresult/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  fieldresult-sum
  [_ _]
  {:ident [:org.riverdb.db.fieldresult/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :fieldresult/FieldResultRowID]})
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/fieldresult, :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :fieldresult/ResultTime
+   :fieldresult/Result
+   :fieldresult/FieldReplicate
+   :fieldresult/SigFig
+   :fieldresult/QACode
+   :fieldresult/QAFlag]})
 
 
 (defsc
  fractionlookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.fractionlookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "fractionlookup"},
+  {:riverdb.entity/ns :entity.ns/fractionlookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :fractionlookup/Active
    :fractionlookup/FractionCode
    :fractionlookup/FractionDescr
-   :fractionlookup/FractionName]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :fractionlookup/FractionName
+   :fractionlookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  fractionlookup-sum
  [_ _]
  {:ident [:org.riverdb.db.fractionlookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/fractionlookup, :db/id (tempid)},
   :query [:db/id :riverdb.entity/ns :fractionlookup/FractionCode]})
 
 
 (defsc
  gpsdevicelookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.gpsdevicelookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "gpsdevicelookup"},
+  {:riverdb.entity/ns :entity.ns/gpsdevicelookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :gpsdevicelookup/Active
    :gpsdevicelookup/GPSDescr
    :gpsdevicelookup/GPSDeviceCode
    :gpsdevicelookup/GPSDeviceID
-   :gpsdevicelookup/GPSDeviceRowID]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :gpsdevicelookup/GPSDeviceRowID
+   :gpsdevicelookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  gpsdevicelookup-sum
  [_ _]
  {:ident [:org.riverdb.db.gpsdevicelookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :gpsdevicelookup/GPSDeviceRowID]})
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/gpsdevicelookup, :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :gpsdevicelookup/Active
+   :gpsdevicelookup/GPSDeviceID
+   :gpsdevicelookup/GPSDeviceCode]})
 
 
 (defsc
  labbatch
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.labbatch/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "labbatch"},
+  {:riverdb.entity/ns :entity.ns/labbatch, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :labbatch/AgencyCode
    :labbatch/BatchQualCode
@@ -499,29 +573,34 @@
    :labbatch/LabBatch
    :labbatch/LabBatchComments
    :labbatch/LabBatchRowID
-   :labbatch/SubmittingAgency]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :labbatch/SubmittingAgency
+   :labbatch/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  labbatch-sum
  [_ _]
  {:ident [:org.riverdb.db.labbatch/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :labbatch/LabBatchRowID]})
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/labbatch, :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :labbatch/LabBatch
+   :labbatch/BatchQualCode
+   :labbatch/AgencyCode
+   :labbatch/SubmittingAgency
+   :labbatch/LabBatchComments]})
 
 
 (defsc
  labresult
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.labresult/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "labresult"},
+  {:riverdb.entity/ns :entity.ns/labresult, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :labresult/AnalysisDate
    :labresult/Basis
@@ -545,57 +624,65 @@
    :labresult/Result
    :labresult/SampleID
    :labresult/SampleRowID
-   :labresult/SigFig]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :labresult/SigFig
+   :labresult/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  labresult-sum
  [_ _]
  {:ident [:org.riverdb.db.labresult/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :labresult/LabResultRowID]})
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/labresult, :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :labresult/AnalysisDate
+   :labresult/Result
+   :labresult/QAFlag
+   :labresult/QACode]})
 
 
 (defsc
  matrixlookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.matrixlookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "matrixlookup"},
+  {:riverdb.entity/ns :entity.ns/matrixlookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :matrixlookup/Active
    :matrixlookup/MatrixCode
    :matrixlookup/MatrixDescr
    :matrixlookup/MatrixName
-   :matrixlookup/MatrixShort]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :matrixlookup/MatrixShort
+   :matrixlookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  matrixlookup-sum
  [_ _]
  {:ident [:org.riverdb.db.matrixlookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :matrixlookup/MatrixCode]})
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/matrixlookup, :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :matrixlookup/Active
+   :matrixlookup/MatrixCode
+   :matrixlookup/MatrixName
+   :matrixlookup/MatrixShort]})
 
 
 (defsc
  methodlookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.methodlookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "methodlookup"},
+  {:riverdb.entity/ns :entity.ns/methodlookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :methodlookup/Active
    :methodlookup/Instrument
@@ -605,156 +692,230 @@
    :methodlookup/MethodOnFile
    :methodlookup/Type1
    :methodlookup/Type2
-   :methodlookup/Type3]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :methodlookup/Type3
+   :methodlookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  methodlookup-sum
  [_ _]
  {:ident [:org.riverdb.db.methodlookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :methodlookup/MethodCode]})
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/methodlookup, :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :methodlookup/Active
+   :methodlookup/MethodCode
+   :methodlookup/MethodName]})
 
 
 (defsc
  missingvaluelookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.missingvaluelookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "missingvaluelookup"},
+  {:riverdb.entity/ns :entity.ns/missingvaluelookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :missingvaluelookup/Active
    :missingvaluelookup/DataType
    :missingvaluelookup/MissingValueCode
    :missingvaluelookup/MissingValueComments
    :missingvaluelookup/MissingValueDescr
-   :missingvaluelookup/MissingValueRowID]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :missingvaluelookup/MissingValueRowID
+   :missingvaluelookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  missingvaluelookup-sum
  [_ _]
  {:ident [:org.riverdb.db.missingvaluelookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/missingvaluelookup, :db/id (tempid)},
   :query
   [:db/id :riverdb.entity/ns :missingvaluelookup/MissingValueRowID]})
 
 
 (defsc
+ paramline
+ [_ {:keys [riverdb.entity/ns]}]
+ {:ident [:org.riverdb.db.paramline/gid :db/id],
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/paramline, :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :paramline/css
+   :paramline/color
+   :paramline/label
+   :paramline/value
+   :paramline/uuid]}
+ (debug (str "RENDER " ns)))
+
+(defsc
+ paramline-sum
+ [_ _]
+ {:ident [:org.riverdb.db.paramline/gid :db/id],
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/paramline, :db/id (tempid)},
+  :query [:db/id :riverdb.entity/ns :paramline/label]})
+
+
+(defsc
+ parameter
+ [_ {:keys [riverdb.entity/ns]}]
+ {:ident [:org.riverdb.db.parameter/gid :db/id],
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/parameter, :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :parameter/active
+   :parameter/color
+   :parameter/constituentlookupRef
+   :parameter/samplingdevicelookupRef
+   :parameter/high
+   :parameter/lines
+   :parameter/low
+   :parameter/name
+   :parameter/nameShort
+   :parameter/precisionCode
+   :parameter/replicates
+   :parameter/replicatesEntry
+   :parameter/replicatesElide
+   :parameter/sampleTypeRef
+   :parameter/uuid]}
+ (debug (str "RENDER " ns)))
+
+(defsc
+ parameter-sum
+ [_ _]
+ {:ident [:org.riverdb.db.parameter/gid :db/id],
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/parameter, :db/id (tempid)},
+  :query [:db/id :riverdb.entity/ns :parameter/active :parameter/name]})
+
+
+(defsc
  parentprojectlookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.parentprojectlookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "parentprojectlookup"},
+  {:riverdb.entity/ns :entity.ns/parentprojectlookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :parentprojectlookup/Address1
    :parentprojectlookup/Address2
    :parentprojectlookup/CityStat
+   :parentprojectlookup/ParentProjectComments
    :parentprojectlookup/DQOlevel
    :parentprojectlookup/Duration
+   :parentprojectlookup/ProjEmail
    :parentprojectlookup/ExternalFileName
+   :parentprojectlookup/ParentProjectID
+   :parentprojectlookup/ProjLead
+   :parentprojectlookup/ParentProjectName
    :parentprojectlookup/Notes
    :parentprojectlookup/OrgNameorID
-   :parentprojectlookup/ParentProjectComments
-   :parentprojectlookup/ParentProjectID
-   :parentprojectlookup/ParentProjectName
-   :parentprojectlookup/ParentProjectRowID
-   :parentprojectlookup/ProjEmail
-   :parentprojectlookup/ProjLead
    :parentprojectlookup/ProjPhon
-   :parentprojectlookup/ProjType
    :parentprojectlookup/Purpose
+   :parentprojectlookup/ParentProjectRowID
    :parentprojectlookup/StartDate
+   :parentprojectlookup/ProjType
    :parentprojectlookup/URL
-   :parentprojectlookup/ZIP]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :parentprojectlookup/ZIP
+   :parentprojectlookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  parentprojectlookup-sum
  [_ _]
  {:ident [:org.riverdb.db.parentprojectlookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/parentprojectlookup, :db/id (tempid)},
   :query
-  [:db/id :riverdb.entity/ns :parentprojectlookup/ParentProjectRowID]})
+  [:db/id
+   :riverdb.entity/ns
+   :parentprojectlookup/ParentProjectID
+   :parentprojectlookup/ParentProjectName
+   :parentprojectlookup/OrgNameorID
+   :parentprojectlookup/StartDate]})
 
 
 (defsc
  person
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.person/gid :db/id],
-  :initial-state {:ui/msg "hello", :db/id (tempid), :ui/name "person"},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/person, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :person/Agency
+   :person/FName
+   :person/IsStaff
+   :person/LName
    :person/Name
-   :person/PersonID]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :person/PersonID
+   :person/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  person-sum
  [_ _]
  {:ident [:org.riverdb.db.person/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :person/PersonID]})
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/person, :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :person/Name
+   :person/IsStaff
+   :person/Agency]})
 
 
 (defsc
  preplookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.preplookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "preplookup"},
+  {:riverdb.entity/ns :entity.ns/preplookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :preplookup/Active
    :preplookup/Filtered
    :preplookup/PrepCode
    :preplookup/PrepRowID
-   :preplookup/Preparation]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :preplookup/Preparation
+   :preplookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  preplookup-sum
  [_ _]
  {:ident [:org.riverdb.db.preplookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :preplookup/PrepRowID]})
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/preplookup, :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :preplookup/Active
+   :preplookup/PrepCode
+   :preplookup/Preparation]})
 
 
 (defsc
  projectslookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.projectslookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "projectslookup"},
+  {:riverdb.entity/ns :entity.ns/projectslookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :projectslookup/Active
    :projectslookup/AgencyCode
@@ -762,19 +923,23 @@
    :projectslookup/FieldVerCode
    :projectslookup/FieldVerComm
    :projectslookup/Name
+   :projectslookup/Parameters
    :projectslookup/ParentProjectID
    :projectslookup/ProjectID
    :projectslookup/ProjectsComments
-   :projectslookup/QAPPVersion]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :projectslookup/Public
+   :projectslookup/QAPPVersion
+   :projectslookup/qappURL
+   :projectslookup/Stations
+   :projectslookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  projectslookup-sum
  [_ _]
  {:ident [:org.riverdb.db.projectslookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/projectslookup, :db/id (tempid)},
   :query
   [:db/id
    :riverdb.entity/ns
@@ -787,14 +952,12 @@
 
 (defsc
  qalookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.qalookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "qalookup"},
+  {:riverdb.entity/ns :entity.ns/qalookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :qalookup/Active
    :qalookup/QACode
@@ -802,62 +965,59 @@
    :qalookup/QARowID
    :qalookup/Type1
    :qalookup/Type2
-   :qalookup/Type3]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :qalookup/Type3
+   :qalookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  qalookup-sum
  [_ _]
  {:ident [:org.riverdb.db.qalookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/qalookup, :db/id (tempid)},
   :query [:db/id :riverdb.entity/ns :qalookup/QARowID]})
 
 
 (defsc
  resquallookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.resquallookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "resquallookup"},
+  {:riverdb.entity/ns :entity.ns/resquallookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :resquallookup/Active
    :resquallookup/ResQualCode
    :resquallookup/ResQualifier
    :resquallookup/Type1
    :resquallookup/Type2
-   :resquallookup/Type3]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :resquallookup/Type3
+   :resquallookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  resquallookup-sum
  [_ _]
  {:ident [:org.riverdb.db.resquallookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/resquallookup, :db/id (tempid)},
   :query [:db/id :riverdb.entity/ns :resquallookup/ResQualCode]})
 
 
 (defsc
  sample
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.sample/gid :db/id],
-  :initial-state {:ui/msg "hello", :db/id (tempid), :ui/name "sample"},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/sample, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :sample/DepthSampleCollection
    :sample/EventType
-   :sample/FieldResults
    :sample/FieldObsResults
+   :sample/FieldResults
    :sample/LabResults
    :sample/QCCheck
    :sample/SampleComments
@@ -868,29 +1028,36 @@
    :sample/SampleTime
    :sample/SampleTypeCode
    :sample/SiteVisitID
-   :sample/Unit]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :sample/Unit
+   :sample/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  sample-sum
  [_ _]
  {:ident [:org.riverdb.db.sample/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :sample/SampleRowID]})
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/sample, :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :sample/SampleDate
+   :sample/SampleReplicate
+   :sample/EventType
+   :sample/QCCheck
+   :sample/SampleComplete
+   :sample/SampleTime
+   :sample/SampleTypeCode]})
 
 
 (defsc
  sampledetail
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.sampledetail/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "sampledetail"},
+  {:riverdb.entity/ns :entity.ns/sampledetail, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :sampledetail/ActualLatitude
    :sampledetail/ActualLongitude
@@ -914,29 +1081,27 @@
    :sampledetail/UnitAccuracy
    :sampledetail/UnitDistanceFromBank
    :sampledetail/UnitStationWaterDepth
-   :sampledetail/UnitStreamWidth]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :sampledetail/UnitStreamWidth
+   :sampledetail/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  sampledetail-sum
  [_ _]
  {:ident [:org.riverdb.db.sampledetail/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/sampledetail, :db/id (tempid)},
   :query [:db/id :riverdb.entity/ns :sampledetail/SampleDetailRowID]})
 
 
 (defsc
  sampletypelookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.sampletypelookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "sampletypelookup"},
+  {:riverdb.entity/ns :entity.ns/sampletypelookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :sampletypelookup/Active
    :sampletypelookup/CollectionType
@@ -945,135 +1110,78 @@
    :sampletypelookup/EventType3
    :sampletypelookup/EventType4
    :sampletypelookup/SampleTypeCode
-   :sampletypelookup/SampleTypeDescr]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :sampletypelookup/SampleTypeDescr
+   :sampletypelookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  sampletypelookup-sum
  [_ _]
  {:ident [:org.riverdb.db.sampletypelookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :sampletypelookup/SampleTypeCode]})
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/sampletypelookup, :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :sampletypelookup/Active
+   :sampletypelookup/SampleTypeCode
+   :sampletypelookup/CollectionType
+   :sampletypelookup/EventType1
+   :sampletypelookup/EventType2
+   :sampletypelookup/EventType3
+   :sampletypelookup/EventType4
+   :sampletypelookup/SampleTypeDescr]})
 
 
 (defsc
  samplingdevice
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.samplingdevice/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "samplingdevice"},
+  {:riverdb.entity/ns :entity.ns/samplingdevice, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :samplingdevice/CommonID
    :samplingdevice/DeviceType
-   :samplingdevice/SamplingDeviceID]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :samplingdevice/SamplingDeviceID
+   :samplingdevice/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  samplingdevice-sum
  [_ _]
  {:ident [:org.riverdb.db.samplingdevice/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :samplingdevice/SamplingDeviceID]})
-
-
-(defsc
- samplingdevicelookup
- [_ {:keys [ui/msg ui/name]}]
- {:ident [:org.riverdb.db.samplingdevicelookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "samplingdevicelookup"},
-  :query
-  [:ui/msg
-   :ui/name
-   :db/id
-   :riverdb.entity/ns
-   :samplingdevicelookup/Active
-   :samplingdevicelookup/Constituent
-   :samplingdevicelookup/DeviceMax
-   :samplingdevicelookup/DeviceMin
-   :samplingdevicelookup/QAmax
-   :samplingdevicelookup/QAmin
-   :samplingdevicelookup/SampleDevice
-   :samplingdevicelookup/SampleDeviceDescr
-   :samplingdevicelookup/SamplingDeviceCode
-   :samplingdevicelookup/SamplingMatrix
-   :samplingdevicelookup/SerialNumber]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
-
-(defsc
- samplingdevicelookup-sum
- [_ _]
- {:ident [:org.riverdb.db.samplingdevicelookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query
-  [:db/id :riverdb.entity/ns :samplingdevicelookup/SamplingDeviceCode fs/form-config-join]})
-
-
-(defsc
- seasondetaillookup
- [_ {:keys [ui/msg ui/name]}]
- {:ident [:org.riverdb.db.seasondetaillookup/gid :db/id],
-  :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "seasondetaillookup"},
-  :query
-  [:ui/msg
-   :ui/name
-   :db/id
-   :riverdb.entity/ns
-   :seasondetaillookup/Active
-   :seasondetaillookup/ProjectID
-   :seasondetaillookup/SeasonCode
-   :seasondetaillookup/SeasonDescr
-   :seasondetaillookup/SeasonRowID]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
-
-(defsc
- seasondetaillookup-sum
- [_ _]
- {:ident [:org.riverdb.db.seasondetaillookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  {:riverdb.entity/ns :entity.ns/samplingdevice, :db/id (tempid)},
   :query
   [:db/id
    :riverdb.entity/ns
-   :seasondetaillookup/SeasonRowID
-   :seasondetaillookup/SeasonDescr]})
+   :samplingdevice/CommonID
+   :samplingdevice/DeviceType]})
 
 
 (defsc
  seasonlookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.seasonlookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "seasonlookup"},
+  {:riverdb.entity/ns :entity.ns/seasonlookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :seasonlookup/Active
    :seasonlookup/Season
-   :seasonlookup/SeasonCode]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :seasonlookup/SeasonCode
+   :seasonlookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  seasonlookup-sum
  [_ _]
  {:ident [:org.riverdb.db.seasonlookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/seasonlookup, :db/id (tempid)},
   :query
   [:db/id
    :riverdb.entity/ns
@@ -1083,15 +1191,44 @@
 
 
 (defsc
+ seasondetaillookup
+ [_ {:keys [riverdb.entity/ns]}]
+ {:ident [:org.riverdb.db.seasondetaillookup/gid :db/id],
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/seasondetaillookup, :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :seasondetaillookup/Active
+   :seasondetaillookup/ProjectID
+   :seasondetaillookup/SeasonCode
+   :seasondetaillookup/SeasonDescr
+   :seasondetaillookup/SeasonRowID
+   :seasondetaillookup/uuid]}
+ (debug (str "RENDER " ns)))
+
+(defsc
+ seasondetaillookup-sum
+ [_ _]
+ {:ident [:org.riverdb.db.seasondetaillookup/gid :db/id],
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/seasondetaillookup, :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :seasondetaillookup/Active
+   :seasondetaillookup/SeasonCode
+   :seasondetaillookup/SeasonDescr]})
+
+
+(defsc
  sitevisit
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.sitevisit/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "sitevisit"},
+  {:riverdb.entity/ns :entity.ns/sitevisit, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :sitevisit/AgencyCode
    :sitevisit/BacteriaCollected
@@ -1103,11 +1240,14 @@
    :sitevisit/DataEntryNotes
    :sitevisit/DataEntryPerson
    :sitevisit/DataEntryPersonRef
+   :sitevisit/SiteVisitDate
    :sitevisit/Datum
    :sitevisit/DepthMeasured
+   :sitevisit/StationFailCode
    :sitevisit/GPSDeviceCode
    :sitevisit/HydroMod
    :sitevisit/HydroModLoc
+   :sitevisit/StationID
    :sitevisit/Lat
    :sitevisit/Lon
    :sitevisit/MetalCollected
@@ -1119,12 +1259,10 @@
    :sitevisit/QADate
    :sitevisit/QAPerson
    :sitevisit/QAPersonRef
-   :sitevisit/Samples
-   :sitevisit/SeasonCode
-   :sitevisit/SiteVisitDate
    :sitevisit/SiteVisitID
-   :sitevisit/StationFailCode
-   :sitevisit/StationID
+   :sitevisit/Samples
+   :sitevisit/Visitors
+   :sitevisit/SeasonCode
    :sitevisit/StreamWidth
    :sitevisit/Time
    :sitevisit/TssCollected
@@ -1133,20 +1271,18 @@
    :sitevisit/TurbidityTime
    :sitevisit/UnitStreamWidth
    :sitevisit/UnitWaterDepth
-   :sitevisit/Visitors
    :sitevisit/VisitType
    :sitevisit/WaterDepth
    :sitevisit/WidthMeasured
    :sitevisit/uuid]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+ (debug (str "RENDER " ns)))
 
 (defsc
  sitevisit-sum
  [_ _]
  {:ident [:org.riverdb.db.sitevisit/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/sitevisit, :db/id (tempid)},
   :query
   [:db/id
    :riverdb.entity/ns
@@ -1161,90 +1297,65 @@
 
 (defsc
  sitevisitgroup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.sitevisitgroup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "sitevisitgroup"},
+  {:riverdb.entity/ns :entity.ns/sitevisitgroup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :sitevisitgroup/GroupID
-   :sitevisitgroup/Name]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :sitevisitgroup/Name
+   :sitevisitgroup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  sitevisitgroup-sum
  [_ _]
  {:ident [:org.riverdb.db.sitevisitgroup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/sitevisitgroup, :db/id (tempid)},
   :query [:db/id :riverdb.entity/ns :sitevisitgroup/GroupID]})
 
 
 (defsc
- sitevisittype
- [_ {:keys [ui/msg ui/name]}]
- {:ident [:org.riverdb.db.sitevisittype/gid :db/id],
+ statmethlookup
+ [_ {:keys [riverdb.entity/ns]}]
+ {:ident [:org.riverdb.db.statmethlookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "sitevisittype"},
-  :query
-  [:ui/msg :ui/name :db/id :riverdb.entity/ns :sitevisittype/name]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
-
-(defsc
- sitevisittype-sum
- [_ _]
- {:ident [:org.riverdb.db.sitevisittype/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :sitevisittype/name]})
-
-
-(defsc
- stationfaillookup
- [_ {:keys [ui/msg ui/name]}]
- {:ident [:org.riverdb.db.stationfaillookup/gid :db/id],
-  :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "stationfaillookup"},
-  :query
-  [:ui/msg
-   :ui/name
-   :db/id
-   :riverdb.entity/ns
-   :stationfaillookup/Active
-   :stationfaillookup/FailureReason
-   :stationfaillookup/StationFailCode]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
-
-(defsc
- stationfaillookup-sum
- [_ _]
- {:ident [:org.riverdb.db.stationfaillookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  {:riverdb.entity/ns :entity.ns/statmethlookup, :db/id (tempid)},
   :query
   [:db/id
    :riverdb.entity/ns
-   :stationfaillookup/Active
-   :stationfaillookup/StationFailCode
-   :stationfaillookup/FailureReason]})
+   :statmethlookup/Active
+   :statmethlookup/StatMethCode
+   :statmethlookup/StatMethDescr
+   :statmethlookup/StatMethodRowID
+   :statmethlookup/uuid]}
+ (debug (str "RENDER " ns)))
+
+(defsc
+ statmethlookup-sum
+ [_ _]
+ {:ident [:org.riverdb.db.statmethlookup/gid :db/id],
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/statmethlookup, :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :statmethlookup/Active
+   :statmethlookup/StatMethCode
+   :statmethlookup/StatMethDescr]})
 
 
 (defsc
  stationlookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.stationlookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "stationlookup"},
+  {:riverdb.entity/ns :entity.ns/stationlookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :stationlookup/Active
    :stationlookup/AddDate
@@ -1268,6 +1379,7 @@
    :stationlookup/LocalWatershed
    :stationlookup/NHDRiverMile
    :stationlookup/NHDWaterbody
+   :stationlookup/Name
    :stationlookup/NationalHydrographyDataReach
    :stationlookup/Project
    :stationlookup/RiverFork
@@ -1284,16 +1396,16 @@
    :stationlookup/TargetLat
    :stationlookup/TargetLong
    :stationlookup/Unit
-   :stationlookup/WBType]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :stationlookup/WBType
+   :stationlookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  stationlookup-sum
  [_ _]
  {:ident [:org.riverdb.db.stationlookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/stationlookup, :db/id (tempid)},
   :query
   [:db/id
    :riverdb.entity/ns
@@ -1308,491 +1420,71 @@
 
 
 (defsc
- statmethlookup
- [_ {:keys [ui/msg ui/name]}]
- {:ident [:org.riverdb.db.statmethlookup/gid :db/id],
+ stationfaillookup
+ [_ {:keys [riverdb.entity/ns]}]
+ {:ident [:org.riverdb.db.stationfaillookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "statmethlookup"},
-  :query
-  [:ui/msg
-   :ui/name
-   :db/id
-   :riverdb.entity/ns
-   :statmethlookup/Active
-   :statmethlookup/StatMethCode
-   :statmethlookup/StatMethDescr
-   :statmethlookup/StatMethodRowID]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
-
-(defsc
- statmethlookup-sum
- [_ _]
- {:ident [:org.riverdb.db.statmethlookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :statmethlookup/StatMethodRowID]})
-
-
-(defsc
- timepointlookup
- [_ {:keys [ui/msg ui/name]}]
- {:ident [:org.riverdb.db.timepointlookup/gid :db/id],
-  :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "timepointlookup"},
-  :query
-  [:ui/msg
-   :ui/name
-   :db/id
-   :riverdb.entity/ns
-   :timepointlookup/Active
-   :timepointlookup/TimePoint
-   :timepointlookup/TimePointDescr
-   :timepointlookup/TimePointRowID]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
-
-(defsc
- timepointlookup-sum
- [_ _]
- {:ident [:org.riverdb.db.timepointlookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :timepointlookup/TimePointRowID]})
-
-
-(defsc
- toxbatch
- [_ {:keys [ui/msg ui/name]}]
- {:ident [:org.riverdb.db.toxbatch/gid :db/id],
-  :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "toxbatch"},
-  :query
-  [:ui/msg
-   :ui/name
-   :db/id
-   :riverdb.entity/ns
-   :toxbatch/AgencyCode
-   :toxbatch/BatchQualCode
-   :toxbatch/BatchValCode
-   :toxbatch/OrganismAgeAtTestStart
-   :toxbatch/OrganismSupplier
-   :toxbatch/RefToxBatch
-   :toxbatch/SubmittingAgency
-   :toxbatch/ToxBatch
-   :toxbatch/ToxBatchComments
-   :toxbatch/ToxBatchRowID
-   :toxbatch/ToxBatchStartDate
-   :toxbatch/UnitsAgeAtStart]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
-
-(defsc
- toxbatch-sum
- [_ _]
- {:ident [:org.riverdb.db.toxbatch/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :toxbatch/ToxBatchRowID]})
-
-
-(defsc
- toxconclookup
- [_ {:keys [ui/msg ui/name]}]
- {:ident [:org.riverdb.db.toxconclookup/gid :db/id],
-  :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "toxconclookup"},
-  :query
-  [:ui/msg
-   :ui/name
-   :db/id
-   :riverdb.entity/ns
-   :toxconclookup/Active
-   :toxconclookup/ToxConc
-   :toxconclookup/ToxConcDescr
-   :toxconclookup/ToxConcRowID]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
-
-(defsc
- toxconclookup-sum
- [_ _]
- {:ident [:org.riverdb.db.toxconclookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :toxconclookup/ToxConcRowID]})
-
-
-(defsc
- toxconstituentlookup
- [_ {:keys [ui/msg ui/name]}]
- {:ident [:org.riverdb.db.toxconstituentlookup/gid :db/id],
-  :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "toxconstituentlookup"},
-  :query
-  [:ui/msg
-   :ui/name
-   :db/id
-   :riverdb.entity/ns
-   :toxconstituentlookup/Active
-   :toxconstituentlookup/MatrixCode
-   :toxconstituentlookup/MethodCode
-   :toxconstituentlookup/ToxConstituentCode
-   :toxconstituentlookup/ToxConstituentRowID
-   :toxconstituentlookup/ToxSpeciesCode
-   :toxconstituentlookup/ToxTestDur
-   :toxconstituentlookup/UnitCode]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
-
-(defsc
- toxconstituentlookup-sum
- [_ _]
- {:ident [:org.riverdb.db.toxconstituentlookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  {:riverdb.entity/ns :entity.ns/stationfaillookup, :db/id (tempid)},
   :query
   [:db/id
    :riverdb.entity/ns
-   :toxconstituentlookup/ToxConstituentRowID]})
-
-
-(defsc
- toxeffort
- [_ {:keys [ui/msg ui/name]}]
- {:ident [:org.riverdb.db.toxeffort/gid :db/id],
-  :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "toxeffort"},
-  :query
-  [:ui/msg
-   :ui/name
-   :db/id
-   :riverdb.entity/ns
-   :toxeffort/Dilution
-   :toxeffort/ToxConc
-   :toxeffort/ToxEffortComments
-   :toxeffort/ToxEffortRowID
-   :toxeffort/ToxResConstituentRowID
-   :toxeffort/ToxTestRowID]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :stationfaillookup/Active
+   :stationfaillookup/FailureReason
+   :stationfaillookup/StationFailCode
+   :stationfaillookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
- toxeffort-sum
+ stationfaillookup-sum
  [_ _]
- {:ident [:org.riverdb.db.toxeffort/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :toxeffort/ToxEffortRowID]})
-
-
-(defsc
- toxefforttypelookup
- [_ {:keys [ui/msg ui/name]}]
- {:ident [:org.riverdb.db.toxefforttypelookup/gid :db/id],
+ {:ident [:org.riverdb.db.stationfaillookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "toxefforttypelookup"},
-  :query
-  [:ui/msg
-   :ui/name
-   :db/id
-   :riverdb.entity/ns
-   :toxefforttypelookup/Active
-   :toxefforttypelookup/ToxEffortType
-   :toxefforttypelookup/ToxEffortTypeDescr
-   :toxefforttypelookup/ToxEffortTypeRowID]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
-
-(defsc
- toxefforttypelookup-sum
- [_ _]
- {:ident [:org.riverdb.db.toxefforttypelookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query
-  [:db/id :riverdb.entity/ns :toxefforttypelookup/ToxEffortTypeRowID]})
-
-
-(defsc
- toxendpointlookup
- [_ {:keys [ui/msg ui/name]}]
- {:ident [:org.riverdb.db.toxendpointlookup/gid :db/id],
-  :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "toxendpointlookup"},
-  :query
-  [:ui/msg
-   :ui/name
-   :db/id
-   :riverdb.entity/ns
-   :toxendpointlookup/Active
-   :toxendpointlookup/ToxEffortType
-   :toxendpointlookup/ToxEndPoint
-   :toxendpointlookup/ToxEndPointCode
-   :toxendpointlookup/ToxEndPointRowID]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
-
-(defsc
- toxendpointlookup-sum
- [_ _]
- {:ident [:org.riverdb.db.toxendpointlookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query
-  [:db/id :riverdb.entity/ns :toxendpointlookup/ToxEndPointRowID]})
-
-
-(defsc
- toxresconstituentlookup
- [_ {:keys [ui/msg ui/name]}]
- {:ident [:org.riverdb.db.toxresconstituentlookup/gid :db/id],
-  :initial-state
-  {:ui/msg "hello",
-   :db/id (tempid),
-   :ui/name "toxresconstituentlookup"},
-  :query
-  [:ui/msg
-   :ui/name
-   :db/id
-   :riverdb.entity/ns
-   :toxresconstituentlookup/Active
-   :toxresconstituentlookup/TimePoint
-   :toxresconstituentlookup/TimePointUnit
-   :toxresconstituentlookup/ToxEndPointCode
-   :toxresconstituentlookup/ToxResConstituentCode
-   :toxresconstituentlookup/ToxResConstituentRowID
-   :toxresconstituentlookup/UnitCode
-   :toxresconstituentlookup/WQSource]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
-
-(defsc
- toxresconstituentlookup-sum
- [_ _]
- {:ident [:org.riverdb.db.toxresconstituentlookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  {:riverdb.entity/ns :entity.ns/stationfaillookup, :db/id (tempid)},
   :query
   [:db/id
    :riverdb.entity/ns
-   :toxresconstituentlookup/ToxResConstituentRowID]})
-
-
-(defsc
- toxresult
- [_ {:keys [ui/msg ui/name]}]
- {:ident [:org.riverdb.db.toxresult/gid :db/id],
-  :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "toxresult"},
-  :query
-  [:ui/msg
-   :ui/name
-   :db/id
-   :riverdb.entity/ns
-   :toxresult/ResQualCode
-   :toxresult/Result
-   :toxresult/SigFig
-   :toxresult/ToxEffortRowID
-   :toxresult/ToxReplicate
-   :toxresult/ToxResultsComments
-   :toxresult/ToxResultsRowID]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
-
-(defsc
- toxresult-sum
- [_ _]
- {:ident [:org.riverdb.db.toxresult/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :toxresult/ToxResultsRowID]})
-
-
-(defsc
- toxsigeffectlookup
- [_ {:keys [ui/msg ui/name]}]
- {:ident [:org.riverdb.db.toxsigeffectlookup/gid :db/id],
-  :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "toxsigeffectlookup"},
-  :query
-  [:ui/msg
-   :ui/name
-   :db/id
-   :riverdb.entity/ns
-   :toxsigeffectlookup/Active
-   :toxsigeffectlookup/ToxSigEffectCode
-   :toxsigeffectlookup/ToxSigEffectDescr
-   :toxsigeffectlookup/ToxSigEffectRowID]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
-
-(defsc
- toxsigeffectlookup-sum
- [_ _]
- {:ident [:org.riverdb.db.toxsigeffectlookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query
-  [:db/id :riverdb.entity/ns :toxsigeffectlookup/ToxSigEffectRowID]})
-
-
-(defsc
- toxspecieslookup
- [_ {:keys [ui/msg ui/name]}]
- {:ident [:org.riverdb.db.toxspecieslookup/gid :db/id],
-  :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "toxspecieslookup"},
-  :query
-  [:ui/msg
-   :ui/name
-   :db/id
-   :riverdb.entity/ns
-   :toxspecieslookup/Active
-   :toxspecieslookup/ToxSpeciesCode
-   :toxspecieslookup/ToxSpeciesComments
-   :toxspecieslookup/ToxSpeciesName
-   :toxspecieslookup/ToxSpeciesRowID]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
-
-(defsc
- toxspecieslookup-sum
- [_ _]
- {:ident [:org.riverdb.db.toxspecieslookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :toxspecieslookup/ToxSpeciesRowID]})
-
-
-(defsc
- toxsum
- [_ {:keys [ui/msg ui/name]}]
- {:ident [:org.riverdb.db.toxsum/gid :db/id],
-  :initial-state {:ui/msg "hello", :db/id (tempid), :ui/name "toxsum"},
-  :query
-  [:ui/msg
-   :ui/name
-   :db/id
-   :riverdb.entity/ns
-   :toxsum/EvalThreshold
-   :toxsum/Mean
-   :toxsum/PctControl
-   :toxsum/Probability
-   :toxsum/RepCount
-   :toxsum/StatMethCode
-   :toxsum/StdDev
-   :toxsum/ToxEffortRowId
-   :toxsum/ToxSigEffectCode
-   :toxsum/ToxSumComments
-   :toxsum/ToxSumRowID]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
-
-(defsc
- toxsum-sum
- [_ _]
- {:ident [:org.riverdb.db.toxsum/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :toxsum/ToxSumRowID]})
-
-
-(defsc
- toxtest
- [_ {:keys [ui/msg ui/name]}]
- {:ident [:org.riverdb.db.toxtest/gid :db/id],
-  :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "toxtest"},
-  :query
-  [:ui/msg
-   :ui/name
-   :db/id
-   :riverdb.entity/ns
-   :toxtest/ComplianceCode
-   :toxtest/LabSampleID
-   :toxtest/QACode
-   :toxtest/SampleID
-   :toxtest/SampleRowID
-   :toxtest/ToxBatch
-   :toxtest/ToxConstituentRowID
-   :toxtest/ToxTestComments
-   :toxtest/ToxTestRowID]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
-
-(defsc
- toxtest-sum
- [_ _]
- {:ident [:org.riverdb.db.toxtest/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :toxtest/ToxTestRowID]})
-
-
-(defsc
- toxtestdurlookup
- [_ {:keys [ui/msg ui/name]}]
- {:ident [:org.riverdb.db.toxtestdurlookup/gid :db/id],
-  :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "toxtestdurlookup"},
-  :query
-  [:ui/msg
-   :ui/name
-   :db/id
-   :riverdb.entity/ns
-   :toxtestdurlookup/Active
-   :toxtestdurlookup/ToxTestDur
-   :toxtestdurlookup/ToxTestDurRowID
-   :toxtestdurlookup/Unit]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
-
-(defsc
- toxtestdurlookup-sum
- [_ _]
- {:ident [:org.riverdb.db.toxtestdurlookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :toxtestdurlookup/ToxTestDurRowID]})
+   :stationfaillookup/Active
+   :stationfaillookup/StationFailCode
+   :stationfaillookup/FailureReason]})
 
 
 (defsc
  unitlookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.unitlookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "unitlookup"},
+  {:riverdb.entity/ns :entity.ns/unitlookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :unitlookup/Active
    :unitlookup/Unit
-   :unitlookup/UnitCode]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :unitlookup/UnitCode
+   :unitlookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  unitlookup-sum
  [_ _]
  {:ident [:org.riverdb.db.unitlookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :unitlookup/UnitCode]})
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/unitlookup, :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :unitlookup/Active
+   :unitlookup/UnitCode
+   :unitlookup/Unit]})
 
 
 (defsc
  unitslookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.unitslookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "unitslookup"},
+  {:riverdb.entity/ns :entity.ns/unitslookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :unitslookup/CodeListName
    :unitslookup/FromDate
@@ -1800,167 +1492,127 @@
    :unitslookup/ToDate
    :unitslookup/Units
    :unitslookup/UnitsLookupRowID
-   :unitslookup/VariableName]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :unitslookup/VariableName
+   :unitslookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  unitslookup-sum
  [_ _]
  {:ident [:org.riverdb.db.unitslookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/unitslookup, :db/id (tempid)},
   :query [:db/id :riverdb.entity/ns :unitslookup/UnitsLookupRowID]})
 
 
 (defsc
- userpreferences
- [_ {:keys [ui/msg ui/name]}]
- {:ident [:org.riverdb.db.userpreferences/gid :db/id],
-  :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "userpreferences"},
-  :query
-  [:ui/msg
-   :ui/name
-   :db/id
-   :riverdb.entity/ns
-   :userpreferences/cboAgencyCode
-   :userpreferences/cboBasis
-   :userpreferences/cboDatum
-   :userpreferences/cboDepthUnits
-   :userpreferences/cboDigestExtractCode
-   :userpreferences/cboGPSDeviceCode
-   :userpreferences/cboHydromod
-   :userpreferences/cboHydromodLoc
-   :userpreferences/cboLabBatch
-   :userpreferences/cboOccupMethod
-   :userpreferences/cboPositionWaterColumn
-   :userpreferences/cboPrepCode
-   :userpreferences/cboProjectID
-   :userpreferences/cboQACodeFieldResult
-   :userpreferences/cboQACodeLabResult
-   :userpreferences/cboQACodeToxTest
-   :userpreferences/cboResQualCodeFieldResult
-   :userpreferences/cboResQualCodeLabResult
-   :userpreferences/cboResQualCodeToxResult
-   :userpreferences/cboSampleLocation
-   :userpreferences/cboSamplingCrew
-   :userpreferences/cboSamplingDeviceCode
-   :userpreferences/cboSamplingDeviceCodeFieldResult
-   :userpreferences/cboSeason
-   :userpreferences/cboStartingBank
-   :userpreferences/cboStatMethCode
-   :userpreferences/cboStationFail
-   :userpreferences/cboToxBatch
-   :userpreferences/cboToxConc
-   :userpreferences/cboToxSigEffectCode
-   :userpreferences/cboUnitAccuracy
-   :userpreferences/cboUnitDistanceFromBank
-   :userpreferences/cboUnitsStationWaterDepth
-   :userpreferences/cboUnitsStreamWidth
-   :userpreferences/txtDilution
-   :userpreferences/txtEvalThreshold
-   :userpreferences/txtLatitude
-   :userpreferences/txtLongitude
-   :userpreferences/txtMean
-   :userpreferences/txtPctControl
-   :userpreferences/txtProbability
-   :userpreferences/txtStdDev]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
-
-(defsc
- userpreferences-sum
- [_ _]
- {:ident [:org.riverdb.db.userpreferences/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns]})
-
-
-(defsc
  variablecodeslookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.variablecodeslookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "variablecodeslookup"},
+  {:riverdb.entity/ns :entity.ns/variablecodeslookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :variablecodeslookup/Active
    :variablecodeslookup/CodeDescription
    :variablecodeslookup/CodeListName
    :variablecodeslookup/ValueCode
-   :variablecodeslookup/VariableCodesLookUpRowID]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :variablecodeslookup/VariableCodesLookUpRowID
+   :variablecodeslookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  variablecodeslookup-sum
  [_ _]
  {:ident [:org.riverdb.db.variablecodeslookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/variablecodeslookup, :db/id (tempid)},
   :query
   [:db/id
    :riverdb.entity/ns
-   :variablecodeslookup/VariableCodesLookUpRowID]})
+   :variablecodeslookup/Active
+   :variablecodeslookup/CodeListName
+   :variablecodeslookup/ValueCode
+   :variablecodeslookup/CodeDescription]})
 
 
 (defsc
  variableslookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.variableslookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "variableslookup"},
+  {:riverdb.entity/ns :entity.ns/variableslookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :variableslookup/Active
    :variableslookup/Description
    :variableslookup/VariableName
    :variableslookup/VariableType
-   :variableslookup/VariablesLookUpRowID]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :variableslookup/VariablesLookUpRowID
+   :variableslookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  variableslookup-sum
  [_ _]
  {:ident [:org.riverdb.db.variableslookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/variableslookup, :db/id (tempid)},
   :query
-  [:db/id :riverdb.entity/ns :variableslookup/VariablesLookUpRowID]})
+  [:db/id
+   :riverdb.entity/ns
+   :variableslookup/Active
+   :variableslookup/VariableName
+   :variableslookup/VariableType
+   :variableslookup/Description]})
+
+
+(defsc
+ sitevisittype
+ [_ {:keys [riverdb.entity/ns]}]
+ {:ident [:org.riverdb.db.sitevisittype/gid :db/id],
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/sitevisittype, :db/id (tempid)},
+  :query
+  [:db/id :riverdb.entity/ns :sitevisittype/name :sitevisittype/uuid]}
+ (debug (str "RENDER " ns)))
+
+(defsc
+ sitevisittype-sum
+ [_ _]
+ {:ident [:org.riverdb.db.sitevisittype/gid :db/id],
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/sitevisittype, :db/id (tempid)},
+  :query [:db/id :riverdb.entity/ns :sitevisittype/name]})
 
 
 (defsc
  wbtypelookup
- [_ {:keys [ui/msg ui/name]}]
+ [_ {:keys [riverdb.entity/ns]}]
  {:ident [:org.riverdb.db.wbtypelookup/gid :db/id],
   :initial-state
-  {:ui/msg "hello", :db/id (tempid), :ui/name "wbtypelookup"},
+  {:riverdb.entity/ns :entity.ns/wbtypelookup, :db/id (tempid)},
   :query
-  [:ui/msg
-   :ui/name
-   :db/id
+  [:db/id
    :riverdb.entity/ns
    :wbtypelookup/WBType
    :wbtypelookup/WBTypeDescr
-   :wbtypelookup/WBTypeRowID]}
- (do
-  (log/debug (str "RENDER " name))
-  (div (str msg " from the " name " component"))))
+   :wbtypelookup/WBTypeRowID
+   :wbtypelookup/uuid]}
+ (debug (str "RENDER " ns)))
 
 (defsc
  wbtypelookup-sum
  [_ _]
  {:ident [:org.riverdb.db.wbtypelookup/gid :db/id],
-  :initial-state #:db{:id (tempid)},
-  :query [:db/id :riverdb.entity/ns :wbtypelookup/WBTypeRowID]})
+  :initial-state
+  {:riverdb.entity/ns :entity.ns/wbtypelookup, :db/id (tempid)},
+  :query
+  [:db/id
+   :riverdb.entity/ns
+   :wbtypelookup/WBType
+   :wbtypelookup/WBTypeDescr]})
 
 

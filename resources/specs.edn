@@ -123,7 +123,9 @@
   :entity/name "Analyte",
   :entity/ns :entity.ns/analytelookup,
   :entity/pks [:analytelookup/AnalyteCode],
-  :entity/prKeys [:analytelookup/AnalyteCode],
+  :entity/prKeys [:analytelookup/AnalyteCode
+                  :analytelookup/AnalyteName
+                  :analytelookup/AnalyteShort],
   :entity/nameKey :analytelookup/AnalyteName,
   :entity/attrs
   [#:attr{:name "Active",
@@ -1267,7 +1269,10 @@
   :entity/name "Matrix",
   :entity/ns :entity.ns/matrixlookup,
   :entity/pks [:matrixlookup/MatrixCode],
-  :entity/prKeys [:matrixlookup/MatrixCode],
+  :entity/prKeys [:matrixlookup/Active
+                  :matrixlookup/MatrixCode
+                  :matrixlookup/MatrixName
+                  :matrixlookup/MatrixShort],
   :entity/nameKey :matrixlookup/MatrixName,
   :entity/attrs
   [#:attr{:name "Active",
@@ -1310,7 +1315,9 @@
   :entity/name "Method",
   :entity/ns :entity.ns/methodlookup,
   :entity/pks [:methodlookup/MethodCode],
-  :entity/prKeys [:methodlookup/MethodCode],
+  :entity/prKeys [:methodlookup/Active
+                  :methodlookup/MethodCode
+                  :methodlookup/MethodName],
   :entity/nameKey :methodlookup/MethodName,
   :entity/attrs
   [#:attr{:name "Active",
@@ -1451,73 +1458,94 @@
           :identity true,
           :cardinality :one,
           :type :uuid}]}
- {:db/id "parameter",
-  :entity/name "Parameter",
-  :entity/ns :entity.ns/parameter,
-  :entity/pks [:parameter/uuid],
-  :entity/prKeys [:parameter/active],
+ {:db/id          "parameter",
+  :entity/name    "Parameter",
+  :entity/ns      :entity.ns/parameter,
+  :entity/pks     [:parameter/uuid],
+  :entity/prKeys  [:parameter/active :parameter/name],
   :entity/nameKey :parameter/name,
   :entity/attrs
-  [#:attr{:name "Active",
-          :key :parameter/active,
-          :cardinality :one,
-          :type :boolean}
-   #:attr{:name "Color",
-          :key :parameter/color,
-          :cardinality :one,
-          :type :string,
-          :doc "Default color on charts with multiple parameters"}
-   #:attr{:name "Constituent",
-          :key :parameter/constituentlookupRef,
-          :cardinality :one,
-          :type :ref,
-          :ref #:entity{:ns :entity.ns/constituentlookup},
-          :doc "the constituent that this describes",
-          :refKey :entity.ns/constituentlookup}
-   #:attr{:name "Device Type",
-          :key :parameter/samplingdevicelookupRef,
-          :cardinality :one,
-          :type :ref,
-          :ref #:entity{:ns :entity.ns/samplingdevicelookup},
-          :doc "The default device type to use in the data entry form",
-          :refKey :entity.ns/samplingdevicelookup}
-   #:attr{:name "High",
-          :key :parameter/high,
-          :cardinality :one,
-          :type :bigdec}
-   #:attr{:name "Lines",
-          :key :parameter/lines,
-          :cardinality :many,
-          :type :ref,
-          :component true,
-          :ref #:entity{:ns :entity.ns/paramline},
-          :doc "Lines to describe quality thresholds on charts",
-          :refKey :entity.ns/paramline}
-   #:attr{:name "Low",
-          :key :parameter/low,
-          :cardinality :one,
-          :type :bigdec}
-   #:attr{:name "Name",
-          :key :parameter/name,
-          :cardinality :one,
-          :type :string,
-          :doc "user-friendly name for this parameter"}
-   #:attr{:name "Precision Code",
-          :key :parameter/precisionCode,
-          :cardinality :one,
-          :type :string,
-          :doc "EDN that describes the precision"}
-   #:attr{:name "Replicates",
-          :key :parameter/replicates,
-          :cardinality :one,
-          :identity true,
-          :type :long,
-          :doc "The number of samples taken for this parameter"}
-   #:attr{:name "uuid",
-          :key :parameter/uuid,
-          :identity true,
-          :cardinality :one,
-          :type :uuid}]}
+                  [#:attr{:name        "Active",
+                          :key         :parameter/active,
+                          :cardinality :one,
+                          :type        :boolean}
+                   #:attr{:name        "Color",
+                          :key         :parameter/color,
+                          :cardinality :one,
+                          :type        :string,
+                          :doc         "Default color on charts with multiple parameters"}
+                   #:attr{:name        "Constituent",
+                          :key         :parameter/constituentlookupRef,
+                          :cardinality :one,
+                          :type        :ref,
+                          :ref         #:entity{:ns :entity.ns/constituentlookup},
+                          :doc         "the constituent that this describes",
+                          :refKey      :entity.ns/constituentlookup}
+                   #:attr{:name        "Device Type",
+                          :key         :parameter/samplingdevicelookupRef,
+                          :cardinality :one,
+                          :type        :ref,
+                          :ref         #:entity{:ns :entity.ns/samplingdevicelookup},
+                          :doc         "The default device type to use in the data entry form",
+                          :refKey      :entity.ns/samplingdevicelookup}
+                   #:attr{:name        "High",
+                          :key         :parameter/high,
+                          :cardinality :one,
+                          :type        :bigdec}
+                   #:attr{:name        "Lines",
+                          :key         :parameter/lines,
+                          :cardinality :many,
+                          :type        :ref,
+                          :component   true,
+                          :ref         #:entity{:ns :entity.ns/paramline},
+                          :doc         "Lines to describe quality thresholds on charts",
+                          :refKey      :entity.ns/paramline}
+                   #:attr{:name        "Low",
+                          :key         :parameter/low,
+                          :cardinality :one,
+                          :type        :bigdec}
+                   #:attr{:name        "Name",
+                          :key         :parameter/name,
+                          :cardinality :one,
+                          :type        :string,
+                          :doc         "user-friendly name for this parameter"}
+                   #:attr{:name        "Short Name",
+                          :key         :parameter/nameShort,
+                          :cardinality :one,
+                          :type        :string,
+                          :doc         "a short name used for import/export and compact table columns"}
+                   #:attr{:name        "Precision Code",
+                          :key         :parameter/precisionCode,
+                          :cardinality :one,
+                          :type        :string,
+                          :doc         "EDN that describes the precision"}
+                   #:attr{:name        "Required Replicates",
+                          :key         :parameter/replicates,
+                          :cardinality :one,
+                          :type        :long,
+                          :doc         "The required number of replicates to be taken per sample. Used for data quality objectives."}
+                   #:attr{:name        "Entry Replicates",
+                          :key         :parameter/replicatesEntry,
+                          :cardinality :one,
+                          :type        :long,
+                          :doc         "The number of replicate fields to show during data entry.  Must be >= Required Replicates."}
+                   #:attr{:name        "Elide Outliers?",
+                          :key         :parameter/replicatesElide,
+                          :cardinality :one,
+                          :type        :boolean,
+                          :doc         "If true, extra replicate outliers in excess of Require Replicates will be elided during report generation."}
+                   #:attr{:name        "Sample Type",
+                          :key         :parameter/sampleTypeRef,
+                          :cardinality :one,
+                          :type        :ref,
+                          :ref         {:entity/ns :entity.ns/sampletypelookup}
+                          :refKey      :entity.ns/sampletypelookup
+                          :doc         "Sample Type of this parameter"}
+                   #:attr{:name        "uuid",
+                          :key         :parameter/uuid,
+                          :identity    true,
+                          :cardinality :one,
+                          :type        :uuid}]}
  {:db/id "parentprojectlookup",
   :entity/name "Parent Project",
   :entity/ns :entity.ns/parentprojectlookup,
@@ -1835,6 +1863,11 @@
    #:attr{:name "QAPPVersion",
           :key :projectslookup/QAPPVersion,
           :position 6,
+          :cardinality :one,
+          :type :string,
+          :strlen 100}
+   #:attr{:name "QAPP Link",
+          :key :projectslookup/qappURL,
           :cardinality :one,
           :type :string,
           :strlen 100}
@@ -2998,7 +3031,7 @@
   :entity/name "Unit",
   :entity/ns :entity.ns/unitlookup,
   :entity/pks [:unitlookup/UnitCode],
-  :entity/prKeys [:unitlookup/UnitCode],
+  :entity/prKeys [:unitlookup/Active :unitlookup/UnitCode :unitlookup/Unit],
   :entity/nameKey :unitlookup/Unit,
   :entity/attrs
   [#:attr{:name "Active",

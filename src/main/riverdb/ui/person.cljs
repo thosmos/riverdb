@@ -2,21 +2,13 @@
   (:require
     [clojure.string :as str]
     [clojure.data]
-    [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
-    [com.fulcrologic.fulcro.application :as fapp]
-    [com.fulcrologic.fulcro-css.css :as css]
-    [com.fulcrologic.fulcro-css.localized-dom :as ldom]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
-    [com.fulcrologic.fulcro.data-fetch :as f]
     [com.fulcrologic.fulcro.dom :as dom :refer [div ul li p h1 h2 h3 button label span select option
                                                 table thead tbody th tr td]]
-    [com.fulcrologic.fulcro.dom.html-entities :as htmle]
-    [com.fulcrologic.fulcro.dom.events :as evt]
     [com.fulcrologic.fulcro.mutations :as fm :refer [defmutation]]
-    [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
     [com.fulcrologic.fulcro.ui-state-machines :as uism :refer [defstatemachine]]
     [com.fulcrologic.semantic-ui.elements.loader.ui-loader :refer [ui-loader]]
     [com.fulcrologic.semantic-ui.modules.dimmer.ui-dimmer :refer [ui-dimmer]]
@@ -40,24 +32,17 @@
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal-description :refer [ui-modal-description]]
     [goog.object :as gob]
     [riverdb.application :refer [SPA]]
-    [riverdb.roles :as roles]
     [riverdb.api.mutations :as rm :refer [TxResult ui-tx-result]]
-    [riverdb.ui.lookup :as look :refer [get-refNameKey get-refNameKeys]]
-    [riverdb.ui.lookups :as looks]
-    [riverdb.ui.lookup-options :refer [ThetaOptions ui-theta-options]]
-    [riverdb.ui.components.grid-layout :as grid]
     [riverdb.ui.routes]
     [riverdb.ui.session :refer [ui-session Session]]
-    [riverdb.ui.style :as style]
-    [riverdb.ui.user]
     [riverdb.ui.util :refer [make-tempid]]
     [theta.log :as log :refer [debug]]))
 
 (fm/defmutation cancel-add [{:keys [form-ident lookup-key orig]}]
   (action [{:keys [state]}]
-    (debug "CANCEL ADD")))
-
-
+    (debug "CANCEL ADD" form-ident)
+    (let [[form-k temp-id] form-ident]
+     (swap! state update form-k dissoc temp-id))))
 
 (defsc AddPersonModal [this {:person/keys [FName LName Name Agency uuid]
                              :ui/keys [show orig field-k options-target]
@@ -81,13 +66,13 @@
                        {[:root/tx-result '_] (comp/get-query TxResult)}]
    :initial-state     {:db/id             (make-tempid)
                        :riverdb.entity/ns :entity.ns/person
-                       :person/uuid       (or :param/uuid (tempid/tempid))
+                       :person/uuid       (tempid/tempid)
                        :person/Name       :param/name
                        :person/LName      :param/lname
                        :person/FName      :param/fname
                        :person/Agency     :param/agency
                        :ui/orig           :param/orig
-                       :ui/field-k    :param/field-k
+                       :ui/field-k        :param/field-k
                        :ui/options-target :param/options-target
                        :ui/show           true}
    :form-fields       #{:person/FName :person/LName :person/Name :person/Agency
@@ -130,11 +115,19 @@
             (dom/button :.ui.button.secondary
               {:onClick #(do
                            (debug "CANCEL!" dirty? (fs/dirty-fields props false))
-                           (do
+                           (let [tempid (:db/id props)]
                              (debug "CLOSE")
+                             ;(fn [{:keys [orig field-k]}]
+                             ;  (let [field-val (get props field-k)
+                             ;        new-val   (if (vector? field-val)
+                             ;                    (vec (remove #(= (:db/id %) orig) field-val))
+                             ;                    nil)]
+                             ;    (debug "CANCEL! NEW VAL" new-val)
+                             ;    (fm/set-value! this field-k new-val)))
                              (comp/transact! this
                                `[(rm/reset-form {:ident ~this-ident})])
                              (fm/set-value! this :ui/show false)
+                             (comp/transact! this `[(cancel-add {:form-ident ~this-ident})])
                              (when onCancel
                                (onCancel {:orig orig :field-k field-k}))))}
 
@@ -154,6 +147,7 @@
                                                                     :field-k        field-k
                                                                     :orig           orig
                                                                     :new-name       Name
+                                                                    :modal-ident    this-ident
                                                                     :options-target options-target})})]))}
 
               "Save")))))))
@@ -181,7 +175,7 @@
                                                              :agency agency
                                                              :field-k field-k
                                                              :options-target options-target
-                                                             :uuid #uuid"5e42012b-0f44-452e-a3f2-9d7768811732"})
+                                                             :uuid (tempid/tempid)})
                      (fs/add-form-config AddPersonModal))]
     (debug "add-person*" new-person)
     (merge/merge-component state-map AddPersonModal new-person :replace target)))

@@ -36,7 +36,7 @@
     [riverdb.ui.tac-report-page :refer [TacReportPage]]
     [riverdb.ui.theta :refer [ThetaRoot]]
     [riverdb.ui.user]
-    [riverdb.ui :refer [PersonForm PersonList]]
+    ;[riverdb.ui :refer [PersonForm PersonList]]
     [theta.log :as log :refer [debug]]
     [theta.util :as tutil]
     [com.fulcrologic.fulcro.components :as om]
@@ -235,7 +235,7 @@
               (dom/li (dom/a {:href "/tac-report"} "TAC Report"))
               (dom/li (dom/a {:href "/dataviz"} "Data Viz"))
 
-              (dom/li (dom/a {:href "/people"} "People")))
+              #_(dom/li (dom/a {:href "/people"} "People")))
             #_(ui-modal {:open true :dimmer true :content "Hello Modal"})))))))
             ;(ui-bench)))))))
 
@@ -245,7 +245,7 @@
 
 (dr/defrouter TopRouter [this props]
   {:router-targets        [Main Signup SignupSuccess ThetaRoot Projects TacReportPage
-                           DataVizPage SiteVisitsPage PersonList PersonForm]
+                           DataVizPage SiteVisitsPage]
    :shouldComponentUpdate (fn [_ _ _] true)})
 (def ui-top-router (comp/factory TopRouter))
 
@@ -303,7 +303,7 @@
                           :href "/dataviz"} "Dataviz")])
         (when (and ready logged-in? (= tutil/app-env "dev"))
           [(dom/a :.item {:key  "theta" :classes [(when (= :theta current-tab) "active")]
-                          :href "/theta/index"} "Entities")
+                          :href "/theta/index"} "Tables")
            (dom/a :.item {:key  "projects" :classes [(when (= :projects current-tab) "active")]
                           :href "/projects"} "Projects")
            (dom/a :.item {:key  "sitevisit" :classes [(when (= :sitevisit current-tab) "active")]

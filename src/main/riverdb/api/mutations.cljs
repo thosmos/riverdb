@@ -404,22 +404,24 @@
                                      (dissoc :post-mutation)
                                      (dissoc :post-params))))
   (ok-action [{:keys [state] :as env}]
-    (debug "OK ACTION"  (keys env))
+    (debug "OK ACTION"  (keys env) (:ref env) (comp/get-ident (:component env)))
     (debug ":tempid->realid" (:tempid->realid env))
     (debug "TRANSACTED AST"  (:transacted-ast env))
     (js/setTimeout clear-tx-result! 2000)
-    (let [tempid (get-in env [:transacted-ast :params :ident 1])
-          new-id (get-in env [:tempid->realid tempid])
-          {:keys [post-mutation post-params]} (get-in env [:transacted-ast :params])
-          params (assoc post-params :new-id new-id)
-          txd `[(~post-mutation ~params)]]
-      (comp/transact! SPA txd)
-      (swap! state
-        (fn [s]
-          (-> s
-            ;(fs/entity->pristine* ident)
-            (set-saving* ident false)
-            (show-tx-result* {:result "Save Succeeded"}))))))
+    (when (not-empty (:tempid->realid env))
+      (let [tempid (get-in env [:transacted-ast :params :ident 1])
+            new-id (get-in env [:tempid->realid tempid])
+            new-ident [(first ident) new-id]
+            {:keys [post-mutation post-params]} (get-in env [:transacted-ast :params])
+            params (assoc post-params :new-id new-id)
+            txd    `[(~post-mutation ~params)]]
+        (comp/transact! SPA txd)))
+    (swap! state
+      (fn [s]
+        (-> s
+          (fs/entity->pristine* ident)
+          (set-saving* ident false)
+          (show-tx-result* {:result "Save Succeeded"})))))
   (error-action [{:keys [app ref result state] :as env}]
     (log/info "Mutation Error Result " ident diff result)
     (swap! state

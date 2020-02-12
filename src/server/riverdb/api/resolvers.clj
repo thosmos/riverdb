@@ -16,7 +16,8 @@
     [clojure.walk :as walk]
     [clojure.string :as st]
     [com.fulcrologic.fulcro.components :as comp]
-    [clojure.edn :as edn]))
+    [clojure.edn :as edn]
+    [com.rpl.specter :as sp]))
 
 
 
@@ -304,7 +305,7 @@
     (log/debug "ID PULL RESOLVER" gid-key input)
     (try
       (let [query   (-> env ::p/parent-query)
-            ;_       (log/debug "Lookup Resolver Key" id-key "Input" input "AST" ast "QUERY" query)
+            _       (log/debug "Lookup Resolver Key" gid-key "Input" input "QUERY" query)
 
             id-val? (try
                       (Long/parseLong (get input gid-key))
@@ -313,21 +314,25 @@
                       (d/pull (db) query id-val?))
             result  (when result
                       (walk-modify-k-vals result :db/id str))]
-        ;(log/debug "RESULT" result)
+        (log/debug "RESULT" result)
         result)
       (catch Exception ex (log/error ex)))))
 
+(defn get-reverse-keys [ent-k specs-sorted]
+  (->> (sp/select [sp/ALL :entity/attrs sp/ALL #(= (:attr/refKey %) ent-k) :attr/key] specs-sorted)
+    (mapv #(keyword (namespace %) (str "_" (name %))))))
 
 (def id-resolvers
   (vec
     (for [spec specs-sorted]
       (let [{:entity/keys [ns attrs]} spec
             aks   (mapv :attr/key attrs)
+            rks   (get-reverse-keys ns specs-sorted)
             nm    (name ns)
             gid-k (keyword (str "org.riverdb.db." nm) "gid")]
         {::pc/sym       (symbol (str nm "GID"))
          ::pc/input     #{gid-k}
-         ::pc/output    (into [:db/id :riverdb.entity/ns] aks)
+         ::pc/output    (-> [:db/id :riverdb.entity/ns] (into aks) (into rks))
          ::pc/resolve   (id-resolve-factory gid-k)
          ::pc/transform pc/transform-batch-resolver}))))
 

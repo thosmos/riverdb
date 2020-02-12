@@ -31,6 +31,7 @@
     [riverdb.ui.components :as c :refer [ui-datepicker]]
     [riverdb.ui.lookup :as look]
     [riverdb.ui.lookups :as looks]
+    [riverdb.ui.person :refer [AddPersonModal ui-add-person-modal]]
     [riverdb.ui.routes :as routes]
     [riverdb.ui.session :refer [Session]]
     [riverdb.ui.project-years :refer [ProjectYears ui-project-years]]
@@ -47,14 +48,13 @@
 (defmutation theta-post-load [{:keys [target-ident text-key] :as params}]
   (action [{:keys [state]}]
     (debug "THETA POST LOAD MUTATION")
-    ;; FIXME generate options and assoc-in to :ui/options
     (let [st    @state
           edges (get-in st (into target-ident [:ui/thetas]))
           opts  (vec
                   (for [edge edges]
                     (let [m (get-in st edge)
                           k (:db/id m)]
-                      {:key k :value k :text (text-key m)})))]
+                      {:value k :text (text-key m)})))]
       (swap! state update-in target-ident (fn [st]
                                             (-> st
                                               (assoc :ui/loading false)
@@ -87,12 +87,14 @@
         :post-mutation-params {:target-ident target-ident :text-key text-key}}))))
 
 (defsc ThetaOptions [this {:keys [value] :as props}
-                     {:keys [onChange changeParams onAddItem addParams opts]}]
+                     {:keys [onChange changeMutation changeParams onAddItem addParams opts]}]
   {:ident             [:riverdb.theta.options/ns :riverdb.entity/ns]
    :query             [:riverdb.entity/ns
                        :value
                        :ui/loading
-                       :ui/options]
+                       :ui/options
+                       [:riverdb.theta.options/ns '_]
+                       {:ui/add-person-modal (comp/get-query AddPersonModal)}]
    ;:initLocalState    (fn [this props]
    ;                     (debug "INIT LOCAL STATE ThetaOptions" props))
    ;:pre-merge         (fn [{:keys [data-tree current-normalized state-map query] :as env}]
@@ -144,7 +146,12 @@
         {:ui/keys [options loading]} ref-props
         {:keys [multiple clearable allowAdditions additionPosition style]} opts
         show?       (some? (and (not loading) (not-empty options)))]
-    ;(debug "RENDER ThetaOptions" this-ident "k:" theta-k "nmKey:" theta-nmKey "value:" value "loading:" loading)
+    (debug "RENDER ThetaOptions" this-ident "k:" theta-k "nmKey:" theta-nmKey "value:" value "loading:" loading)
+    ;(when add-person-modal
+    ;  (ui-add-person-modal
+    ;    (comp/computed add-person-modal
+    ;      {:post-save-mutation `post-save-mutation
+    ;       :post-save-params   {:form-ident  this-ident}})))
     (ui-dropdown {:loading          (not show?)
                   :search           true
                   :selection        true
@@ -152,7 +159,6 @@
                   :clearable        (or clearable false)
                   :allowAdditions   (or allowAdditions false)
                   :additionPosition (or additionPosition "bottom")
-                  :tabIndex         -1
                   :options          options
                   :value            (or value "")
                   :autoComplete     "off"
@@ -162,10 +168,11 @@
                                         (let [value  (if (= value "") nil value)
                                               isNew? false]
                                           (log/debug "RefInput change" value)
+                                          (when changeMutation
+                                            (let [txd `[(~changeMutation ~(assoc changeParams :v value))]]
+                                              (comp/transact! SPA txd)))
                                           (when onChange
-                                            (let [txd `[(~onChange ~(assoc changeParams :v value))]]
-                                              (debug "TXD" txd)
-                                              (comp/transact! SPA txd))))))
+                                            (onChange value)))))
                   :onAddItem        (fn [_ d]
                                       (let [value (-> d .-value)]
                                         (log/debug "onAddItem" value)

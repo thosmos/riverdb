@@ -98,7 +98,7 @@
          hicada                              {:mvn/version "0.1.8"}
 
          ;; fulcro
-         com.fulcrologic/fulcro              {:mvn/version "3.1.8"}
+         com.fulcrologic/fulcro              {:mvn/version "3.1.9"}
 
          com.fulcrologic/fulcro-garden-css   {:mvn/version "3.0.7" :exclusions [garden]}
          com.fulcrologic/semantic-ui-wrapper {:mvn/version "1.0.0"}
