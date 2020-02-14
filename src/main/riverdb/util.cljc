@@ -5,6 +5,7 @@
     #?(:clj [dotenv])
     #?(:cljs [goog.object :as gobj])
     [com.fulcrologic.guardrails.core :refer [>defn]]
+    [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
     [clojure.spec.alpha :as s])
   #?(:clj (:import [java.util UUID])))
 
@@ -75,6 +76,8 @@
         end (inc (min total-pages (+ current (+ right-half (if (< virtual-start 1) (Math/abs (dec virtual-start)) 0)))))]
     {:current current :pages (range start end)}))
 
+(defn readTempid [form]
+  (com.fulcrologic.fulcro.algorithms.tempid/tempid (first form)))
 
 ;(defn history-view
 ;  "Return a function that will display transaction history with

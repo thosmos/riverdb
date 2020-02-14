@@ -30,6 +30,7 @@
     [riverdb.ui.components :refer [ui-treeview]]
     [riverdb.ui.globals :refer [DBIdents Globals]]
     [riverdb.ui.routes]
+    [riverdb.ui.lookup-options :refer [ui-theta-options preload-options]]
     [riverdb.ui.sitevisits-page :refer [SiteVisitsPage]]
     [riverdb.ui.session :refer [ui-session Session]]
     [riverdb.ui.projects :refer [Projects ui-projects]]
@@ -138,7 +139,9 @@
               :value        password
               :autoComplete "on"
               :onChange     #(comp/set-state! this {:password (evt/target-value %)})})
-      (div :.ui.error.message error)
+      (when error
+        "ERROR"
+        (div :.ui.error.message error))
       (div :.ui.field
         (dom/button :.ui.button
           {:onClick submit-fn
@@ -148,8 +151,8 @@
 (def ui-login-form (om/factory LoginForm))
 
 (defsc Login [this {:account/keys [email]
-                    :ui/keys      [error open?] :as props}]
-  {:query         [:ui/open? :ui/error :account/email
+                    :ui/keys      [error] :as props}]
+  {:query         [:ui/error :account/email
                    {[:component/id :session] (comp/get-query Session)}
                    [::uism/asm-id ::session/session]]
    :css           [[:.floating-menu {:position "absolute !important"
@@ -158,7 +161,7 @@
                                      :right    "0px"
                                      :top      "50px"}]]
    :initial-state {:account/email "" :ui/error ""}
-   :ident         (fn [] [:component/id :login])}
+   :ident         (fn [] [:component/id :logout-menu])}
   (let [current-state (uism/get-active-state this ::session/session)
         {current-user :account/name} (get props [:component/id :session])
         initial?      (= :initial current-state)
@@ -216,31 +219,28 @@
                    :session              {}
                    :login-form           {}}
    :ident         (fn [] [:component/id :main])
+   :componentDidMount (fn [this])
    :route-segment ["main"]}
   (let []
     (div :.ui.segment
       (h3 "Welcome")
       (let [{current-user :account/name
-             logged-in?   :session/valid?} session]
+             logged-in?   :session/valid?
+             error :session/error} session]
         (if-not logged-in?
           (div {}
+            (when error
+              (div {:style {:color "red" :margin 10}} "ERROR: " error))
             (p {} "Please log in")
             (ui-login-form login-form))
 
           (div {}
             (dom/ul
               ;; More nav links here
-              ;(dom/li nil (dom/a #js {:className "" :onClick #(r/nav-to! this :main)} (tr "Main")))
-              ;(dom/li nil (dom/a #js {:className "" :onClick #(r/nav-to! this :preferences)} (tr "Preferences")))
               (dom/li (dom/a {:href "/tac-report"} "TAC Report"))
-              (dom/li (dom/a {:href "/dataviz"} "Data Viz"))
+              (dom/li (dom/a {:href "/dataviz"} "Data Viz")))))))))
 
-              #_(dom/li (dom/a {:href "/people"} "People")))
-            #_(ui-modal {:open true :dimmer true :content "Hello Modal"})))))))
-            ;(ui-bench)))))))
 
-;(dom/li nil (dom/a #js {:className "" :onClick #(r/nav-to! this :stations-page)} (tr "Stations")))
-;(dom/li (dom/a {:href "https://dev.riverdb.org/rimdb/"} "Data Entry")))))))))
 
 
 (dr/defrouter TopRouter [this props]
@@ -263,10 +263,13 @@
 
 
 (defsc AgencyMenu [this {::keys [current-agency] :as props}]
-  {:query         [{[::current-agency '_] (om/get-query looks/agencylookup-sum)}]
+  {:query         [{[::current-agency '_] (om/get-query looks/agencylookup-sum)}
+                   {[:component/id :session] (comp/get-query Session)}
+                   [::uism/asm-id ::session/session]]
    :initial-state {::current-agency {}}}
-  (let [] ;_ (debug "RENDER AgencyMenu" current-agency)]
-    (when current-agency
+  (let [current-state (uism/get-active-state this ::session/session)
+        {logged-in? :session/valid?} (get props [:component/id :session])]
+    (when (and logged-in? current-agency)
       (div :.item (:agencylookup/AgencyCode current-agency)))))
 (def ui-agency-menu (comp/factory AgencyMenu))
 

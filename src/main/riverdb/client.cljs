@@ -38,7 +38,8 @@
   (log/info "Starting session machine.")
 
   (uism/begin! SPA session/session-machine ::session/session
-    {:actor/login-form      root/Login
+    {:actor/login-form      root/LoginForm
+     :actor/logout-menu      root/Login
      :actor/current-session ui-session/Session
      :actor/project-years   py/ProjectYears
      :actor/globals         globals/Globals}

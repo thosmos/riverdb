@@ -48,7 +48,8 @@
     [riverdb.ui.sitevisits-page :refer [SiteVisitsPage]]
     [riverdb.ui.session :refer [ui-session Session]]
     [riverdb.ui.tac-report-page :refer [TacReportPage]]
-    [riverdb.ui.util :as ui-util :refer [make-validator]]
+    [riverdb.ui.util :as uiutil :refer [make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save
+                                        set-editing set-value! set-refs! set-ref! get-set-val]]
     [theta.log :as log :refer [debug]]))
 
 ;(cljs.reader/register-tag-parser! 'bigdec numeric)
@@ -107,130 +108,6 @@
      :invalid? is-invalid?
      :value    value}))
 
-(defn get-set-val [current id]
-  (if (vector? current)
-    [(first current) id]
-    {:db/id id}))
-
-(defn set-ref! [this k val]
-  (fm/set-value! this k val)
-  (comp/transact! this `[(fs/mark-complete! {:entity-ident nil :field ~k})]))
-
-(defn set-refs! [this k ids]
-  (fm/set-value! this k (mapv #(identity {:db/id %}) ids))
-  (comp/transact! this `[(fs/mark-complete! {:entity-ident nil :field ~k})]))
-
-(defn set-value! [this k value]
-  (fm/set-value! this k value)
-  (comp/transact! this `[(fs/mark-complete! {:entity-ident nil :field ~k})]))
-
-(defmutation set-editing [{:keys [editing]}]
-  (action [{:keys [state ref]}]
-    (swap! state (assoc-in (comp/get-ident ref) :ui/editing editing))))
-
-(defn ui-cancel-save [this {:ui/keys [saving] :as props} dirty? {:keys [onCancel onSave cancelAlwaysOn]}]
-  (div {}
-    (dom/button :.ui.button.secondary
-      {;:disabled (and (not dirty?) (not cancelAlwaysOn))
-       :onClick #(do
-                   (debug "CANCEL!" dirty?)
-                   (if dirty?
-                     (comp/transact! this
-                       `[(rm/reset-form ~{:ident (comp/get-ident this)})])
-                     (fm/set-value! this :ui/editing false))
-                   (when onCancel
-                     (onCancel)))}
-      (if dirty? "Cancel" "Close"))
-
-    (dom/button :.ui.button.primary
-      {:disabled (not dirty?)
-       :onClick  #(let [dirty-fields (fs/dirty-fields props true)]
-                    (debug "SAVE!" dirty? dirty-fields)
-                    (comp/transact! this
-                      `[(rm/save-entity ~{:ident (comp/get-ident this)
-                                          :diff  dirty-fields})])
-                    (when onSave
-                      (onSave)))}
-      (if saving
-        (ui-loader {:active true})
-        "Save"))))
-
-(defn rui-input [this k opts]
-  (let [props   (comp/props this)
-        value   (get props k)
-        label   (get opts :label (clojure.string/capitalize (name k)))
-        opts    (dissoc opts :label)
-        control (get opts :control "input")]
-    (div :.field {}
-      (dom/label {} label)
-      (ui-input
-        (merge opts
-          {:control  control
-           :value    (or value "")
-           ;:fluid false
-           :onChange (fn [e]
-                       (let [new-v (.. e -target -value)]
-                         (debug "rui-input" k new-v)
-                         (set-value! this k new-v)))})))))
-
-(defn rui-bigdec [this k opts]
-  (let [props (comp/props this)
-        value (get props k)
-        label (get opts :label (clojure.string/capitalize (name k)))
-        opts  (dissoc opts :label)]
-    (div :.field {}
-      (dom/label {} label)
-      (ui-input
-        (merge opts
-          {:value    (if (transit/bigdec? value)
-                       (.-rep value)
-                       (or value ""))
-           :onChange (fn [e]
-                       (let [val   (transit/bigdec (.. e -target -value))
-                             new-v (if (= (.-rep val) "")
-                                     nil
-                                     val)]
-                         (debug "Set BigDecimal" k new-v
-                           (set-value! this k new-v))))})))))
-
-(defn rui-int [this k opts]
-  (let [props (comp/props this)
-        value (get props k)
-        label (get opts :label (clojure.string/capitalize (name k)))
-        popup (:popup opts)
-        opts  (-> opts
-                (dissoc :label)
-                (dissoc :popup))]
-    (div :.field {}
-      (dom/label {} label)
-      (ui-input
-        (merge opts
-          {:value    (or (str value) "")
-           :onChange (fn [e]
-                       (let [val   (js/parseInt (.. e -target -value))
-                             new-v (if (js/Number.isNaN val) nil val)]
-                         (debug "Set Integer" k new-v
-                           (set-value! this k new-v))))})))))
-
-(defn rui-checkbox [this k opts]
-  (let [props (comp/props this)
-        value (get props k)
-        label (get opts :label (clojure.string/capitalize (name k)))
-        opts  (dissoc opts :label)]
-    (div :.field {:key k}
-      (dom/label {} label)
-      (ui-checkbox (merge opts
-                     {;:fluid    "true"
-                      :checked  (or value false)
-                      :onChange #(let [value (not value)]
-                                   (log/debug "change" k value)
-                                   (set-value! this k value))})))))
-
-(defn parse-float [str]
-  (let [res (js/parseFloat str)]
-    (if (js/Number.isNaN res)
-      nil
-      res)))
 
 (s/def ::range number?)
 (s/def ::rsd number?)

@@ -1829,6 +1829,7 @@
           :key :projectslookup/Parameters,
           :cardinality :many,
           :type :ref,
+          :component true
           :ref #:entity{:ns :entity.ns/parameter},
           :doc
           "Each project has a set of its active parameters (Constituents in SWAMP naming)",

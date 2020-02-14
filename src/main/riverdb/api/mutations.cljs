@@ -15,7 +15,8 @@
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
     [com.fulcrologic.fulcro.mutations :as fm]
     [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
-    [com.fulcrologic.fulcro.dom :as dom :refer [div]]))
+    [com.fulcrologic.fulcro.dom :as dom :refer [div]]
+    [com.fulcrologic.fulcro.algorithms.tempid :as tempid]))
 
 ;;;  CLIENT
 
@@ -343,12 +344,17 @@
 
 (defn show-tx-result* [state result]
   (debug "SHOW TX RESULT")
+  (when-not (:error result)
+    (js/setTimeout clear-tx-result! 2000))
   (assoc state :root/tx-result result))
 (defmutation show-tx-result [result]
   (action [{:keys [state]}]
     (swap! state (fn [s] (assoc-in s [:root/tx-result] result)))))
 (defn show-tx-result! [result]
   (comp/transact! SPA `[(show-tx-result ~result)]))
+
+(defn set-create* [state ident creating]
+  (assoc-in state (conj ident :ui/create) creating))
 
 (defn set-saving* [state ident busy]
   (assoc-in state (conj ident :ui/saving) busy))
@@ -393,6 +399,11 @@
 (defn set-pristine! [ident]
   (comp/transact! SPA `[(set-pristine {:ident ~ident})]))
 
+(defn get-new-ident [env ident]
+  (if-let [new-ident-v (get-in env [:tempid->realid (second ident)])]
+    [(first ident) new-ident-v]
+    ident))
+
 (defmutation save-entity
   "saves an entity diff to the backend Datomic DB"
   [{:keys [ident diff] :as params}]
@@ -404,24 +415,37 @@
                                      (dissoc :post-mutation)
                                      (dissoc :post-params))))
   (ok-action [{:keys [state] :as env}]
-    (debug "OK ACTION"  (keys env) (:ref env) (comp/get-ident (:component env)))
+    (debug "OK ACTION" "IDENT" ident "REF" (:ref env) "(comp/get-ident (:component env))" (comp/get-ident (:component env)))
     (debug ":tempid->realid" (:tempid->realid env))
     (debug "TRANSACTED AST"  (:transacted-ast env))
-    (js/setTimeout clear-tx-result! 2000)
-    (when (not-empty (:tempid->realid env))
-      (let [tempid (get-in env [:transacted-ast :params :ident 1])
-            new-id (get-in env [:tempid->realid tempid])
-            new-ident [(first ident) new-id]
-            {:keys [post-mutation post-params]} (get-in env [:transacted-ast :params])
-            params (assoc post-params :new-id new-id)
-            txd    `[(~post-mutation ~params)]]
-        (comp/transact! SPA txd)))
-    (swap! state
-      (fn [s]
-        (-> s
-          (fs/entity->pristine* ident)
-          (set-saving* ident false)
-          (show-tx-result* {:result "Save Succeeded"})))))
+    (try
+      (let [{:keys [post-mutation post-params]} (get-in env [:transacted-ast :params])
+            ident (get-new-ident env ident)]
+        (swap! state
+          (fn [s]
+            (-> s
+              (fs/entity->pristine* ident)
+              (set-saving* ident false)
+              (set-create* ident false)
+              (show-tx-result* {:result "Save Succeeded"}))))
+        (when post-mutation
+          (let [tempid (get-in env [:transacted-ast :params :ident 1])
+                new-id (get-in env [:tempid->realid tempid])
+                params (if new-id
+                         (assoc post-params :new-id new-id)
+                         params)
+                txd    `[(~post-mutation ~params)]]
+            (comp/transact! SPA txd))))
+      (catch js/Object ex (let [ident (get-new-ident env ident)]
+                            (log/error "OK Action handler failed: " ex)
+                            (swap! state
+                              (fn [st]
+                                (-> st
+                                  (set-saving* ident false)
+                                  (show-tx-result* {:error (str "TX Result Handler failed: " ex)}))))))))
+
+
+
   (error-action [{:keys [app ref result state] :as env}]
     (log/info "Mutation Error Result " ident diff result)
     (swap! state

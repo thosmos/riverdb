@@ -281,7 +281,7 @@
 ;    resp))
 
 (defn add-admin-routes [routes]
-  (debug "DEFAULT ROUTES" routes)
+  ;(debug "DEFAULT ROUTES" routes)
   (-> routes
     ;(conj ["/admin"
     ;       :get (conj common-interceptors (admin-interceptor))            ;[(admin-interceptor)]
@@ -362,7 +362,7 @@
   (start))
 
 (defn -main
-  "The entry-point for 'lein run'"
+  "The entry-point"
   [& args]
 
   (start))

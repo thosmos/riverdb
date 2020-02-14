@@ -10,5 +10,5 @@
                     :appenders {:console (ts/console-appender)}
                     :ns-blacklist  [
                                     "com.fulcrologic.fulcro.algorithms.indexing"
-                                    ;"com.fulcrologic.fulcro.algorithms.tx-processing"]})
+                                    ;"com.fulcrologic.fulcro.algorithms.tx-processing"
                                     "com.fulcrologic.fulcro.ui-state-machines"]})

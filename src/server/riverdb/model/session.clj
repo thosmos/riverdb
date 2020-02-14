@@ -36,7 +36,7 @@
             (assoc :cookies {"riverdb-auth-token" {:value token}})))))))
 
 (defmutation login [env {:keys [username password] :as args}]
-  {::pc/output [:session/valid? :account/name :account/auth]}
+  {::pc/output [:session/valid? :session/error :account/name :account/auth]}
   (log/info "Authenticating" username)
   (let [user? (user/pull-email->user username
                 [:db/id :user/uuid :user/name :user/email :user/password
@@ -55,7 +55,10 @@
            :account/auth   res}))
       (do
         (log/error "Invalid credentials supplied for" username)
-        (throw (ex-info "Invalid credentials" {:username username}))))))
+        {:session/valid? false
+         :account/name username
+         :session/error (str "Invalid credentials")}))))
+;        (throw (ex-info "Invalid credentials" {:username username}))))))
 
 (defmutation logout [env params]
   {::pc/output [:session/valid?]}

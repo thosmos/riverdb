@@ -1,6 +1,7 @@
 (ns riverdb.state
   (:require
     [datomic.api :as d]
+    [datomock.core :as mock]
     dotenv))
 
 ;(def uri (or (dotenv/env :DATOMIC_URI) "datomic:free://localhost:4334/test-db"))
@@ -27,6 +28,17 @@
 (defn start-dbs
   ([] (start-dbs state))
   ([st]
-   (doseq [[k uri] uris]
-     (d/create-database uri)
-     (swap! st assoc k (d/connect uri)))))
+   (let [mock-db? (if (some? (:mock-db @state))
+                    (:mock-db @state)
+                    (dotenv/env :MOCK_DB))]
+     (doseq [[k uri] uris]
+       (d/create-database uri)
+       (let [cx (d/connect uri)
+             cx (if mock-db?
+                  (mock/fork-conn cx)
+                  cx)]
+        (swap! st assoc k cx))))))
+
+(defn set-mock-db! [mock?]
+  (swap! state assoc :mock-db mock?)
+  (start-dbs))

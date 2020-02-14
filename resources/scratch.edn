@@ -18,22 +18,22 @@
 (defn useDroppable
   ([this state-k] (useDroppable this state-k nil))
   ([this state-k type-k]
-   (let [set-state!  (fn [new-state] (set-dnd-state! this new-state))
-         inState     (fn []
-                       (let [state (comp/get-state this :dnd-state)
-                             state' (state-k state)]
-                         (debug "inState" state' state)
-                         state'))
+   (let [set-state! (fn [new-state] (set-dnd-state! this new-state))
+         inState (fn []
+                   (let [state (comp/get-state this :dnd-state)
+                         state' (state-k state)]
+                     (debug "inState" state' state)
+                     state'))
 
-         isType      (fn [type] (if type-k (= type type-k) true))
-         isOver      (fn [] (and (isType (:type @dragging)) (inState)))
-         onDragOver  (fn [e fn]
-                       (let [{:keys [text type] :as data} @dragging]
-                         (debug "DRAG OVER ATOM" state-k type text (isType type) (inState))
-                         (cancelEvs e)
-                         (when (and (isType type) (not (inState)))
-                           (set-state! {state-k true})
-                           (when fn (fn data)))))
+         isType (fn [type] (if type-k (= type type-k) true))
+         isOver (fn [] (and (isType (:type @dragging)) (inState)))
+         onDragOver (fn [e fn]
+                      (let [{:keys [text type] :as data} @dragging]
+                        (debug "DRAG OVER ATOM" state-k type text (isType type) (inState))
+                        (cancelEvs e)
+                        (when (and (isType type) (not (inState)))
+                          (set-state! {state-k true})
+                          (when fn (fn data)))))
          onDragLeave (fn [e fn]
                        (let [{:keys [text type] :as data} @dragging]
                          (debug "DRAG LEAVE ATOM" state-k type text)
@@ -41,13 +41,13 @@
                          (when (isOver)
                            (set-state! {state-k nil})
                            (when fn (fn data)))))
-         onDrop      (fn [e fn]
-                       (let [{:keys [text type] :as data} @dragging]
-                         (debug "DROP ATOM" state-k type text (isType type) (inState))
-                         (cancelEvs e)
-                         (when (isOver)
-                           (set-state! {state-k nil})
-                           (when fn (fn data)))))]
+         onDrop (fn [e fn]
+                  (let [{:keys [text type] :as data} @dragging]
+                    (debug "DROP ATOM" state-k type text (isType type) (inState))
+                    (cancelEvs e)
+                    (when (isOver)
+                      (set-state! {state-k nil})
+                      (when fn (fn data)))))]
      {:isOver isOver :onDragOver onDragOver :onDragLeave onDragLeave :onDrop onDrop})))
 
 
@@ -165,15 +165,15 @@
   [state-map entity-ident]
   (fs/update-forms state-map
     (fn reset-form-step [e {:keys [::fs/pristine-state ::fs/fields] :as config}]
-      (let [new-e      (merge e pristine-state)
+      (let [new-e (merge e pristine-state)
             elide-keys (clojure.set/difference fields (keys pristine-state))
-            new-e      (apply dissoc new-e elide-keys)]
+            new-e (apply dissoc new-e elide-keys)]
         [new-e config])) entity-ident))
 
-(def reset-state-map-*    (pristine->entity* modified-state-map [:person/id 1]))
-(def reset-state-map-1    (pristine->entity-1 modified-state-map [:person/id 1]))
-(def reset-state-map-2    (pristine->entity-2 modified-state-map [:person/id 1]))
-(def reset-state-map-3    (pristine->entity-3 modified-state-map [:person/id 1]))
+(def reset-state-map-* (pristine->entity* modified-state-map [:person/id 1]))
+(def reset-state-map-1 (pristine->entity-1 modified-state-map [:person/id 1]))
+(def reset-state-map-2 (pristine->entity-2 modified-state-map [:person/id 1]))
+(def reset-state-map-3 (pristine->entity-3 modified-state-map [:person/id 1]))
 
 (= reset-state-map-* state-map)
 => false
@@ -188,56 +188,57 @@
 
 (bench/quick-bench (pristine->entity-1 modified-state-map [:person/id 1]) :verbose)
 (comment
-  x86_64 Mac OS X 10.14.6 8 cpu(s)
+  x86_64 Mac OS X 10.14.6 8 cpu (s)
   OpenJDK 64-Bit GraalVM CE 19.3.0 11.0.5+10-jvmci-19.3-b05-LTS
-  Runtime arguments: -Dclojure.libfile=/private/var/folders/_j/l67rbgv937z5q7849589281w0000gn/T/libfile7.libs -javaagent:/Applications/IntelliJ IDEA CE.app/Contents/lib/idea_rt.jar=55520:/Applications/IntelliJ IDEA CE.app/Contents/bin -Dfile.encoding=UTF-8
+  Runtime arguments: -Dclojure.libfile= / private/var/folders/_j/l67rbgv937z5q7849589281w0000gn/T/libfile7.libs -javaagent: / Applications/IntelliJ IDEA CE.app / Contents/lib/idea_rt.jar=55520:/Applications/IntelliJ IDEA CE.app / Contents/bin -Dfile.encoding=UTF-8
   Evaluation count : 327648 in 6 samples of 54608 calls.
   Execution time sample mean : 1.867342 µs
   Execution time mean : 1.867023 µs
   Execution time sample std-deviation : 16.784794 ns
   Execution time std-deviation : 17.144893 ns
-  Execution time lower quantile : 1.839771 µs ( 2.5%)
-  Execution time upper quantile : 1.883676 µs (97.5%)
+  Execution time lower quantile : 1.839771 µs (2.5 %)
+  Execution time upper quantile : 1.883676 µs (97.5 %)
   Overhead used : 6.895278 ns)
 
 (bench/quick-bench (pristine->entity-2 modified-state-map [:person/id 1]) :verbose)
 (comment
-  x86_64 Mac OS X 10.14.6 8 cpu(s)
+  x86_64 Mac OS X 10.14.6 8 cpu (s)
   OpenJDK 64-Bit GraalVM CE 19.3.0 11.0.5+10-jvmci-19.3-b05-LTS
-  Runtime arguments: -Dclojure.libfile=/private/var/folders/_j/l67rbgv937z5q7849589281w0000gn/T/libfile7.libs -javaagent:/Applications/IntelliJ IDEA CE.app/Contents/lib/idea_rt.jar=55520:/Applications/IntelliJ IDEA CE.app/Contents/bin -Dfile.encoding=UTF-8
+  Runtime arguments: -Dclojure.libfile= / private/var/folders/_j/l67rbgv937z5q7849589281w0000gn/T/libfile7.libs -javaagent: / Applications/IntelliJ IDEA CE.app / Contents/lib/idea_rt.jar=55520:/Applications/IntelliJ IDEA CE.app / Contents/bin -Dfile.encoding=UTF-8
   Evaluation count : 298680 in 6 samples of 49780 calls.
   Execution time sample mean : 2.060244 µs
   Execution time mean : 2.060134 µs
   Execution time sample std-deviation : 20.902451 ns
   Execution time std-deviation : 22.778221 ns
-  Execution time lower quantile : 2.034660 µs ( 2.5%)
-  Execution time upper quantile : 2.084416 µs (97.5%)
+  Execution time lower quantile : 2.034660 µs (2.5 %)
+  Execution time upper quantile : 2.084416 µs (97.5 %)
   Overhead used : 6.895278 ns)
 
 (bench/quick-bench (pristine->entity-3 modified-state-map [:person/id 1]) :verbose)
 (comment
-  x86_64 Mac OS X 10.14.6 8 cpu(s)
+  x86_64 Mac OS X 10.14.6 8 cpu (s)
   OpenJDK 64-Bit GraalVM CE 19.3.0 11.0.5+10-jvmci-19.3-b05-LTS
-  Runtime arguments: -Dclojure.libfile=/private/var/folders/_j/l67rbgv937z5q7849589281w0000gn/T/libfile7.libs -javaagent:/Applications/IntelliJ IDEA CE.app/Contents/lib/idea_rt.jar=55520:/Applications/IntelliJ IDEA CE.app/Contents/bin -Dfile.encoding=UTF-8
+  Runtime arguments: -Dclojure.libfile= / private/var/folders/_j/l67rbgv937z5q7849589281w0000gn/T/libfile7.libs -javaagent: / Applications/IntelliJ IDEA CE.app / Contents/lib/idea_rt.jar=55520:/Applications/IntelliJ IDEA CE.app / Contents/bin -Dfile.encoding=UTF-8
   Evaluation count : 260310 in 6 samples of 43385 calls.
   Execution time sample mean : 2.356212 µs
   Execution time mean : 2.356579 µs
   Execution time sample std-deviation : 41.224805 ns
   Execution time std-deviation : 42.054627 ns
-  Execution time lower quantile : 2.319385 µs ( 2.5%)
-  Execution time upper quantile : 2.422673 µs (97.5%)
+  Execution time lower quantile : 2.319385 µs (2.5 %)
+  Execution time upper quantile : 2.422673 µs (97.5 %)
   Overhead used : 6.895278 ns
 
   Found 1 outliers in 6 samples (16.6667 %)
-  low-severe   1 (16.6667 %)
+  low-severe 1 (16.6667 %)
   Variance from outliers : 13.8889 % Variance is moderately inflated by outliers)
 
 
 
 (defsc AgeView [_ {:person/keys [age]}]
-  {:query [:person/age],..}
+  {:query [:person/age], ..}
   (p age))
 (def ui-age-view (comp/factory AgeView))
 (defsc Person [_ {:person/keys [name] :as person}]
   {:query [:person/id :person/name :person/age]}
   (div name (ui-age-view person)))
+

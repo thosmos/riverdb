@@ -50,14 +50,18 @@
 
 (defn process-session-result [env error-message]
   (let [success? (uism/alias-value env :session-valid?)]
-    (debug "SESSION RESULT " (keys (::uism/state-map env)))
+    (debug "SESSION RESULT" success?)
+
+    ;; FIXME how to wait to route directly to sitevisit edit form until AFTER globals are loaded?
     (if success?
       (let [{:keys [desired-path]} (uism/retrieve env :config)]
         (debug "ROUTE TO existing path?" desired-path)
         (if desired-path
           (routes/route-to! desired-path)
           (routes/route-to! "/")))
-      (routes/route-to! "/"))
+      (do
+        ;(routes/route-to! "/")
+        (debug "LOGIN FAILED" "error-message" error-message)))
 
 
 
@@ -87,7 +91,7 @@
                       (assoc-in env [::uism/state-map :riverdb.ui.root/current-agency]
                         [:org.riverdb.db.agencylookup/gid (:db/id agency)]))))
 
-                 (uism/assoc-aliased :modal-open? false)
+                 ;(uism/assoc-aliased :modal-open? false)
                  (uism/activate :state/logged-in))
       (not success?) (->
                        (uism/assoc-aliased :error error-message)
@@ -98,12 +102,11 @@
 
 (uism/defstatemachine session-machine
   {::uism/actors
-   #{:actor/login-form :actor/current-session :actor/project-years :actor/globals}
+   #{:actor/login-form :actor/logout-menu :actor/current-session :actor/project-years :actor/globals}
 
    ::uism/aliases
-   {:username       [:actor/login-form :account/email]
+   {:username       [:actor/logout-menu :account/email]
     :error          [:actor/login-form :ui/error]
-    :modal-open?    [:actor/login-form :ui/open?]
     :session-valid? [:actor/current-session :session/valid?]
     :current-user   [:actor/current-session :account/name]
     :account-auth   [:actor/current-session :account/auth]}
@@ -131,7 +134,7 @@
                                                                 (clear)
                                                                 (uism/assoc-aliased :error "Server error.")))}
                       :event/complete {::uism/target-states #{:state/logged-out :state/logged-in}
-                                       ::uism/handler       #(process-session-result % "Invalid Credentials.")}})}
+                                       ::uism/handler       #(process-session-result % "Invalid Credentials")}})}
 
     :state/logged-in
     {::uism/events (merge global-events

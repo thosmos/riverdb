@@ -156,7 +156,7 @@
   :start
   (let [defaults-config (:ring.middleware/defaults-config config)
         legal-origins   (get config :legal-origins #{"localhost"})]
-    (debug "STARTING MIDDLEWARE" config)
+    ;(debug "STARTING MIDDLEWARE" config)
     (-> not-found-handler
       (wrap-api "/api")
       wrap-transit-params

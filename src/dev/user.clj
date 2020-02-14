@@ -11,6 +11,7 @@
     [riverdb.state :refer [db cx]]
     [thosmos.util :as tu]))
 
+(set! *data-readers* (assoc *data-readers* 'fulcro/tempid #'riverdb.util/readTempid))
 
 ;; ==================== SERVER ====================
 (set-refresh-dirs "src/main")
