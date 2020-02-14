@@ -93,7 +93,7 @@
 
 
 
-(defsc ThetaOptions [this {:keys [value filter filter-key filter-val] :as props}
+(defsc ThetaOptions [this {:keys [value filter filter-key filter-val ui/options] :as props}
                      {:keys [onChange changeMutation changeParams onAddItem addParams opts]}]
   {:ident              [:riverdb.theta.options/ns :riverdb.entity/ns]
    :query              [:riverdb.entity/ns
@@ -103,8 +103,6 @@
                         :filter
                         :filter-key
                         :filter-val
-                        [:riverdb.theta.options/ns :entity.ns/samplingdevice]
-                        [:riverdb.theta.options/ns :entity.ns/samplingdevicelookup]
                         {:ui/add-person-modal (comp/get-query AddPersonModal)}]
    ;:initLocalState    (fn [this props]
    ;                     (debug "INIT LOCAL STATE ThetaOptions" props))
