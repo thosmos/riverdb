@@ -917,12 +917,10 @@
           (div :.field {:key "publish"}
             (label {:style {}} "Publish?")
             (ui-checkbox {:size     "big" :fitted true :label "" :type "checkbox" :toggle true
-                          :disabled (not (and QADate QAPersonRef))
                           :checked  (or QACheck false)
                           :onChange #(let [value (not QACheck)]
-                                       (when (and QADate QAPersonRef)
-                                         (log/debug "publish change" value)
-                                         (set-value! this :sitevisit/QACheck value)))})))
+                                       (log/debug "publish change" value)
+                                       (set-value! this :sitevisit/QACheck value))})))
 
 
         (when (not-empty Samples)
@@ -940,10 +938,10 @@
                          (debug "CANCEL!" dirty? (fs/dirty-fields props false))
                          (if dirty?
                            (comp/transact! this
-                             `[(rm/reset-form {:ident ~this-ident})])))}
-            ;(do
-            ;  (fm/set-value! this :ui/editing false)
-            ;  (routes/route-to! "/sitevisit/list"))))}
+                             `[(rm/reset-form {:ident ~this-ident})])
+                           (do
+                             (fm/set-value! this :ui/editing false)
+                             (routes/route-to! "/sitevisit/list"))))}
             (if dirty?
               "Cancel"
               "Close"))

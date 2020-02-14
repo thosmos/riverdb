@@ -131,8 +131,8 @@
                                       [:stationlookup/RiverFork :as :fork]
                                       [:stationlookup/ForkTribGroup :as :trib]]}
    {[:sitevisit/StationFailCode :as :failcode] [[:stationfaillookup/FailureReason :as :reason]]}
-   {:sample/_SiteVisitID
-    [{:fieldresult/_SampleRowID
+   {:sitevisit/Samples
+    [{:sample/FieldResults
       [:db/id :fieldresult/Result :fieldresult/FieldReplicate
        {:fieldresult/ConstituentRowID
         [:db/id ;:constituentlookup/HighValue :constituentlookup/LowValue
@@ -221,7 +221,7 @@
                     (update :in conj '?fromDate)
                     (update :args conj (jt/java-date fromDate))
                     (update :where conj
-                      '[(> ?date ?fromDate)]))
+                      '[(>= ?date ?fromDate)]))
 
                   ;; similar to ?fromDate
                   toDate
@@ -270,8 +270,8 @@
                                                                               [:stationlookup/RiverFork :as :river_fork]
                                                                               [:stationlookup/ForkTribGroup :as :trib_group]]}
                                         {[:sitevisit/StationFailCode :as :failcode] [[:stationfaillookup/FailureReason :as :reason]]}
-                                        {:sample/_SiteVisitID
-                                         [{:fieldresult/_SampleRowID
+                                        {:sitevisit/Samples
+                                         [{:sample/FieldResults
                                            [:db/id :fieldresult/Result :fieldresult/FieldReplicate
                                             {:fieldresult/ConstituentRowID
                                              [:db/id ;:constituentlookup/HighValue :constituentlookup/LowValue
@@ -282,7 +282,7 @@
                                              [[:samplingdevice/CommonID :as :id]
                                               {[:samplingdevice/DeviceType :as :type] [[:samplingdevicelookup/SampleDevice :as :name]]}]}]}]}]) ...]]
                    :in    '[$]
-                   :where '[]
+                   :where '[[?sv :sitevisit/QACheck true]]
                    :args  [db]}
 
 
@@ -352,7 +352,11 @@
                     (empty? (:where q))
                     (->
                       (update :where conj '[?sv :sitevisit/StationID])))
-         q        (remap-query q)])))
+         q        (remap-query q)]
+     ;; this query only returns field results due to missing :db/id on sample
+     ;; we can modiy this to handle labresults too, or do it somewhere else
+
+     (d/query q))))
 
 
 
@@ -375,13 +379,13 @@
             [:db/id [:sitevisit/SiteVisitDate :as :date] [:sitevisit/Notes :as :notes]
              {[:sitevisit/StationID :as :site] [[:stationlookup/StationID :as :id]]}
              {[:sitevisit/StationFailCode :as :reason] [[:stationfaillookup/FailureReason :as :reason]]}
-             {[:samplingcrew/_SiteVisitID :as :crew] [{[:samplingcrew/PersonID :as :person] [[:person/FName :as :fname] [:person/LName :as :lname]]}]}]
+             {[:sitevisit/Visitors :as :crew] [[:person/FName :as :fname] [:person/LName :as :lname]]}]
             eid)]
     (-> x
       (assoc :site (get-in x [:site :id]))
       (assoc :reason (get-in x [:reason :reason]))
       (assoc :crew (clojure.string/join ", "
-                     (map #(let [peep (:person %)]
+                     (map #(let [peep %]
                              (str (:fname peep) " " (:lname peep)))
                        (:crew x)))))))
 
@@ -706,7 +710,7 @@
                   (assoc :failcode (get-in sv [:failcode :reason])))
 
             ;; pull out fieldresult list
-            frs (get-in sv [:sample/_SiteVisitID 0 :fieldresult/_SampleRowID])
+            frs (get-in sv [:sitevisit/Samples 0 :sample/FieldResults])
             ;; restrict to water samples (no air)
             ;frs (filter #(= "H2O" (get-in % [:fieldresult/ConstituentRowID
             ;                                 :constituentlookup/MatrixCode
@@ -724,7 +728,7 @@
             ;; remove the list of samples and add the new param map
             ;_   (println "move FRS")
             sv  (-> sv
-                  (dissoc :sample/_SiteVisitID)
+                  (dissoc :sitevisit/Samples)
                   (assoc :fieldresults frs))
             ;_   (println "count valid params")
             ;; count valid params
@@ -751,7 +755,7 @@
                   (assoc :failcode (get-in sv [:failcode :reason])))
 
             ;; pull out fieldresult list
-            frs (get-in sv [:sample/_SiteVisitID 0 :fieldresult/_SampleRowID])
+            frs (get-in sv [:sitevisit/Samples 0 :sample/FieldResults])
             ;; restrict to water samples (no air)
             ;frs (filter #(= "H2O" (get-in % [:fieldresult/ConstituentRowID
             ;                                 :constituentlookup/MatrixCode
@@ -769,7 +773,7 @@
             ;; remove the list of samples and add the new param map
             ;_   (debug "move FRS")
             sv  (-> sv
-                  (dissoc :sample/_SiteVisitID)
+                  (dissoc :sitevisit/Samples)
                   (assoc :fieldresults frs))
             ;_   (debug "count valid params")
             ;; count valid params
@@ -985,12 +989,18 @@
         count-params              (get report :count-params 0)
         count-params-invalid      (get report :count-params-invalid 0)
         count-params-valid        (get report :count-params-valid 0)
-        percent-params-valid      (round2 2 (* (/ count-params-valid count-params) 100))
+        percent-params-valid      (if (> count-params 0)
+                                    (round2 2 (* (/ count-params-valid count-params) 100))
+                                    0)
         count-params-exceedance   (get report :count-params-exceedance 0)
         ;count-params-exceedable   ()
-        percent-params-exceedance (round2 2 (* (/ count-params-exceedance count-params-valid) 100))
+        percent-params-exceedance (if (> count-params-valid 0)
+                                    (round2 2 (* (/ count-params-exceedance count-params-valid) 100))
+                                    0)
         results                   (get report :count-results 0)
-        percent                   (round2 2 (* (/ results count-svs) 100))
+        percent                   (if (> count-svs 0)
+                                    (round2 2 (* (/ results count-svs) 100))
+                                    0)
 
         report                    (reduce-kv
                                     (fn [r k m]

@@ -64,7 +64,7 @@
 ;; in a js var for use by the client.
 ;; ================================================================================
 (defn index [csrf-token]
-  (debug "GENERATE CLIENT HTML" csrf-token)
+  ;(debug "GENERATE CLIENT HTML" csrf-token)
   (html5
     [:html {:lang "en"}
      [:head {:lang "en"}
@@ -116,7 +116,7 @@
 
 (defn wrap-html-routes [ring-handler]
   (fn [{:keys [uri params path-info anti-forgery-token] :as req}]
-    (debug "HTML ROUTES HANDLER" uri path-info params (keys req))
+    ;(debug "HTML ROUTES HANDLER" uri path-info params (keys req))
     (cond
 
       (#{"/sitevisits.csv"} uri)
