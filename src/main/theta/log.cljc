@@ -13,7 +13,7 @@
      (boolean (:ns env))))
 
 #?(:clj (def log-level (Integer/parseInt (or (dotenv/env :LOG_LEVEL) "0"))))
-;#?(:clj (println "LOADING theta.log at log-level: " log-level))
+#?(:clj (println "LOADING theta.log at log-level: " log-level))
 
 #?(:clj
    (defn set-level!

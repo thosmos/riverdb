@@ -304,7 +304,8 @@
                           :href "/tac-report"} "TAC Report")
            (dom/a :.item {:key  "dataviz" :classes [(when (= :dataviz current-tab) "active")]
                           :href "/dataviz"} "Dataviz")])
-        (when (and ready logged-in? (= tutil/app-env "dev"))
+        (when (and ready logged-in?)
+                ;(= tutil/app-env "dev"))
           [(dom/a :.item {:key  "theta" :classes [(when (= :theta current-tab) "active")]
                           :href "/theta/index"} "Tables")
            (dom/a :.item {:key  "projects" :classes [(when (= :projects current-tab) "active")]

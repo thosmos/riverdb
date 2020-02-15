@@ -44,7 +44,7 @@
   "scripts": {
     "main": "npx shadow-cljs watch :main",
     "compile": "npx shadow-cljs compile :main",
-    "release": "npx shadow-cljs release :main",
+    "release": "TIMBRE_LEVEL=':info' LOG_LEVEL=3 npx shadow-cljs release :main",
     "dev": "npx shadow-cljs server",
     "server": "clojure -A:dev:server:run",
     "client/workspaces": "npx shadow-cljs watch :workspaces",
