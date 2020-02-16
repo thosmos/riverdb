@@ -295,8 +295,8 @@
         current-tab   (some-> current-route first keyword)
         {current-user :account/name
          logged-in?   :session/valid?} current-session
-        admin?         (->> (roles/user->roles current-user) (roles/admin? #{:role.type/riverdb-admin}))
-        _ (debug "USER ROLES" "RiverDB admin" admin? (roles/user->roles current-user))]
+        auth-user     (some-> current-session :account/auth :user)
+        rdb-admin?    (->> (roles/user->roles auth-user) (roles/admin? #{:role.type/riverdb-admin}))]
     (div {:style {:display "grid" :gridTemplateRows "45px 1fr" :gridRowGap "0.2em" :height "100%"}}
       (div :.ui.secondary.pointing.menu {:style {:height "40px"}}
         (dom/a :.item {:classes [(when (= :main current-tab) "active")]
@@ -307,13 +307,13 @@
            (dom/a :.item {:key  "dataviz" :classes [(when (= :dataviz current-tab) "active")]
                           :href "/dataviz"} "Dataviz")])
         (when (and ready logged-in?)
-              [(when admin?
-                 (dom/a :.item {:key  "theta" :classes [(when (= :theta current-tab) "active")]
-                                :href "/theta/index"} "Tables"))
-               (dom/a :.item {:key  "projects" :classes [(when (= :projects current-tab) "active")]
-                              :href "/projects"} "Edit Projects")
-               (dom/a :.item {:key  "sitevisit" :classes [(when (= :sitevisit current-tab) "active")]
-                              :href "/sitevisit/list"} "Sitevisits")])
+          [(when rdb-admin?
+             (dom/a :.item {:key  "theta" :classes [(when (= :theta current-tab) "active")]
+                            :href "/theta/index"} "Tables"))
+           (dom/a :.item {:key  "projects" :classes [(when (= :projects current-tab) "active")]
+                          :href "/projects"} "Edit Projects")
+           (dom/a :.item {:key  "sitevisit" :classes [(when (= :sitevisit current-tab) "active")]
+                          :href "/sitevisit/list"} "Sitevisits")])
         (div :.right.menu
           ;(div :.item (ui-activity {}))
           (ui-agency-menu agency-menu)
