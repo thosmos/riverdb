@@ -60,15 +60,3 @@
                                       :http-root          "resources/public/workspaces"
                                       :http-port          8023
                                       :http-resource-root "."}}}}
-
-;{:lein   {:profile "cljs"}
-; :nrepl  {:port 9000}
-; :builds {:main {:target     :browser
-;                 :output-dir "resources/public/admin/js/main"
-;                 :asset-path "/admin/js/main"
-;
-;                 :modules    {:main {:entries [riverdb.client]}}
-;
-;                 :devtools   {
-;                              :after-load riverdb.client/reload}}}}
-

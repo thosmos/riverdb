@@ -12,34 +12,44 @@
      [env]
      (boolean (:ns env))))
 
-#?(:clj (def log-level (Integer/parseInt (or (dotenv/env :LOG_LEVEL) "0"))))
-#?(:clj (println "LOADING theta.log at log-level: " log-level))
+#?(:clj (defmacro log-level [] (Integer/parseInt (or (dotenv/env :LOG_LEVEL) "0"))))
+(println (str "LOADING CLJC theta.log at log-level: " (theta.log/log-level) ", app-env: " (theta.util/app-env)))
 
 #?(:clj
+   ;; FIXME change CLJ macros to check log-level (they currently elide at compile time)
    (defn set-level!
      "overrides the level at run time"
      [level]
      (def log-level level)))
 
+#?(:clj (defn pr-args [args]
+          (if (= dotenv/app-env "prod")
+            (map (fn [arg] `(if (string? ~arg) ~arg (pr-str ~arg))) args)
+            args)))
+
 #?(:clj (defmacro debug [& args]
-          (when (<= log-level 1)
+          (when (<= (log-level) 1)
             (if (cljs? &env)
-              `(do (~'js/console.debug ~@args) nil)
+              (let [args (pr-args args)]
+                `(do (~'js/console.debug ~@args) nil))
               `(log/debug ~@args)))))
 #?(:clj (defmacro info [& args]
-          (when (<= log-level 2)
+          (when (<= (log-level) 2)
             (if (cljs? &env)
-              `(do (~'js/console.log ~@args) nil)
+              (let [args (pr-args args)]
+                `(do (~'js/console.log ~@args) nil))
               `(log/info ~@args)))))
 #?(:clj (defmacro warn [& args]
-          (when (<= log-level 3)
+          (when (<= (log-level) 3)
             (if (cljs? &env)
-              `(do (~'js/console.warn ~@args) nil)
+              (let [args (pr-args args)]
+                `(do (~'js/console.warn ~@args) nil))
               `(log/warn ~@args)))))
 #?(:clj (defmacro error [& args]
-          (when (<= log-level 4)
+          (when (<= (log-level) 4)
             (if (cljs? &env)
-              `(do (~'js/console.error ~@args) nil)
+              (let [args (pr-args args)]
+                `(do (~'js/console.error ~@args) nil))
               `(log/error ~@args)))))
 
 

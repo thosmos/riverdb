@@ -51,8 +51,7 @@
     [riverdb.ui.user]
     [theta.log :as log :refer [debug]]
     [goog.object :as gob]
-    [cljsjs.react-grid-layout]
-    [nubank.workspaces.ui.core :as uc]))
+    [cljsjs.react-grid-layout]))
 
 
 

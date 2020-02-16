@@ -17,7 +17,7 @@
     ["react-treeview/lib/react-treeview" :as TreeView]
     ["react-virtualized-auto-sizer/dist/index.cjs.js" :as AutoSizer]))
 
-(debug "YAY from js-joda" (.. LocalDate (parse "2012-12-24") (atStartOfDay) (plusMonths 2) (format (.ofPattern DateTimeFormatter "M/d/yyyy"))))
+(debug "HEY from js-joda" (.. LocalDate (parse "2012-12-24") (atStartOfDay) (plusMonths 2) (format (.ofPattern DateTimeFormatter "M/d/yyyy"))))
 (debug "HEY from TICK" (t/time) (t/inst (t/offset-date-time "1918-11-11T11:00:00+01:00")) (-> (t/time "11:00") (t/on "1918-11-11") (t/in "Europe/Paris")))
 
 ;d.format(DateTimeFormatter.ofPattern('M/d/yyyy')) // 4/28/2018

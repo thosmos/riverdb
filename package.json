@@ -42,15 +42,11 @@
     "showdown": "^1.8.7"
   },
   "scripts": {
-    "main": "npx shadow-cljs watch :main",
-    "compile": "npx shadow-cljs compile :main",
-    "release": "TIMBRE_LEVEL=':info' LOG_LEVEL=3 npx shadow-cljs release :main",
-    "dev": "npx shadow-cljs server",
-    "server": "clojure -A:dev:server:run",
-    "client/workspaces": "npx shadow-cljs watch :workspaces",
-    "client/test": "npx shadow-cljs watch :test",
-    "client/cljs": "shadow-cljs cljs-repl :main",
-    "client/clj": "shadow-cljs clj-repl"
+    "dev": "APP_ENV=dev LOG_LEVEL=0 npx shadow-cljs -A:cljs-dev server",
+    "main": "APP_ENV=dev LOG_LEVEL=0 npx shadow-cljs -A:cljs-dev watch :main",
+    "compile": "APP_ENV=dev LOG_LEVEL=0 npx shadow-cljs -A:cljs-dev compile :main",
+    "release": "APP_ENV=prod TIMBRE_LEVEL=':info' LOG_LEVEL=2 npx shadow-cljs release :main",
+    "server": "clojure -A:dev:server:run"
   },
   "author": "Thomas Spellman <thomas@thosmos.com>",
   "license": "GNU AFFERO GENERAL PUBLIC LICENSE, Version 3, 19 November 2007"
