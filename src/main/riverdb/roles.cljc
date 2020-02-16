@@ -8,16 +8,18 @@
     true
     false))
 
-(defn admin? [roles]
-  (when (seq roles)
-    (reduce
-      (fn [ok role]
-        (if (or
-              (= (:role/type role) :role.type/riverdb-admin)
-              (= (:role/type role) :role.type/admin))
-          true
-          ok))
-      false roles)))
+(defn admin?
+  ([roles]
+   (admin? #{:role.type/riverdb-admin :role.type/admin} roles))
+  ([role-ks roles]
+   (when (and (seq role-ks) (seq roles))
+     (reduce
+       (fn [ok role]
+         (if ((set role-ks) (:role/type role))
+           true
+           ok))
+       false roles))))
+
 
 
 (defn roles->agencies [roles]
