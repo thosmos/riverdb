@@ -60,6 +60,7 @@
 
               val-string?  (string? v)
               val-map?     (map? v)
+              val-nil?     (nil? v)
 
               arg?         (cond
                              (and type-ref? val-map?)
@@ -94,7 +95,11 @@
                              arg?
                              :else
                              v)]
-          (conj find [arg k v])))
+          (cond
+            val-nil?
+            find
+            :else
+            (conj find [arg k v]))))
       find-v filter-m)
     (catch Exception ex (log/error "ADD-FILTERS ERROR" ex))))
 

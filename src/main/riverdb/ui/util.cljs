@@ -1,6 +1,7 @@
 (ns riverdb.ui.util
   (:require
     [cognitect.transit :as transit]
+    [edn-query-language.core :as eql]
     [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
     [com.fulcrologic.fulcro.dom :as dom :refer [div ul li p h3 button label span table tr th td thead tbody]]
@@ -114,7 +115,7 @@
   (fn custom-get-validity*
     ([ui-entity-props field return-map?]
      (let [{{complete? ::fs/complete?} ::fs/config} ui-entity-props
-           complete?  (or complete? #{})]
+           complete? (or complete? #{})]
        (if (not (complete? field))
          :unchecked
          (let [valid? (field-valid? ui-entity-props field)]
@@ -135,10 +136,26 @@
        (fs/merge-validity this-validity subform-validity)))))
 
 
-(defn get-set-val [current id]
-  (if (vector? current)
+(defn get-ref-set-val [current id]
+  (cond
+    (nil? id)
+    nil
+    (eql/ident? current)
     [(first current) id]
+    (vector? current)
+    (mapv #(get-ref-set-val (first current) %) id)
+    :else
     {:db/id id}))
+
+(defn get-ref-val [value]
+  (cond
+    (map? value)
+    (:db/id value)
+    (eql/ident? value)
+    (second value)
+    (vector? value)
+    (mapv get-ref-val value)
+    :else ""))
 
 ;(defn set-ref! [this k val]
 ;  (fm/set-value! this k val)
@@ -159,7 +176,7 @@
 
 (fm/defmutation set-value [{:keys [ident k v]}]
   (action [{:keys [state]}]
-    ;(debug "MUTATION set-value" ident k v)
+    (debug "MUTATION set-value" ident k v)
     (swap! state set-value* ident k v)))
 
 (defn set-value! [this k value]
@@ -169,7 +186,7 @@
 (fm/defmutation set-ref [{:keys [ident k v]}]
   (action [{:keys [state]}]
     (let [v {:db/id v}]
-      ; (debug "MUTATION set-ref" ident k v)
+      (debug "MUTATION set-ref" ident k v)
       (swap! state set-value* ident k v))))
 
 (defn set-ref! [this k id]
@@ -178,7 +195,7 @@
 (fm/defmutation set-refs [{:keys [ident k v]}]
   (action [{:keys [state]}]
     (let [v (mapv #(identity {:db/id %}) v)]
-      ;(debug "MUTATION set-refs" ident k v)
+      (debug "MUTATION set-refs" ident k v)
       (swap! state set-value* ident k v))))
 
 (defn set-refs! [this k ids]

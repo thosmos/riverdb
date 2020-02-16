@@ -49,7 +49,7 @@
     [riverdb.ui.session :refer [ui-session Session]]
     [riverdb.ui.tac-report-page :refer [TacReportPage]]
     [riverdb.ui.util :as uiutil :refer [make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save
-                                        set-editing set-value! set-refs! set-ref! get-set-val]]
+                                        set-editing set-value set-value! set-refs! set-ref! set-ref set-refs get-ref-val get-ref-set-val]]
     [theta.log :as log :refer [debug]]))
 
 ;(cljs.reader/register-tag-parser! 'bigdec numeric)
@@ -224,7 +224,8 @@
                    :parameter/samplingdevicelookupRef
                    :parameter/sampleTypeRef
                    :ui/editing
-                   :ui/saving]
+                   :ui/saving
+                   [:riverdb.theta.options/ns '_]]
    ;[:riverdb.theta.options/ns :entity.ns/constituentlookup]
    ;[:riverdb.theta.options/ns :entity.ns/samplingdevicelookup]]
    :initial-state {:riverdb.entity/ns :entity.ns/parameter
@@ -251,15 +252,13 @@
                     (->> data-tree
                       (clojure.walk/postwalk #(if (= % :com.fulcrologic.fulcro.algorithms.merge/not-found) nil %))
                       (merge current-normalized)))}
-  (let [dirty?         (some? (seq (fs/dirty-fields props false)))
+  (let [this-ident     (comp/get-ident this)
+        dirty?         (some? (seq (fs/dirty-fields props false)))
         param-specs    (get-in specs-map [:entity.ns/parameter :entity/attrs])
-        get-lookup-val (fn [value]
-                         (cond
-                           (map? value)
-                           (:db/id value)
-                           (vector? value)
-                           (second value)
-                           :else ""))]
+        {sampletypelookup-options     :entity.ns/sampletypelookup
+         constituentlookup-options    :entity.ns/constituentlookup
+         samplingdevicelookup-options :entity.ns/samplingdevicelookup} (:riverdb.theta.options/ns props)]
+    ;(debug "RENDER ParameterForm" props)
     (if editing
       (div :.ui.segment {}
         (ui-header {} name)
@@ -277,32 +276,38 @@
           (dom/label {} "Sample Type")
           (ui-theta-options
             (comp/computed
-              {:riverdb.entity/ns :entity.ns/sampletypelookup
-               :value             (get-lookup-val sampleTypeRef)
-               :opts              {:load true}}
-              {:onChange #(do
-                            (debug "OPTION CHANGE Parameter sampleTypeRef" %)
-                            (set-ref! this :parameter/sampleTypeRef (get-set-val sampleTypeRef %)))})))
+              (merge
+                sampletypelookup-options
+                {:riverdb.entity/ns :entity.ns/sampletypelookup
+                 :value             sampleTypeRef
+                 :opts              {:load true}})
+              {:changeMutation `set-value
+               :changeParams   {:ident    this-ident
+                                :k        :parameter/sampleTypeRef}})))
         (div :.field {}
           (dom/label {} "Constituent")
           (ui-theta-options
             (comp/computed
-              {:riverdb.entity/ns :entity.ns/constituentlookup
-               :value             (get-lookup-val constituentlookupRef)
-               :opts              {:load true}}
-              {:onChange #(do
-                            (debug "OPTION CHANGE Parameter Constituent" %)
-                            (set-ref! this :parameter/constituentlookupRef (get-set-val constituentlookupRef %)))})))
+              (merge
+                constituentlookup-options
+                {:riverdb.entity/ns :entity.ns/constituentlookup
+                 :value             constituentlookupRef
+                 :opts              {:load true}})
+              {:changeMutation `set-value
+               :changeParams   {:ident this-ident
+                                :k     :parameter/constituentlookupRef}})))
         (div :.field {}
           (dom/label {} "Default Device")
           (ui-theta-options
             (comp/computed
-              {:riverdb.entity/ns :entity.ns/samplingdevicelookup
-               :value             (get-lookup-val samplingdevicelookupRef)
-               :opts              {:clearable true :load true}}
-              {:onChange #(do
-                            (debug "OPTION CHANGE Default Device" %)
-                            (set-ref! this :parameter/samplingdevicelookupRef (get-set-val samplingdevicelookupRef %)))})))
+              (merge
+                samplingdevicelookup-options
+                {:riverdb.entity/ns :entity.ns/samplingdevicelookup
+                 :value             samplingdevicelookupRef
+                 :opts              {:clearable true :load true}})
+              {:changeMutation `set-value
+               :changeParams   {:ident this-ident
+                                :k     :parameter/samplingdevicelookupRef}})))
         (div :.field
           (label {} "Data Quality")
           (div :.fields {}
@@ -344,10 +349,11 @@
 
 (defsc ProjectForm [this {:keys [db/id ui/ready ui/editing] :projectslookup/keys [ProjectID Name Parameters Active Public] :as props}] ;Parameters
   {:ident             [:org.riverdb.db.projectslookup/gid :db/id]
-   :query             [fs/form-config-join
+   :query             [:riverdb.entity/ns
                        :db/id
                        :ui/ready
                        :ui/editing
+                       fs/form-config-join
                        :projectslookup/ProjectID
                        :projectslookup/Name
                        :projectslookup/Active
@@ -355,7 +361,6 @@
                        :projectslookup/QAPPVersion
                        :projectslookup/qappURL
                        :projectslookup/AgencyRef
-                       :riverdb.entity/ns
                        {:stationlookup/_Project (comp/get-query looks/stationlookup-sum)}
                        {:projectslookup/Parameters (comp/get-query ParameterForm)}]
    :form-fields       #{:projectslookup/ProjectID
@@ -475,7 +480,8 @@
     (when proj-ids
       (df/load! this :org.riverdb.db.projectslookup ProjectForm
         {:params        {:ids proj-ids}
-         :post-mutation `init-projects-forms}))))
+         :post-mutation `init-projects-forms
+         :without       #{[:riverdb.theta.options/ns '_]}}))))
 
 
 (defsc Projects [this {:keys [ui/ready projects] :riverdb.ui.root/keys [current-agency] :as props}]
