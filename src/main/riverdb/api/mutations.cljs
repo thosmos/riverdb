@@ -452,4 +452,7 @@
       (fn [s]
         (-> s
           (set-saving* ident false)
-          (show-tx-result* (get-in result [:body `save-entity])))))))
+          (show-tx-result* (or
+                             (when-let [err (get-in result [:error-text])]
+                              {:error err})
+                             (get-in result [:body `save-entity]))))))))

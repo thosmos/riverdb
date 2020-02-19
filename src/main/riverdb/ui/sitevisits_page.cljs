@@ -224,7 +224,7 @@
                 (fs/mark-complete* [:org.riverdb.db.fieldresult/gid id] k)))
             s dbids))))))
 
-(fm/defmutation set-field-result [{:keys [i samp-ident const-id db-id val devID devType]}]
+(fm/defmutation set-field-result [{:keys [i samp-ident const-id db-id val devType devID]}]
   (action [{:keys [state]}]
     (debug "MUTATION set-field-result" i val)
     (cond
@@ -240,7 +240,7 @@
         (swap! state merge/merge-component FieldResultForm new-form :append (conj samp-ident :sample/FieldResults))))))
 
 
-(defn rui-fieldres [samp-ident i const-id f-res deviceType devID]
+(defn rui-fieldres [samp-ident i const-id f-res devType devID]
   (let [val (:fieldresult/Result f-res)]
     (ui-float-input {:type     "text"
                      :value    val
@@ -250,10 +250,10 @@
                                   (debug "CHANGE FIELD RESULT" db-id v)
                                   (comp/transact! SPA `[(set-field-result
                                                           {:samp-ident ~samp-ident
-                                                           :deviceType ~deviceType
                                                            :const-id   ~const-id
-                                                           :db-id      ~db-id
+                                                           :devType    ~devType
                                                            :devID      ~devID
+                                                           :db-id      ~db-id
                                                            :val        ~v
                                                            :i          ~i})]))})))
 
@@ -349,49 +349,45 @@
                            :parameter/name
                            :parameter/samplingdevicelookupRef])
    :initLocalState (fn [this props]
-                     (debug "INIT LOCAL STATE FieldMeasureParamForm")
+                     (debug "INIT LOCAL STATE FieldMeasureParamForm" props)
                      (let [cmp     (:fulcro.client.primitives/computed props)
-                           results (:fieldresults cmp)
-                           fst     (first results)
-                           time    (:fieldresult/ResultTime fst)
-                           inst    (:fieldresult/SamplingDeviceCode fst)
-                           instID  (:fieldresult/SamplingDeviceID fst)
-                           stuff   {:time          time
-                                    :deviceType    inst
-                                    :instID        instID
+                           fst     (first (:fieldresults cmp))
+                           stuff   {:time          (:fieldresult/ResultTime fst)
+                                    :devType       (:fieldresult/SamplingDeviceCode fst)
+                                    :devID         (:fieldresult/SamplingDeviceID fst)
                                     :setDeviceType #(do
-                                                      (debug "SET STATE deviceType" %)
-                                                      (comp/set-state! this {:deviceType %}))}]
-                       (debug "saving things" stuff)
-                       (comp/set-state! this stuff)))}
-  ;stuff))}
+                                                      (debug "SET STATE :devType" %)
+                                                      (comp/set-state! this {:devType %}))
+                                    :setDeviceID #(do
+                                                    (debug "SET STATE :devID" %)
+                                                    (comp/set-state! this {:devID %}))}]
+                       (debug "INIT LOCAL STATE FieldMeasureParamForm" stuff)
+                       stuff))}
 
   (let [p-name        (:parameter/name props)
         p-device      (:parameter/samplingdevicelookupRef props)
         p-const       (:parameter/constituentlookupRef props)
         p-const-id    (:db/id p-const)
         results       fieldresults
-        ;results    (filterv #(= (get-in % [:fieldresult/ConstituentRowID :db/id]) p-const-id) fieldresults)
         rs            (into {} (map #(identity [(:fieldresult/FieldReplicate %) %]) fieldresults))
         rslts         (->> (mapv :fieldresult/Result results)
                         (mapv parse-float)
                         (remove nil?))
+        {:keys [time setDeviceType setDeviceID devType devID] :as state} (comp/get-state this)
+        _             (debug "READ STATE" state)
         fst           (first fieldresults)
         devFst        (:fieldresult/SamplingDeviceCode fst)
-        devStat       (comp/get-state this :deviceType)
-        deviceType    (or devStat devFst p-device)
-        ;_          (debug "deviceType" deviceType devFst devStat p-device)
-        deviceType    (select-keys deviceType [:db/id])
+        devType       (or devType devFst p-device)
+        devType       (select-keys devType [:db/id])
         devIDfst      (:fieldresult/SamplingDeviceID fst)
-        devIDStat     (comp/get-state this :instID)
-        devID         (or devIDfst devIDStat)
+        devID         (or devID devIDfst)
         mean          (/ (reduce + rslts) (count rslts))
         stddev        (tu/std-dev rslts)
         rsd           (tu/round2 2 (tu/percent-prec mean stddev))
         rnge          (tu/round2 2 (- (reduce max rslts) (reduce min rslts)))
         mean          (tu/round2 2 mean)
-        stddev        (tu/round2 2 stddev)
 
+        stddev        (tu/round2 2 stddev)
         prec          (clojure.edn/read-string precisionCode)
         precRSD       (:rsd prec)
         precRange     (:range prec)
@@ -402,24 +398,21 @@
                             (> rnge precRange)
                             (< mean precThreshold))
                           (> rnge precRange)))
-        rsdExc        (when precRSD
-                        (if precThreshold
-                          (and
-                            (> mean precThreshold)
-                            (> rsd precRSD))
-                          (> rsd precRSD)))
 
         ;_             (debug "prec" prec "rnge" rnge "precRange" precRange "typeRange" (type precRange)
         ;                "typeRSD" (type precRSD) "typeThresh" (type precThreshold) "range exceedance?" (> rnge precRange))
 
 
 
-        {:keys [time setDeviceType]} (comp/get-state this)
-        ;_          (debug "GET STATE" (comp/get-state this))
-        time          (or (:fieldresult/ResultTime (first results)) time)
+        rsdExc        (when precRSD
+                        (if precThreshold
+                          (and
+                            (> mean precThreshold)
+                            (> rsd precRSD))
+                          (> rsd precRSD)))
+        time          (or time (:fieldresult/ResultTime (first results)))
         unit          (get-in p-const [:constituentlookup/UnitCode :unitlookup/Unit])]
-    (debug "RENDER SampleParamForm" (keys props)) ;p-name p-const-id (:db/id (:fieldresult/ConstituentRowID (first fieldresults))))
-
+    (debug "RENDER FieldMeasureParamForm" p-name)
 
     (tr {:key id}
       (td {:key "name"} p-name)
@@ -427,12 +420,11 @@
         (ui-theta-options (comp/computed
                             (merge deviceTypeLookup
                               {:riverdb.entity/ns :entity.ns/samplingdevicelookup
-                               :value             deviceType
+                               :value             devType
                                :opts              {:load false}})
                             {:changeMutation `set-all
                              :changeParams   {:dbids    (mapv :db/id results)
                                               :k        :fieldresult/SamplingDeviceCode
-                                              :isRef    true
                                               :onChange setDeviceType}})))
 
       (td {:key "instID"}
@@ -441,12 +433,12 @@
                               {:riverdb.entity/ns :entity.ns/samplingdevice
                                :value             devID
                                :filter-key        :samplingdevice/DeviceType
-                               :filter-val        deviceType
+                               :filter-val        devType
                                :opts              {:load false :style {:width 70 :minWidth 50}}})
                             {:changeMutation `set-all
                              :changeParams   {:dbids (mapv :db/id results)
                                               :k     :fieldresult/SamplingDeviceID
-                                              :isRef true}})))
+                                              :onChange setDeviceID}})))
 
       (td {:key "unit"} (or unit ""))
 
@@ -455,7 +447,7 @@
         (fn [i]
           (td {:key (str i)}
             (let [rs (get rs i)]
-              (rui-fieldres samp-ident i p-const-id (or rs "") deviceType devID))))
+              (rui-fieldres samp-ident i p-const-id (or rs "") devType devID))))
         (range 1 (inc reps)))
 
 
@@ -953,7 +945,7 @@
                    :opts              default-opts})
                 {:changeMutation `set-value
                  :changeParams   {:ident this-ident
-                                  :k :sitevisit/DataEntryPersonRef}})))
+                                  :k     :sitevisit/DataEntryPersonRef}})))
           ;:onChange  #(do
           ;              (log/debug "data person changed" %)
           ;              (set-ref! this :sitevisit/DataEntryPersonRef %))
@@ -983,7 +975,7 @@
                    :opts              default-opts})
                 {:changeMutation `set-value
                  :changeParams   {:ident this-ident
-                                  :k :sitevisit/CheckPersonRef}})))
+                                  :k     :sitevisit/CheckPersonRef}})))
 
 
           (div :.field {:key "qcer"}
@@ -996,7 +988,7 @@
                    :opts              default-opts})
                 {:changeMutation `set-value
                  :changeParams   {:ident this-ident
-                                  :k :sitevisit/QAPersonRef}})))
+                                  :k     :sitevisit/QAPersonRef}})))
 
 
           (div :.field {:key "qadate" :style {:width 180}}
@@ -1106,9 +1098,9 @@
            {:projectslookup/Parameters (comp/get-query Parameter)}]})
 
 
-(defsc SiteVisitEditor [this {:keys [sitevisit]
+(defsc SiteVisitEditor [this {:keys                 [sitevisit]
                               :riverdb.ui.root/keys [current-project current-agency]
-                              :ui/keys [] :as props}]
+                              :ui/keys              [] :as props}]
   {:ident             (fn [] [:component/id :sitevisit-editor])
    :query             [{:sitevisit (comp/get-query SiteVisitForm)}
                        {[:riverdb.ui.root/current-agency '_] (comp/get-query looks/agencylookup-sum)}
@@ -1178,12 +1170,12 @@
                         :.ui.segment {:padding ".5em"}
                         :.ui.raised.segment {:padding ".3em"}
                         :.ui.table {:margin-top ".3em"}]]}
-  (let [parameters       (get-in current-project [:projectslookup/Parameters])]
+  (let [parameters (get-in current-project [:projectslookup/Parameters])]
     (debug "RENDER SiteVisitsEditor" (keys props))
     (div {}
-      (ui-sv-form (comp/computed sitevisit {:current-project              current-project
-                                            :current-agency               current-agency
-                                            :parameters                   parameters})))))
+      (ui-sv-form (comp/computed sitevisit {:current-project current-project
+                                            :current-agency  current-agency
+                                            :parameters      parameters})))))
 
 
 (defsc SiteVisitSummary [this {:keys [db/id sitevisit/SiteVisitDate sitevisit/VisitType] :as props} {:keys [onEdit]}]

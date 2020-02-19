@@ -2002,11 +2002,25 @@
    :sample/SampleTypeCode],
   :entity/nameKey :sample/SampleDate,
   :entity/attrs
-  [#:attr{:name "DepthSampleCollection",
+  [#:attr{:name "Constituent",
+          :key :sample/ConstituentRef,
+          :cardinality :one,
+          :type :ref}
+   #:attr{:name "DepthSampleCollection",
           :key :sample/DepthSampleCollection,
           :position 7,
           :cardinality :one,
           :type :bigdec}
+   #:attr{:name "Device ID",
+          :key :sample/DeviceIDRef,
+          :cardinality :one,
+          :type :ref
+          :ref #:entity{:ns :entity.ns/samplingdevice}}
+   #:attr{:name "Device Type",
+          :key :sample/DeviceTypeRef,
+          :cardinality :one,
+          :type :ref
+          :ref #:entity{:ns :entity.ns/samplingdevicelookup}}
    #:attr{:name "EventType",
           :key :sample/EventType,
           :position 4,
@@ -2092,6 +2106,10 @@
           :type :ref,
           :ref #:entity{:ns :entity.ns/sitevisit},
           :refKey :entity.ns/sitevisit}
+   #:attr{:name "Time",
+          :key :sample/Time,
+          :cardinality :one,
+          :type :string}
    #:attr{:name "Unit",
           :key :sample/Unit,
           :position 8,

@@ -1,5 +1,6 @@
 (ns riverdb.ui.lookup-options
   (:require
+    [clojure.data]
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
     [com.fulcrologic.fulcro.application :as fapp]
@@ -165,8 +166,8 @@
                                             (let [txd `[(~changeMutation ~(assoc changeParams :v ref-val))]]
                                               (comp/transact! SPA txd)))
                                           (when onChange
-                                            (debug "calling onChange")
-                                            (onChange value)))))
+                                            (debug "calling onChange" ref-val)
+                                            (onChange ref-val)))))
                   :onAddItem        (fn [_ d]
                                       (let [val     (-> d .-value)
                                             ref-val (get-ref-set-val value val)]

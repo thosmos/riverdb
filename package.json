@@ -46,6 +46,7 @@
     "main": "APP_ENV=dev LOG_LEVEL=0 npx shadow-cljs -A:cljs-dev watch :main",
     "compile": "APP_ENV=dev LOG_LEVEL=0 npx shadow-cljs -A:cljs-dev compile :main",
     "release": "APP_ENV=prod TIMBRE_LEVEL=':info' LOG_LEVEL=2 npx shadow-cljs release :main",
+    "log-release": "APP_ENV=prod TIMBRE_LEVEL=':debug' LOG_LEVEL=0 npx shadow-cljs release :main",
     "server": "clojure -A:dev:server:run"
   },
   "author": "Thomas Spellman <thomas@thosmos.com>",

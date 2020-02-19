@@ -7,7 +7,6 @@
       <sourceFolder url="file://$MODULE_DIR$/src/dev" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/main" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/server" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/src/workspaces" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/test" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/.cpcache" />
       <excludeFolder url="file://$MODULE_DIR$/.idea" />
@@ -48,7 +47,6 @@
     <orderEntry type="library" name="Deps: org.clojure/core.specs.alpha:0.2.44" level="project" />
     <orderEntry type="library" name="Deps: org.bouncycastle/bcpkix-jdk15on:1.62" level="project" />
     <orderEntry type="library" name="Deps: io.pedestal/pedestal.jetty:0.5.7" level="project" />
-    <orderEntry type="library" name="Deps: colorize:0.1.1" level="project" />
     <orderEntry type="library" name="Deps: edn-query-language/eql:0.0.9" level="project" />
     <orderEntry type="library" name="Deps: io.undertow/undertow-core:2.0.25.Final" level="project" />
     <orderEntry type="library" name="Deps: expound:0.7.2" level="project" />
@@ -65,7 +63,6 @@
     <orderEntry type="library" name="Deps: org.eclipse.jetty/jetty-http:9.4.18.v20190429" level="project" />
     <orderEntry type="library" name="Deps: org.eclipse.jetty/jetty-util:9.4.18.v20190429" level="project" />
     <orderEntry type="library" name="Deps: com.taoensso/encore:2.117.0" level="project" />
-    <orderEntry type="library" name="Deps: com.lucasbradstreet/cljs-uuid-utils:1.0.2" level="project" />
     <orderEntry type="library" name="Deps: com.datomic/datomic-free:0.9.5697" level="project" />
     <orderEntry type="library" name="Deps: org.slf4j/jcl-over-slf4j:1.7.25" level="project" />
     <orderEntry type="library" name="Deps: datomic-schema:1.3.0" level="project" />
@@ -87,7 +84,7 @@
     <orderEntry type="library" name="Deps: com.cognitect/transit-cljs:0.8.256" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/google-closure-library:0.0-20191016-6ae1f72f" level="project" />
     <orderEntry type="library" name="Deps: org.apache.maven/maven-model-builder:3.6.3" level="project" />
-    <orderEntry type="library" name="Deps: io.aviso/pretty:0.1.37" level="project" />
+    <orderEntry type="library" name="Deps: io.aviso/pretty:0.1.33" level="project" />
     <orderEntry type="library" name="Deps: com.googlecode.javaewah/JavaEWAH:1.1.6" level="project" />
     <orderEntry type="library" name="Deps: com.h2database/h2:1.3.171" level="project" />
     <orderEntry type="library" name="Deps: thheller/shadow-cljs:2.8.83" level="project" />
@@ -103,7 +100,6 @@
     <orderEntry type="library" name="Deps: org.eclipse.jetty.websocket/websocket-api:9.4.18.v20190429" level="project" />
     <orderEntry type="library" name="Deps: org.eclipse.jetty.alpn/alpn-api:1.1.3.v20160715" level="project" />
     <orderEntry type="library" name="Deps: com.yahoo.platform.yui/yuicompressor:2.4.8" level="project" />
-    <orderEntry type="library" name="Deps: cljsjs/highlight:9.12.0-2" level="project" />
     <orderEntry type="library" name="Deps: spec-coerce:1.0.0-alpha6" level="project" />
     <orderEntry type="library" name="Deps: com.jcraft/jsch.agentproxy.usocket-jna:0.0.9" level="project" />
     <orderEntry type="library" name="Deps: commons-io:2.6" level="project" />
@@ -122,7 +118,6 @@
     <orderEntry type="library" name="Deps: com.fasterxml.jackson.core/jackson-core:2.9.9" level="project" />
     <orderEntry type="library" name="Deps: clj-time:0.15.2" level="project" />
     <orderEntry type="library" name="Deps: org.eclipse.jetty.websocket/websocket-servlet:9.4.18.v20190429" level="project" />
-    <orderEntry type="library" name="Deps: fulcrologic/fulcro-spec:3.1.4" level="project" />
     <orderEntry type="library" name="Deps: clj-http:2.0.0" level="project" />
     <orderEntry type="library" name="Deps: org.ow2.asm/asm:5.2" level="project" />
     <orderEntry type="library" name="Deps: org.slf4j/jul-to-slf4j:1.7.7" level="project" />
@@ -155,10 +150,8 @@
     <orderEntry type="library" name="Deps: com.fulcrologic/fulcro:3.1.9" level="project" />
     <orderEntry type="library" name="Deps: hiccup:1.0.5" level="project" />
     <orderEntry type="library" name="Deps: javax.annotation/jsr250-api:1.0" level="project" />
-    <orderEntry type="library" name="Deps: binaryage/env-config:0.2.2" level="project" />
     <orderEntry type="library" name="Deps: riddley:0.1.12" level="project" />
     <orderEntry type="library" name="Deps: io.opentracing/opentracing-api:0.33.0" level="project" />
-    <orderEntry type="library" name="Deps: cljsjs/react-grid-layout:0.16.6-0" level="project" />
     <orderEntry type="library" name="Deps: com.cognitect/http-client:0.1.101" level="project" />
     <orderEntry type="library" name="Deps: org.apache.maven/maven-resolver-provider:3.6.3" level="project" />
     <orderEntry type="library" name="Deps: com.google.javascript/closure-compiler-externs:v20191027" level="project" />
@@ -171,10 +164,8 @@
     <orderEntry type="library" name="Deps: com.google.guava/guava:25.1-jre" level="project" />
     <orderEntry type="library" name="Deps: lynxeyes/dotenv:1.0.2" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/data.xml:0.2.0-alpha6" level="project" />
-    <orderEntry type="library" name="Deps: com.github.awkay/workspaces:1.0.0-RC2" level="project" />
     <orderEntry type="library" name="Deps: clojure.java-time:0.3.2" level="project" />
     <orderEntry type="library" name="Deps: org.apache.maven.resolver/maven-resolver-spi:1.4.1" level="project" />
-    <orderEntry type="library" name="Deps: binaryage/devtools:0.9.10" level="project" />
     <orderEntry type="library" name="Deps: net.cgrand/macrovich:0.2.0" level="project" />
     <orderEntry type="library" name="Deps: org.eclipse.jetty.http2/http2-common:9.4.18.v20190429" level="project" />
     <orderEntry type="library" name="Deps: commons-beanutils:1.9.2" level="project" />
@@ -217,7 +208,6 @@
     <orderEntry type="library" name="Deps: org.eclipse.jetty/jetty-io:9.4.18.v20190429" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/tools.reader:1.3.2" level="project" />
     <orderEntry type="library" name="Deps: thosmos/domain-spec:0.1.2" level="project" />
-    <orderEntry type="library" name="Deps: com.wsscode/fuzzy:1.0.0" level="project" />
     <orderEntry type="library" name="Deps: io.opentracing/opentracing-util:0.33.0" level="project" />
     <orderEntry type="library" name="Deps: org.codehaus.janino/commons-compiler:2.6.1" level="project" />
     <orderEntry type="library" name="Deps: javax.servlet/servlet-api:2.5" level="project" />
