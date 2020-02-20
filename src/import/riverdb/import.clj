@@ -1,62 +1,29 @@
 (ns riverdb.import
-  (:require [clojure.tools.logging :as log :refer [debug info warn error]]
-            [clojure-csv.core :as csv :refer [write-csv parse-csv]]
-            [com.walmartlabs.lacinia.schema :as schema]
-            [clojure.core.rrb-vector :as fv]
-            [clojure.spec.alpha :as s]
-            [clojure.java.io :as io]
-            [thosmos.util :as tu]
-            [clojure.edn :as edn]
-            [datomic.api :as d]
-            [java-time :as jt]
-            [domain-spec.core :as ds]
-            [riverdb.api.geo :as geo]
-            [riverdb.state :as state :refer [db cx]]
-            [riverdb.db :as rdb]
+  (:require [clj-time.coerce :as c]
             [clj-time.core :as t]
             [clj-time.local :as l]
-            [clj-time.coerce :as c]
-            [clojure.string :as str])
+            [clojure.core.rrb-vector :as fv]
+            [clojure-csv.core :as csv :refer [write-csv parse-csv]]
+            [clojure.edn :as edn]
+            [clojure.java.io :as io]
+            [clojure.spec.alpha :as s]
+            [clojure.tools.logging :as log :refer [debug info warn error]]
+            [clojure.string :as str]
+            [com.walmartlabs.lacinia.schema :as schema]
+            [datomic.api :as d]
+            [domain-spec.core :as ds]
+            [java-time :as jt]
+            [riverdb.api.geo :as geo]
+            [riverdb.db :as rdb]
+            [riverdb.state :as state :refer [db cx]]
+            [theta.util :refer [parse-bool parse-long parse-double parse-date]]
+            [thosmos.util :as tu])
   (:import (java.util Date)))
 
 (def uri-dbf (or (dotenv/env :DATOMIC_URI_DBF) "datomic:free://localhost:4334/test-dbf"))
 
 
-(defn parse-date [date-str]
-  (when date-str
-    (when-let [daten (try
-                       (Date/parse date-str)
-                       (catch Exception ex (warn "parse-date failed for: " date-str (type str))))]
-      (Date. ^long daten))))
 
-(defn parse-double [str]
-  (when str
-    (try
-      (Double/parseDouble str)
-      (catch Exception ex (warn "parse-double failed for: " str (type str))))))
-
-(defn parse-long [str]
-  (when str
-    (try
-      (Long/parseLong str)
-      (catch Exception ex (warn "parse-long failed for: " str (type str))))))
-
-(defn parse-bigdec [str]
-  (when str
-    (try
-      (BigDecimal. ^String str)
-      (catch Exception ex (warn "parse-bigdec failed for: " str (type str))))))
-
-(defn parse-bool [str]
-  (try
-    (cond
-      (boolean? str)
-      str
-      (= str "1")
-      true
-      :else
-      (Boolean/parseBoolean str))
-    (catch Exception ex (warn "failed to parse boolean: " str (type str)))))
 
 
 (def qapp-requirements

@@ -31,23 +31,25 @@
   (log/info "Application starting.")
   (cssi/upsert-css "componentcss" {:component root/Root})
   ;(inspect/app-started! SPA)
+  (log/info "Setting Fulcro Root and Initializing State")
   (app/set-root! SPA root/Root {:initialize-state? true})
   ;(routes/start-routing SPA {:use-fragment false})
+  (log/info "Initializing Fulcro Dynamic Routing")
   (dr/initialize! SPA)
-  (routes/start!)
-  (log/info "Starting session machine.")
-
+  (log/info "Starting Session Machine.")
   (uism/begin! SPA session/session-machine ::session/session
     {:actor/login-form      root/LoginForm
-     :actor/logout-menu      root/Login
+     :actor/logout-menu     root/Login
      :actor/current-session ui-session/Session
      :actor/project-years   py/ProjectYears
      :actor/globals         globals/Globals}
     {:desired-path (some-> js/window .-location .-pathname)})
+  (log/info "Starting Pushy")
+  (routes/start!)
 
   ;(form/install-ui-controls! SPA sui/all-controls)
   ;(attr/register-attributes! model/all-attributes)
-
+  (log/info "Mounting Root")
   (app/mount! SPA root/Root "app" {:initialize-state? false}))
 
 (comment

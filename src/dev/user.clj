@@ -117,7 +117,9 @@
 
 
 
-(comment)
+(comment
+  (require '[vlaaad.reveal.ui])
+  (def rev (vlaaad.reveal.ui/make)))
 ;(require '[clojure.tools.deps.alpha :as deps])
 ;
 ;(->

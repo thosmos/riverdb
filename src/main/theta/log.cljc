@@ -1,10 +1,11 @@
 (ns theta.log
   #?(:cljs (:require-macros [theta.log]))
   (:require
-    [theta.util]
     #?@(:clj
         [[dotenv]
          [clojure.tools.logging :as log]])))
+
+#?(:clj (defmacro app-env [] dotenv/app-env))
 
 #?(:clj
    (defn cljs?
@@ -12,8 +13,10 @@
      [env]
      (boolean (:ns env))))
 
+
+
 #?(:clj (defmacro log-level [] (Integer/parseInt (or (dotenv/env :LOG_LEVEL) "0"))))
-(println (str "LOADING CLJC theta.log at log-level: " (theta.log/log-level) ", app-env: " (theta.util/app-env)))
+(println (str "LOADING CLJC theta.log at log-level: " (theta.log/log-level) ", app-env: " (theta.log/app-env)))
 
 #?(:clj
    ;; FIXME change CLJ macros to check log-level (they currently elide at compile time)
