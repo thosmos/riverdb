@@ -9,7 +9,8 @@
     [mount.core :as mount]
     [riverdb.server]
     [riverdb.state :refer [db cx]]
-    [thosmos.util :as tu]))
+    [thosmos.util :as tu]
+    [thosmos.datomic :as tdb]))
 
 (set! *data-readers* (assoc *data-readers* 'fulcro/tempid #'riverdb.util/readTempid))
 

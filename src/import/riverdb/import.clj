@@ -16,7 +16,7 @@
             [riverdb.api.geo :as geo]
             [riverdb.db :as rdb]
             [riverdb.state :as state :refer [db cx]]
-            [theta.util :refer [parse-bool parse-long parse-double parse-date]]
+            [theta.util :refer [parse-bool parse-long parse-double parse-date parse-bigdec]]
             [thosmos.util :as tu])
   (:import (java.util Date)))
 
@@ -110,9 +110,11 @@
    :H2O_pH   {:order 4 :count 3 :name "pH"}
    :H2O_Turb {:order 5 :count 3 :name "Tur"}
    :H2O_PO4  {:order 6 :count 3 :name "PO4"}
-   :H2O_NO3  {:order 6 :count 3 :name "NO3"}})
+   :H2O_NO3  {:order 6 :count 3 :name "NO3"}
+   :TotalColiform {:order 7 :count 1 :name "TotalColiform"}
+   :EColi {:order 7 :count 1 :name "EColi"}})
 
-(def param->constituent
+(def ssi-param->constituent
   {:H2O_pH   [:constituentlookup/ConstituentCode "5-42-78-0-0"]
    :H2O_Temp [:constituentlookup/ConstituentCode "5-42-100-0-31"]
    :H2O_Turb [:constituentlookup/ConstituentCode "5-42-108-0-9"]
@@ -120,7 +122,9 @@
    :H2O_DO   [:constituentlookup/ConstituentCode "5-42-38-0-6"]
    :H2O_PO4  [:constituentlookup/ConstituentCode "5-22-399-2-6"]
    :H2O_NO3  [:constituentlookup/ConstituentCode "5-20-69-0-6"]
-   :Air_Temp [:constituentlookup/ConstituentCode "10-42-100-0-31"]})
+   :Air_Temp [:constituentlookup/ConstituentCode "10-42-100-0-31"]
+   :TotalColiform [:constituentlookup/ConstituentCode "5-57-23-2-7"]
+   :EColi    [:constituentlookup/ConstituentCode "5-57-464-0-7"]})
 
 
 (def cols-wcca
@@ -147,9 +151,10 @@
    "QCPersonID"          :QAPerson})
 
 
-(def cols-ssi
+(def cols-SSI
   {
    "Site"              :site-name
+   "SiteID"            :site-id
    "SiteVisitID"       :svid
    "Date"              :SiteVisitDate
    "Time"              :time
@@ -157,35 +162,33 @@
    "Water Depth"       :WaterDepth
    "Depth Unit"        :UnitWaterDepth
    "Stream Width"      :StreamWidth
-   "Width Unit"        :UnitStreamWidth
+   "Width Unit"        :UnitStreamWidth})
 
-   "Field Notes"       :Notes
-   "Data Entry Notes"  :DataEntryNotes
-   "DataEntryDateTime" :DataEntryDate
-   ;   "DataEntryPersonID"   :DataEntryPerson
-   "QC"                :QACheck
-   "QCDate"            :QADate
-   "QCPerson"          :QAPerson})
+   ;"Field Notes"       :Notes
+   ;"Data Entry Notes"  :DataEntryNotes
+   ;"DataEntryDateTime" :DataEntryDate
+   ;;   "DataEntryPersonID"   :DataEntryPerson
+   ;"QC"                :QACheck
+   ;"QCDate"            :QADate
+   ;"QCPerson"          :QAPerson})
 
-(def cols-ssi
+(def cols-SSI_BR
   {
    "Site"              :site-name
+   "SiteID"            :site-id
    "SiteVisitID"       :svid
    "Date"              :SiteVisitDate
-   "Time"              :time
 
    "Water Depth"       :WaterDepth
-   "Depth Unit"        :UnitWaterDepth
-   "Stream Width"      :StreamWidth
-   "Width Unit"        :UnitStreamWidth
+   "Stream Width"      :StreamWidth})
 
-   "Field Notes"       :Notes
-   "Data Entry Notes"  :DataEntryNotes
-   "DataEntryDateTime" :DataEntryDate
+   ;"Field Notes"       :Notes
+   ;"Data Entry Notes"  :DataEntryNotes
+   ;"DataEntryDateTime" :DataEntryDate
    ;   "DataEntryPersonID"   :DataEntryPerson
-   "QC"                :QACheck
-   "QCDate"            :QADate
-   "QCPerson"          :QAPerson})
+   ;"QC"                :QACheck
+   ;"QCDate"            :QADate
+   ;"QCPerson"          :QAPerson})
 
 
 
@@ -285,6 +288,7 @@
                                (for [i (range ncols)]
                                  (when-let [col-key (get col-config (get header i))]
                                    (let [col-data (get row i)]
+                                     ;(debug "col-key" col-key "col-data" col-data)
                                      (when (and col-data (not= col-data ""))
                                        [col-key col-data])))))
                          frs (into {}
@@ -293,7 +297,9 @@
                                        param-name   (get-in param-config [k :name])
                                        vals         (vec (remove nil?
                                                            (for [i (range 1 (+ sample-count 1))]
-                                                             (let [csv_field (str param-name "_" i)
+                                                             (let [csv_field (if (> sample-count 1)
+                                                                               (str param-name "_" i)
+                                                                               param-name)
                                                                    csv_idx   (get hidx csv_field)]
                                                                (when csv_idx
                                                                  (let [field_val (get row csv_idx)]
@@ -305,72 +311,9 @@
       (->> rows
         (convert-bool :QACheck)))))
 
-;(defn read-csv-wcca [filename]
-;  (with-open
-;    [^java.io.Reader r (clojure.java.io/reader filename)]
-;    (let [csv    (parse-csv r)
-;          header (first csv)
-;          hidx   (into {} (for [i (range (count header))]
-;                            [(get header i) i]))
-;          csv    (vec (rest csv))
-;          ncols  (count header)
-;          rows   (for [row csv]
-;                   (let [sv  (into {}
-;                               (for [i (range ncols)]
-;                                 (when-let [col-key (get cols-wcca (get header i))]
-;                                   (let [col-data (get row i)]
-;                                     (when (and col-data (not= col-data ""))
-;                                       [col-key col-data])))))
-;                         frs (into {}
-;                               (for [[k v] param-config-wcca]
-;                                 (let [sample-count (get-in param-config-wcca [k :count])
-;                                       param-name   (get-in param-config-wcca [k :name])
-;                                       vals         (vec (remove nil?
-;                                                           (for [i (range 1 (+ sample-count 1))]
-;                                                             (let [csv_field (str param-name "_" i)
-;                                                                   csv_idx   (get hidx csv_field)]
-;                                                               (when csv_idx
-;                                                                 (let [field_val (get row csv_idx)]
-;                                                                   (edn/read-string field_val)))))))]
-;                                   (when (seq vals)
-;                                     [k {:vals vals}]))))
-;                         sv  (assoc sv :results frs)]
-;                     sv))]
-;      rows)))
-;
-;
-;(defn read-csv-ssi [filename]
-;  (with-open
-;    [^java.io.Reader r (clojure.java.io/reader filename)]
-;    (let [csv    (parse-csv r)
-;          header (first csv)
-;          hidx   (into {} (for [i (range (count header))]
-;                            [(get header i) i]))
-;          csv    (vec (rest csv))
-;          ncols  (count header)
-;          rows   (for [row csv]
-;                   (let [sv  (into {}
-;                               (for [i (range ncols)]
-;                                 (when-let [col-key (get cols-ssi (get header i))]
-;                                   (let [col-data (get row i)]
-;                                     (when (and col-data (not= col-data ""))
-;                                       [col-key col-data])))))
-;                         frs (into {}
-;                               (for [[k v] param-config-ssi]
-;                                 (let [sample-count (get-in param-config-ssi [k :count])
-;                                       param-name   (get-in param-config-ssi [k :name])
-;                                       vals         (vec (remove nil?
-;                                                           (for [i (range 1 (+ sample-count 1))]
-;                                                             (let [csv_field (str param-name "_" i)
-;                                                                   csv_idx   (get hidx csv_field)]
-;                                                               (when csv_idx
-;                                                                 (let [field_val (get row csv_idx)]
-;                                                                   (edn/read-string field_val)))))))]
-;                                   (when (seq vals)
-;                                     [k {:vals vals}]))))
-;                         sv  (assoc sv :results frs)]
-;                     sv))]
-;      rows)))
+(comment
+  (read-csv "import-resources/SSI-2019.csv" cols-SSI param-config-ssi))
+
 
 (defn gen-site-with-name
   ([cx project site-name]
@@ -405,13 +348,17 @@
 ;; 153019  (> % 153018)
 
 (defn proj-site->station-id [db project site-id]
-  (d/q '[:find ?e .
-         :in $ ?proj ?site-id
-         :where
-         [?pj :projectslookup/ProjectID ?proj]
-         [?e :stationlookup/StationID ?site-id]
-         [?e :stationlookup/Project ?pj]]
-    db project site-id))
+  (let [site-id (if (string? site-id)
+                  (parse-long site-id)
+                  site-id)
+        result (d/q '[:find ?e .
+                      :in $ ?proj ?site-id
+                      :where
+                      [?pj :projectslookup/ProjectID ?proj]
+                      [?e :stationlookup/StationID ?site-id]
+                      [?e :stationlookup/Project ?pj]]
+                 db project site-id)]
+    result))
 
 (defn proj-site-name->station-id [db project site-name]
   (d/q '[:find ?e .
@@ -466,16 +413,17 @@
 
 
 (defn import-field-results [const-table import-token-fm results]
-  (flatten
-    (for [[k {:keys [vals]}] results]
-      (let [constituent (get const-table k)]
-        (for [i (range (count vals))]
-          (let [import-token-fm-n (str import-token-fm "-" (name k) "-" (inc i))]
-            {:org.riverdb/import-key       import-token-fm-n
-             :fieldresult/SampleRowID      import-token-fm
-             :fieldresult/Result           (double (get vals i))
-             :fieldresult/FieldReplicate   (inc i)
-             :fieldresult/ConstituentRowID constituent}))))))
+  (vec
+    (flatten
+      (for [[k {:keys [vals]}] results]
+        (let [constituent (get const-table k)]
+          (for [i (range (count vals))]
+            (let [import-token-fm-n (str import-token-fm "-" (name k) "-" (inc i))]
+              {:org.riverdb/import-key       import-token-fm-n
+               ;:fieldresult/SampleRowID      import-token-fm
+               :fieldresult/Result           (double (get vals i))
+               :fieldresult/FieldReplicate   (inc i)
+               :fieldresult/ConstituentRowID constituent})))))))
 
 ;(defn import-csv [cx agency project filename]
 ;  (let [data              (read-csv filename)
@@ -608,19 +556,19 @@
 
 (defn import-csv-ssi-txds [db project filename]
   (debug "import-csv-ssi-txds")
-  (let [data (read-csv filename cols-ssi param-config-ssi)]
+  (let [data (read-csv filename cols-SSI param-config-ssi)]
     (vec
       ;; remove any that have no station
       (filter #(:sitevisit/StationID (first %))
         (for [dat data]
-          (let [{:keys [svid site-name SiteVisitDate Notes time results
+          (let [{:keys [svid site-id site-name SiteVisitDate Notes time results
                         StreamWidth UnitStreamWidth WaterDepth UnitWaterDepth
                         DataEntryDate DataEntryNotes DataEntryPerson QADate QACheck QAPerson]} dat
                 import-token-sv (str project "-" svid)
                 SiteVisitDate   (parse-date SiteVisitDate)
 
                 DataEntryDate   (parse-date DataEntryDate)
-                ;DataEntryPerson (parse-long DataEntryPerson)
+                DataEntryPerson (parse-long DataEntryPerson)
                 QACheck         (parse-bool QACheck)
                 QADate          (parse-date QADate)
                 QAPerson        (parse-long QAPerson)
@@ -628,27 +576,31 @@
                 WaterDepth      (parse-bigdec WaterDepth)
                 StreamWidth     (parse-bigdec StreamWidth)
                 time            time
-                station-id      (proj-site-name->station-id db project site-name)
-                _               (when-not station-id
+                site-id-id      (when site-id (proj-site->station-id db project site-id))
+                site-id-name    (when site-name (proj-site-name->station-id db project site-name))
+                site-id         (or site-id-id site-id-name)
+                _               (when-not site-id
                                   (warn "WARNING: missing :sitevisit/StationID for site-name " site-name))
                 import-str      (str "RiverDB.org import from file: " filename)
                 Notes           (if Notes
                                   (str Notes " \n " import-str)
                                   import-str)
-                sv              {:db/id                       import-token-sv
-                                 :sitevisit/ProjectID         [:projectslookup/ProjectID project]
+                sv              {:sitevisit/ProjectID         [:projectslookup/ProjectID project]
                                  :sitevisit/AgencyCode        [:agencylookup/AgencyCode "SSI"]
-                                 :sitevisit/StationID         station-id
+                                 :sitevisit/StationID         site-id
+                                 :sitevisit/QACheck           true
                                  :sitevisit/CreationTimestamp (Date.)
                                  :sitevisit/StationFailCode   [:stationfaillookup/StationFailCode 0]
                                  :sitevisit/VisitType         [:sitevisittype/id 1]
-                                 :org.riverdb/import-key      import-token-sv
-                                 :sitevisit/Notes             Notes}
+                                 :org.riverdb/import-key      import-token-sv}
                 sv              (cond-> sv
                                   time
                                   (assoc :sitevisit/Time time)
                                   SiteVisitDate
                                   (assoc :sitevisit/SiteVisitDate SiteVisitDate)
+
+                                  Notes
+                                  (assoc :sitevisit/Notes             Notes)
 
                                   DataEntryNotes
                                   (assoc :sitevisit/DataEntryNotes DataEntryNotes)
@@ -679,18 +631,21 @@
                                   (and WaterDepth UnitWaterDepth)
                                   (assoc :sitevisit/DepthMeasured true))
                 import-token-fm (str import-token-sv "-field")
-                sample          [{:sample/SiteVisitID     import-token-sv
-                                  :db/id                  import-token-fm
-                                  :org.riverdb/import-key import-token-fm
+                f-results       (import-field-results ssi-param->constituent import-token-fm results)
+                sample          [{:org.riverdb/import-key import-token-fm
                                   :sample/EventType       [:eventtypelookup/EventType "WaterChem"]
                                   :sample/SampleTypeCode  [:sampletypelookup/SampleTypeCode "FieldMeasure"]
-                                  :sample/QCCheck         false
-                                  :sample/SampleReplicate 0}]
-                f-results       (import-field-results param->constituent import-token-fm results)
-                result          [sv]]
+                                  :sample/QCCheck         true
+                                  :sample/SampleReplicate 0
+                                  :sample/FieldResults f-results}]
 
-            (concat result sample f-results)))))))
+                result          [(assoc sv :sitevisit/Samples sample)]]
+            result))))))
 
+
+(comment
+  (first (import-csv-ssi-txds (db) "SSI_1" "import-resources/SSI-2019.csv"))
+  (first (import-csv-ssi-txds (db) "SSI_BR" "import-resources/SSI_BR-2019.csv")))
 
 (defn import-csv-wcca [cx project filename]
   (println "importing " project filename)
@@ -710,6 +665,9 @@
       (flush)))
   (println "\ndone"))
 
+(comment
+  (import-csv-ssi (cx) "SSI_1" "import-resources/SSI-2019.csv")
+  (import-csv-ssi (cx) "SSI_BR" "import-resources/SSI_BR-2019.csv"))
 
 (comment
   (def data (import-csv (cx) "SSI" "SSI_1" "resources/migrations/SSI-2016.csv"))

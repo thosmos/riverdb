@@ -10,7 +10,6 @@
     [datomic.api :as d]
     [riverdb.api.tac-report :as tac]
     [riverdb.graphql.schema :refer [table-specs-ds specs-sorted specs-map]]
-    [riverdb.ui.globals :as globals]
     [datascript.core :as ds]
     [thosmos.util :as tu :refer [walk-modify-k-vals limit-fn]]
     [clojure.walk :as walk]
@@ -215,10 +214,12 @@
                           :else
                           (conj find '[?e :riverdb.entity/ns ?typ]))
 
+          _             (log/debug "FINAL FIND" find)
+
           results       (d/q find
                           (db) query lookup-key)
           results-count (count results)
-          _             (log/debug "\nLIST RESULTS for" lookup-key "\nCOUNT" results-count "\nFIND" find "\nQUERY" query "\nRESULTS" (first results))]
+          _             (log/debug "\nLIST RESULTS for" lookup-key "\nCOUNT" results-count "\nFIND" find "\nQUERY" query "\nFIRST RESULTS" (first results))]
 
       ;; if it's a metadata query, branch before doing all the limits and sorts
       (if meta?
@@ -377,17 +378,16 @@
        (db)))})
 
 (defresolver db-ident [env {:db/keys [ident]}]
-  {::pc/output [:db/id]
+  {::pc/output [:db/id :db/ident :riverdb.entity/ns]
    ::pc/input  #{:db/ident}}
-  (let [db-id (d/q '[:find ?e .
-                     :in $ ?id
-                     :where
-                     [(> ?e 1000)]
-                     [?e :db/ident ?id]]
-                (db) ident)]
-    (debug "DB-IDENT QUERY" ident db-id)
-    {:db/id (when db-id
-              (str db-id))}))
+  (let [result (d/q '[:find (pull ?e [:db/id :db/ident :riverdb.entity/ns]) .
+                      :in $ ?id
+                      :where
+                      [(> ?e 1000)]
+                      [?e :db/ident ?id]]
+                 (db) ident)]
+    (debug "DB-IDENT QUERY" ident result)
+    result))
 
 (defresolver meta-entities [env _]
   {::pc/output [{:meta-entities (mapv :attr/key (get-in (domain-spec.core/spec-specs) [0 :entity/attrs]))}]}

@@ -9,7 +9,8 @@
     [riverdb.ui.session :refer [Session]]
     [riverdb.ui.lookups :as looks :refer [stationlookup-sum]]
     [theta.log :as log :refer [debug info]]
-    [com.fulcrologic.fulcro.algorithms.merge :as merge]))
+    [com.fulcrologic.fulcro.algorithms.merge :as merge]
+    [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]))
 
 
 (defsc ProjectYears [this {:keys                 [agency-project-years]
@@ -39,6 +40,7 @@
 
         update-em   (fn [proj-k]
                       {:pre [(keyword? proj-k)]}
+                      (debug "UPDATE SELECTED PROJECT" proj-k)
                       (let [project (when proj-k
                                       (get-in agency-project-years [proj-k :project]))
                             sites   (when proj-k
@@ -48,8 +50,9 @@
                             year    (when years
                                       (get-year-fn current-year years))]
                         (when project
-                          (rm/merge-ident! (comp/get-ident looks/projectslookup-sum project) project
-                            :replace [:riverdb.ui.root/current-project]))
+                          (merge/merge-component! this looks/projectslookup-sum project :replace [:riverdb.ui.root/current-project]))
+                          ;(rm/merge-ident! (comp/get-ident looks/projectslookup-sum project) project
+                          ;  :replace [:riverdb.ui.root/current-project]))
                         (when sites
                           (rm/set-root-key! :riverdb.ui.root/current-project-sites [])
                           (rm/merge-idents! :org.riverdb.db.stationlookup/gid :db/id sites

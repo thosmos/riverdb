@@ -29,8 +29,23 @@
   (comp/transact! SPA `[(rm/clear-tac-report) (rm/clear-agency-project-years)])
   (routes/route-to! "/")
   ;(dr/change-route SPA ["main"])
+
   (-> env
     (clear)
+    (update ::uism/state-map
+      (fn [st]
+        (-> st
+          (dissoc :riverdb.ui.root/current-agency)
+          (dissoc :riverdb.ui.root/current-project)
+          (dissoc :riverdb.ui.root/current-project-sites)
+          (dissoc :riverdb.ui.root/current-year)
+          (dissoc :user/id)
+          (dissoc :tac-report-data)
+          (dissoc :dataviz-data)
+          (dissoc :riverdb.theta.options/ns)
+          (update-in [:component/id :proj-years] dissoc :agency-project-years)
+          (update-in [:component/id :projects] dissoc :projects)
+          (update-in [:component/id :sitevisit-list] dissoc :sitevisits))))
     (uism/assoc-aliased :username "" :session-valid? false :current-user "" :account-auth nil)
     (uism/trigger-remote-mutation :actor/login-form 'riverdb.model.session/logout {})
     (uism/activate :state/logged-out)))
@@ -52,19 +67,6 @@
   (let [success? (uism/alias-value env :session-valid?)]
     (debug "SESSION RESULT" success?)
 
-    ;; FIXME how to wait to route directly to sitevisit edit form until AFTER globals are loaded?
-    (if success?
-      (let [{:keys [desired-path]} (uism/retrieve env :config)]
-        (debug "ROUTE TO existing path?" desired-path)
-        (if desired-path
-          (routes/route-to! desired-path)
-          (routes/route-to! "/")))
-      (do
-        ;(routes/route-to! "/")
-        (debug "LOGIN FAILED" "error-message" error-message)))
-
-
-
     (cond-> (clear env)
       true (-> (assoc-in [::uism/state-map :root/ready] true))
       success? (->
@@ -74,26 +76,32 @@
                                        (uism/actor->ident env :actor/current-session)
                                        (::uism/state-map env))
                           globals    (get actor-data [:component/id :globals])
-                          _ (debug "GLOBALS" globals)
+                          _          (debug "GLOBALS" globals)
                           user       (get-in actor-data [:account/auth :user])
                           roles      (roles/user->roles user)
                           agencies   (when roles (roles/roles->agencies2 roles))
                           agency     (first agencies)
                           agencyCode (:agencylookup/AgencyCode agency)
-                          agID (:db/id agency)]
+                          agID       (:db/id agency)
+                          {:keys [desired-path] :as config} (uism/retrieve env :config)]
                       (df/load! SPA :agency-project-years nil
-                        {:params        {:agencies [agencyCode]}
-                         :target        [:component/id :proj-years :agency-project-years]
-                         :post-mutation `rm/process-project-years})
+                        {:params               {:agencies [agencyCode]}
+                         :target               [:component/id :proj-years :agency-project-years]
+                         :post-mutation        `rm/process-project-years
+                         :post-mutation-params {:desired-path desired-path}})
                       (agency/preload-agency agID)
                       #_(df/load! SPA [:component/id :globals] globals/Globals)
                       (debug "AUTH STUFF" agencyCode (keys env))
-                      (assoc-in env [::uism/state-map :riverdb.ui.root/current-agency]
-                        [:org.riverdb.db.agencylookup/gid (:db/id agency)]))))
+                      (-> env
+                        (uism/store :config (dissoc config :desired-path))
+                        (assoc-in [::uism/state-map :riverdb.ui.root/current-agency]
+                          [:org.riverdb.db.agencylookup/gid (:db/id agency)])))))
 
-                 ;(uism/assoc-aliased :modal-open? false)
                  (uism/activate :state/logged-in))
       (not success?) (->
+                       ((fn [env]
+                          (debug "LOGIN FAILED" "error-message" error-message)
+                          env))
                        (uism/assoc-aliased :error error-message)
                        (uism/activate :state/logged-out)))))
 

@@ -43,6 +43,7 @@
   },
   "scripts": {
     "dev": "APP_ENV=dev LOG_LEVEL=0 npx shadow-cljs -A:cljs-dev server",
+    "local": "APP_ENV=dev LOG_LEVEL=0 npx shadow-cljs -A:cljs-dev:local-dev server",
     "main": "APP_ENV=dev LOG_LEVEL=0 npx shadow-cljs -A:cljs-dev watch :main",
     "compile": "APP_ENV=dev LOG_LEVEL=0 npx shadow-cljs -A:cljs-dev compile :main",
     "release": "APP_ENV=prod TIMBRE_LEVEL=':info' LOG_LEVEL=2 npx shadow-cljs release :main",

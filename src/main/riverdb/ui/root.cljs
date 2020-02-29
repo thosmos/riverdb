@@ -305,7 +305,7 @@
           [(dom/a :.item {:key  "tac" :classes [(when (= :tac-report current-tab) "active")]
                           :href "/tac-report"} "TAC Report")
            (dom/a :.item {:key  "dataviz" :classes [(when (= :dataviz current-tab) "active")]
-                          :href "/dataviz"} "Dataviz")])
+                          :href "/dataviz"} "Summary Table")])
         (when (and ready logged-in?)
           [(when rdb-admin?
              (dom/a :.item {:key  "theta" :classes [(when (= :theta current-tab) "active")]
@@ -313,7 +313,7 @@
            (dom/a :.item {:key  "projects" :classes [(when (= :projects current-tab) "active")]
                           :href "/projects"} "Edit Projects")
            (dom/a :.item {:key  "sitevisit" :classes [(when (= :sitevisit current-tab) "active")]
-                          :href "/sitevisit/list"} "Sitevisits")])
+                          :href "/sitevisit/list"} "Site Visits")])
         (div :.right.menu
           ;(div :.item (ui-activity {}))
           (ui-agency-menu agency-menu)

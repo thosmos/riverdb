@@ -137,7 +137,9 @@
   (let [session-valid? (get-in env [:ring/request :session :session/valid?])
         user-email     (when session-valid?
                          (get-in env [:ring/request :session :account/auth :user :user/email]))
-        karl?          (= user-email "karl@yubariver.org")
+        karl?          (or
+                         (= user-email "karl@yubariver.org")
+                         (= user-email "mo@sierrastreamsinstitute.org"))
         tempids        (sp/select (sp/walker tempid/tempid?) diff)
         tmp-map        (into {} (map (fn [t] [t (-> t :id str (subs 0 20))]) tempids))
         _              (debug "PRE TEMPIDS" tempids tmp-map)]
@@ -161,14 +163,17 @@
                 _       (debug "POST TEMPIDS" tempids)]
             (debug "SAVE-ENTITY RESULT" result)
             {:tempids tempids})))
-
-      {:error "Unauthorized"})))
+      (do
+        (debug "ERROR save-entity*" "Unauthorized")
+        {:error "Unauthorized"}))))
 
 (pc/defmutation save-entity [env {:keys [ident diff create]}]
   {::pc/sym    `save-entity
    ::pc/params [:ident :diff :create]
    ::pc/output [:error :tempids]}
-  (save-entity* env ident diff create))
+  (let [result (save-entity* env ident diff create)]
+    (debug "RESULT save-entity" result)
+    result))
 
 (def mutations [save-entity])
 

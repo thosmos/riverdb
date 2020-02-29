@@ -27,7 +27,7 @@
 
 (defsc DBIdents [this props]
   {:ident :db/ident
-   :query [:db/id :db/ident]})
+   :query [:db/id :db/ident :riverdb.entity/ns]})
 
 (defsc Globals
   "a single root query of some things at initial session"

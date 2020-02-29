@@ -8,4 +8,5 @@
    :query [:db/id
            {:projectslookup/Parameters (comp/get-query Parameter)}
            :projectslookup/Active
-           :projectslookup/Name]})
+           :projectslookup/Name
+           :projectslookup/ProjectID]})

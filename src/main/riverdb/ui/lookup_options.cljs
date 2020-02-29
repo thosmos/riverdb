@@ -58,6 +58,9 @@
               ident))
    :query [:riverdb.entity/ns :db/id]})
 
+(defn ent-ns->ident-k [ent-ns]
+  (keyword (str "org.riverdb.db." (name ent-ns)) "gid"))
+
 (defn load-theta-options
   ([app target-ident {:keys [text-key text-fn sort-key filter-key query-params] :as props}]
    (let [theta-k      (second target-ident)
@@ -134,17 +137,18 @@
                              (debug "SKIPPING LOAD ThetaOptions" ident-val))))}
   (let [this-ident (comp/get-ident this)
         theta-k    (:riverdb.entity/ns props)
+        ident-k    (ent-ns->ident-k theta-k)
         theta-spec (get look/specs-map theta-k)
         text-key   (get theta-spec :entity/nameKey)
         ref-id     (get-ref-val value)
         ;ref-props  (get-in (fapp/current-state SPA) this-ident)
         {:ui/keys [options loading]} props
         {:keys [multiple clearable allowAdditions additionPosition style]} opts
-        show?      (some? (and (not loading) (not-empty options)))
-        options    (if (and filter-key filter-val)
-                     (filterv #(= (:filt %) filter-val) options)
-                     options)]
-    (debug "RENDER ThetaOptions" theta-k "text-key:" text-key "value:" ref-id "loading:" loading "query-params:" query-params "filter-key:" filter-key "filter-val:" filter-val)
+        show?      (not loading)
+        options    (into [{:text "" :value ""}] (if (and filter-key filter-val)
+                                                  (filterv #(= (:filt %) filter-val) options)
+                                                  options))]
+    (debug "RENDER ThetaOptions" theta-k "text-key:" text-key "value:" ref-id) ;"loading:" loading "query-params:" query-params "filter-key:" filter-key "filter-val:" filter-val)
     (ui-dropdown {:loading          (not show?)
                   :search           true
                   :selection        true
@@ -153,13 +157,13 @@
                   :allowAdditions   (or allowAdditions false)
                   :additionPosition (or additionPosition "bottom")
                   :options          options
-                  :value            (or ref-id "")
+                  :value            ref-id
                   :autoComplete     "off"
                   :style            (or style {:width "auto" :minWidth "10em"})
                   :onChange         (fn [_ d]
                                       (when-let [val (-> d .-value)]
                                         (let [val     (if (= val "") nil val)
-                                              ref-val (get-ref-set-val value val)]
+                                              ref-val (get-ref-set-val value (keyword (str "org.riverdb.db." (name theta-k)) "gid") val)]
                                           (log/debug "RefInput change" ref-val)
                                           (when changeMutation
                                             (debug "calling mutation")
@@ -170,7 +174,7 @@
                                             (onChange ref-val)))))
                   :onAddItem        (fn [_ d]
                                       (let [val     (-> d .-value)
-                                            ref-val (get-ref-set-val value val)]
+                                            ref-val (get-ref-set-val value (keyword (str "org.riverdb.db." (name theta-k)) "gid") val)]
                                         (log/debug "onAddItem" ref-val)
                                         (when onAddItem
                                           (let [tx-params (merge addParams

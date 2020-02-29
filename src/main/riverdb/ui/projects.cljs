@@ -26,6 +26,12 @@
     [com.fulcrologic.semantic-ui.elements.header.ui-header :refer [ui-header]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form :refer [ui-form]]
     [com.fulcrologic.semantic-ui.elements.label.ui-label :refer [ui-label]]
+    [com.fulcrologic.semantic-ui.modules.modal.ui-modal :refer [ui-modal]]
+    [com.fulcrologic.semantic-ui.modules.modal.ui-modal-header :refer [ui-modal-header]]
+    [com.fulcrologic.semantic-ui.modules.modal.ui-modal-content :refer [ui-modal-content]]
+    [com.fulcrologic.semantic-ui.modules.modal.ui-modal-actions :refer [ui-modal-actions]]
+    [com.fulcrologic.semantic-ui.modules.modal.ui-modal-description :refer [ui-modal-description]]
+
     [com.fulcrologic.semantic-ui.collections.form.ui-form-checkbox :refer [ui-form-checkbox]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-radio :refer [ui-form-radio]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-field :refer [ui-form-field]]
@@ -38,9 +44,10 @@
     [goog.object :as gob]
     [riverdb.application :refer [SPA]]
     [riverdb.roles :as roles]
-    [riverdb.api.mutations :as rm]
+    [riverdb.api.mutations :as rm :refer [TxResult ui-tx-result]]
     [riverdb.ui.agency :refer [Agency]]
     [riverdb.ui.dataviz-page :refer [DataVizPage]]
+    [riverdb.ui.forms :refer [SampleTypeCodeForm]]
     [riverdb.ui.lookup :refer [specs-map]]
     [riverdb.ui.lookup-options :refer [ui-theta-options preload-options]]
     [riverdb.ui.lookups :as looks]
@@ -48,9 +55,10 @@
     [riverdb.ui.sitevisits-page :refer [SiteVisitsPage]]
     [riverdb.ui.session :refer [ui-session Session]]
     [riverdb.ui.tac-report-page :refer [TacReportPage]]
-    [riverdb.ui.util :as uiutil :refer [make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save
-                                        set-editing set-value set-value! set-refs! set-ref! set-ref set-refs get-ref-val get-ref-set-val]]
-    [theta.log :as log :refer [debug]]))
+    [riverdb.ui.util :as ui-util :refer [make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save
+                                         set-editing set-value set-value! set-refs! set-ref! set-ref set-refs get-ref-val get-ref-set-val get-db-ident db-ident->db-ref]]
+    [theta.log :as log :refer [debug]]
+    [com.fulcrologic.fulcro.algorithms.tempid :as tempid]))
 
 ;(cljs.reader/register-tag-parser! 'bigdec numeric)
 
@@ -196,13 +204,17 @@
                      :onChange  (save-fn :threshold)}))))))
 
 
-(defsc ParameterForm [this {:ui/keys        [editing saving]
+
+
+(defsc ParameterForm [this {:keys           [root/tx-result]
+                            :ui/keys        [editing saving]
                             :parameter/keys [active name nameShort high low
                                              precisionCode replicates
                                              constituentlookupRef
                                              samplingdevicelookupRef
                                              sampleTypeRef]
-                            :as             props}]
+                            :as             props}
+                      {:keys [cancel-new on-save]}]
   {:ident         [:org.riverdb.db.parameter/gid :db/id]
    :query         [fs/form-config-join
                    :db/id
@@ -225,23 +237,30 @@
                    :parameter/sampleTypeRef
                    :ui/editing
                    :ui/saving
-                   [:riverdb.theta.options/ns '_]]
+                   [:riverdb.theta.options/ns '_]
+                   {[:root/tx-result '_] (comp/get-query TxResult)}]
    ;[:riverdb.theta.options/ns :entity.ns/constituentlookup]
    ;[:riverdb.theta.options/ns :entity.ns/samplingdevicelookup]]
-   :initial-state {:riverdb.entity/ns :entity.ns/parameter
-                   :parameter/name    ""
-                   :ui/editing        false
-                   :ui/saving         false
-                   :parameter/active  false}
-   :form-fields   #{:parameter/constituentlookupRef
+   :initial-state {:db/id                   (tempid/tempid)
+                   :parameter/uuid          (tempid/uuid)
+                   :riverdb.entity/ns       :entity.ns/parameter
+                   :parameter/name          ""
+                   :ui/editing              true
+                   :ui/saving               false
+                   :parameter/active        false
+                   :parameter/sampleTypeRef :param/type}
+   :form-fields   #{:db/id
+                    :riverdb.entity/ns
+                    :parameter/uuid
+                    :parameter/name
+                    :parameter/active
+                    :parameter/constituentlookupRef
                     :parameter/samplingdevicelookupRef
                     :parameter/sampleTypeRef
-                    :parameter/active
                     :parameter/color
                     :parameter/high
                     :parameter/lines
                     :parameter/low
-                    :parameter/name
                     :parameter/nameShort
                     :parameter/replicates
                     :parameter/replicatesEntry
@@ -252,102 +271,138 @@
                     (->> data-tree
                       (clojure.walk/postwalk #(if (= % :com.fulcrologic.fulcro.algorithms.merge/not-found) nil %))
                       (merge current-normalized)))}
-  (let [this-ident     (comp/get-ident this)
-        dirty?         (some? (seq (fs/dirty-fields props false)))
-        param-specs    (get-in specs-map [:entity.ns/parameter :entity/attrs])
+  (let [this-ident   (comp/get-ident this)
+        dirty-fields (fs/dirty-fields props true)
+        dirty?       (some? (seq dirty-fields))
+        param-specs  (get-in specs-map [:entity.ns/parameter :entity/attrs])
         {sampletypelookup-options     :entity.ns/sampletypelookup
          constituentlookup-options    :entity.ns/constituentlookup
          samplingdevicelookup-options :entity.ns/samplingdevicelookup} (:riverdb.theta.options/ns props)]
-    ;(debug "RENDER ParameterForm" props)
+    (debug "RENDER ParameterForm" props)
     (if editing
-      (div :.ui.segment {}
-        (ui-header {} name)
-        (div :.fields {}
-          (div :.field {} (rui-input this :parameter/name {:required true :style {:width 200}}))
-          (div :.field {}
-            (ui-popup
-              {:trigger (rui-input this :parameter/nameShort
-                          {:required true :style {:width 100}
-                           :label    (label {} "Short Name" info-icon)})}
-              (get-in param-specs [:parameter/nameShort :attr/doc])))
+      (ui-modal {:open editing}
+        (ui-modal-header {:content (str "Edit Parameter: " name)})
+        (ui-modal-content {}
+          (when (not (empty? tx-result))
+            (ui-tx-result tx-result))
+          (div :.ui.form {}
+            (div :.ui.segment {}
+              (ui-header {} name)
+              (div :.fields {}
+                (div :.field {} (rui-input this :parameter/name {:required true :style {:width 200}}))
+                (div :.field {}
+                  (ui-popup
+                    {:trigger (rui-input this :parameter/nameShort
+                                {:required true :style {:width 100}
+                                 :label    (label {} "Short Name" info-icon)})}
+                    (get-in param-specs [:parameter/nameShort :attr/doc])))
 
-          (div :.field {} (rui-checkbox this :parameter/active {})))
-        (div :.field {}
-          (dom/label {} "Sample Type")
-          (ui-theta-options
-            (comp/computed
-              (merge
-                sampletypelookup-options
-                {:riverdb.entity/ns :entity.ns/sampletypelookup
-                 :value             sampleTypeRef
-                 :opts              {:load true}})
-              {:changeMutation `set-value
-               :changeParams   {:ident    this-ident
-                                :k        :parameter/sampleTypeRef}})))
-        (div :.field {}
-          (dom/label {} "Constituent")
-          (ui-theta-options
-            (comp/computed
-              (merge
-                constituentlookup-options
-                {:riverdb.entity/ns :entity.ns/constituentlookup
-                 :value             constituentlookupRef
-                 :opts              {:load true}})
-              {:changeMutation `set-value
-               :changeParams   {:ident this-ident
-                                :k     :parameter/constituentlookupRef}})))
-        (div :.field {}
-          (dom/label {} "Default Device")
-          (ui-theta-options
-            (comp/computed
-              (merge
-                samplingdevicelookup-options
-                {:riverdb.entity/ns :entity.ns/samplingdevicelookup
-                 :value             samplingdevicelookupRef
-                 :opts              {:clearable true :load true}})
-              {:changeMutation `set-value
-               :changeParams   {:ident this-ident
-                                :k     :parameter/samplingdevicelookupRef}})))
-        (div :.field
-          (label {} "Data Quality")
-          (div :.fields {}
-            (div :.field {} (rui-bigdec this :parameter/low {:style {:width 80}}))
-            (div :.field {} (rui-bigdec this :parameter/high {:style {:width 80}}))
-            (div :.field {}
-              (ui-popup
-                {:trigger (rui-int this :parameter/replicates {:style {:width 80} :label (label {} "Required Replicates" info-icon)})}
-                (get-in param-specs [:parameter/replicates :attr/doc])))
-            (div :.field {}
-              (ui-popup
-                {:trigger (rui-int this :parameter/replicatesEntry {:label (label {} "Entry Replicates" info-icon) :style {:width 80}})}
-                (get-in param-specs [:parameter/replicatesEntry :attr/doc])))
-            (div :.field {}
-              (ui-popup
-                {:trigger (rui-checkbox this :parameter/replicatesElide {:label (label {} "Elide Outliers?" info-icon)})}
-                (get-in param-specs [:parameter/replicatesElide :attr/doc])))))
-        (ui-precision this :parameter/precisionCode)
+                (div :.field {} (rui-checkbox this :parameter/active {})))
+              (div :.field {}
+                (dom/label {} "Sample Type")
+                (ui-theta-options
+                  (comp/computed
+                    (merge
+                      sampletypelookup-options
+                      {:riverdb.entity/ns :entity.ns/sampletypelookup
+                       :value             sampleTypeRef
+                       :opts              {:load true}})
+                    {:changeMutation `set-value
+                     :changeParams   {:ident this-ident
+                                      :k     :parameter/sampleTypeRef}})))
+              (div :.field {}
+                (dom/label {} "Constituent")
+                (ui-theta-options
+                  (comp/computed
+                    (merge
+                      constituentlookup-options
+                      {:riverdb.entity/ns :entity.ns/constituentlookup
+                       :value             constituentlookupRef
+                       :opts              {:load  true
+                                           :style {:width "100%"}}})
+                    {:changeMutation `set-value
+                     :changeParams   {:ident this-ident
+                                      :k     :parameter/constituentlookupRef}})))
+              (div :.field {}
+                (dom/label {} "Default Device")
+                (ui-theta-options
+                  (comp/computed
+                    (merge
+                      samplingdevicelookup-options
+                      {:riverdb.entity/ns :entity.ns/samplingdevicelookup
+                       :value             samplingdevicelookupRef
+                       :opts              {:clearable true :load true}})
+                    {:changeMutation `set-value
+                     :changeParams   {:ident this-ident
+                                      :k     :parameter/samplingdevicelookupRef}})))
+              (div :.field
+                (label {} "Data Quality")
+                (div :.fields {}
+                  (div :.field {} (rui-bigdec this :parameter/low {:style {:width 80}}))
+                  (div :.field {} (rui-bigdec this :parameter/high {:style {:width 80}}))
+                  (div :.field {}
+                    (ui-popup
+                      {:trigger (rui-int this :parameter/replicates {:style {:width 80} :label (label {} "Required Replicates" info-icon)})}
+                      (get-in param-specs [:parameter/replicates :attr/doc])))
+                  (div :.field {}
+                    (ui-popup
+                      {:trigger (rui-int this :parameter/replicatesEntry {:label (label {} "Entry Replicates" info-icon) :style {:width 80}})}
+                      (get-in param-specs [:parameter/replicatesEntry :attr/doc])))
+                  (div :.field {}
+                    (ui-popup
+                      {:trigger (rui-checkbox this :parameter/replicatesElide {:label (label {} "Elide Outliers?" info-icon)})}
+                      (get-in param-specs [:parameter/replicatesElide :attr/doc])))))
+              (ui-precision this :parameter/precisionCode)
 
-        (div :.field {}
-          (label {} "Chart Lines")
-          (div {} "coming soon ..."))
-        (when saving
-          "SAVING")
-        (ui-cancel-save this props dirty?
-          {:cancelAlwaysOn true}))
+              (div :.field {}
+                (label {} "Chart Lines")
+                (div {} "coming soon ..."))
+              (when saving
+                "SAVING")
+              (ui-cancel-save this props dirty?
+                {:success-msg (str "Parameter " name " Saved")
+                 :onCancel    #(when (tempid/tempid? (:db/id props))
+                                 (cancel-new (:db/id props)))
+                 :onSave      on-save})))))
       (div {:style {:padding 0}}
         (div :.ui.horizontal.list {}
           (div :.ui.item {}
-            (dom/a {:onClick #(fm/toggle! this :ui/editing)} name))
-          #_(div :.ui.item {}
-              (button :.ui.mini.primary.button {:onClick #(fm/toggle! this :ui/editing)} "Edit")))))))
-;(:constituentlookup/Name constituentlookupRef)))))))
-
-
+            (dom/a {:onClick #(fm/toggle! this :ui/editing)} name)))))))
 
 (def ui-parameter-form (comp/factory ParameterForm {:keyfn :db/id}))
 
+(fm/defmutation new-param [{:keys [proj-ident type] :as p}]
+  (action [{:keys [state]}]
+    (let [type-ref (db-ident->db-ref type)
+          p'       (comp/get-initial-state ParameterForm {:type type-ref})
+          p-form   (fs/add-form-config ParameterForm p')]
+      (debug "MUTATION new-param" p')
+      (swap! state merge/merge-component ParameterForm p-form
+        :append (conj proj-ident :projectslookup/Parameters)))))
 
-(defsc ProjectForm [this {:keys [db/id ui/ready ui/editing] :projectslookup/keys [ProjectID Name Parameters Active Public] :as props}] ;Parameters
+(fm/defmutation cancel-temp-param [{:keys [proj-ident tempid]}]
+  (action [{:keys [state]}]
+    (let [ps  (get-in @state (conj proj-ident :projectslookup/Parameters))
+          ps' (vec (remove #(= tempid (second %)) ps))]
+      (debug "MUTATION cancel-new-param" tempid)
+      (if (seq ps')
+        (swap! state assoc-in (conj proj-ident :projectslookup/Parameters) ps')
+        (swap! state update-in proj-ident dissoc :projectslookup/Parameters)))))
+
+;(defsc ModalForm [this {:keys [open header content tx-result]}]
+;  {:query [:open
+;           :header
+;           :content
+;           {:tx-result (comp/get-query TxResult)}]}
+;  (ui-modal {:open open}
+;    (ui-modal-header {:content header})
+;    (ui-modal-content {}
+;      (when (not (empty? tx-result))
+;        (ui-tx-result tx-result))
+;      content)))
+;(def ui-modal-form (comp/factory ModalForm))
+
+(defsc ProjectForm [this {:keys [db/id ui/ready ui/editing root/tx-result] :projectslookup/keys [ProjectID Name Parameters Active Public] :as props}] ;Parameters
   {:ident             [:org.riverdb.db.projectslookup/gid :db/id]
    :query             [:riverdb.entity/ns
                        :db/id
@@ -361,19 +416,22 @@
                        :projectslookup/QAPPVersion
                        :projectslookup/qappURL
                        :projectslookup/AgencyRef
+                       :projectslookup/Description
                        {:stationlookup/_Project (comp/get-query looks/stationlookup-sum)}
-                       {:projectslookup/Parameters (comp/get-query ParameterForm)}]
+                       {:projectslookup/Parameters (comp/get-query ParameterForm)}
+                       {[:root/tx-result '_] (comp/get-query TxResult)}]
    :form-fields       #{:projectslookup/ProjectID
                         :projectslookup/Name
+                        :projectslookup/Description
                         :projectslookup/Active
                         :projectslookup/Public
                         :projectslookup/QAPPVersion
                         :projectslookup/qappURL
                         :projectslookup/Parameters}
-   ;:pre-merge         (fn [{:keys [data-tree] :as env}]
-   ;                     (debug "PREMERGE ProjectForm" (keys data-tree) (:projectslookup/Active data-tree))
-   ;                     #_(postwalk prim/nillify-not-found data-tree)
-   ;                     env)
+   :initLocalState    (fn [this props]
+                        (debug "INIT LOCAL STATE ProjectForm")
+                        {:onNewParam #(do
+                                        (comp/transact! this `[(new-param {})]))})
    :initial-state     (fn [params]
                         (fs/add-form-config
                           ProjectForm
@@ -384,58 +442,83 @@
    :componentDidMount (fn [this]
                         (let [props (comp/props this)]
                           #_(fm/set-value! this :ui/ready true)))}
-  (let [dirty? (some? (seq (fs/dirty-fields props false)))
-        _      (debug "DIRTY?" dirty? (fs/dirty-fields props false))]
-    (debug "RENDER ProjectForm" id ready)
+  (let [this-ident   (comp/get-ident this)
+        dirty-fields (fs/dirty-fields props true)
+        dirty?       (some? (seq dirty-fields))
+        _            (debug "DIRTY?" dirty? dirty-fields)
+        on-save      #(do
+                        (debug "SAVE!" dirty? dirty-fields)
+                        (comp/transact! this
+                          `[(rm/save-entity ~{:ident       this-ident
+                                              :diff        dirty-fields
+                                              :success-msg "Project saved"})]))]
+    (debug "RENDER ProjectForm" id ready "tx-result" tx-result)
     (if editing
-      (div :.ui.segment
-        (ui-header {} Name)
-        (if editing
-          (div :.fields {}
-            (ui-popup
-              {:trigger (rui-input this :projectslookup/ProjectID {:label (label {} "ID" info-icon) :disabled true :required true})}
-              "This must be unique across all organizations and must remained unchanged after the project has data.  To change it contact RiverDB Support")
-            (rui-input this :projectslookup/Name {:required true})
-            (rui-checkbox this :projectslookup/Active {})
-            (rui-checkbox this :projectslookup/Public {}))
-          (div :.fields {}
-            (span "ID " ProjectID)))
+      (ui-modal {:open editing}
+        (ui-modal-header {:content (str "Edit Project: " Name)})
+        (ui-modal-content {}
+          (when (not (empty? tx-result))
+            (ui-tx-result tx-result))
+          (div :.ui.form {}
+            (if editing
+              (div :.fields {}
+                (ui-popup
+                  {:trigger (rui-input this :projectslookup/ProjectID {:label (label {} "ID" info-icon) :disabled true :required true})}
+                  "This must be unique across all organizations and must remained unchanged after the project has data.  To change it contact RiverDB Support")
+                (rui-input this :projectslookup/Name {:required true})
+                (rui-checkbox this :projectslookup/Active {})
+                (rui-checkbox this :projectslookup/Public {}))
+              (div :.fields {}
+                (span "ID " ProjectID)))
 
-        (rui-input this :projectslookup/QAPPVersion {:label "QAPP Version"})
-        (rui-input this :projectslookup/qappURL {:label "QAPP Link"})
+            (rui-input this :projectslookup/Description {:label "Description"})
+            (rui-input this :projectslookup/QAPPVersion {:label "QAPP Version"})
+            (rui-input this :projectslookup/qappURL {:label "QAPP Link"})
 
-        (ui-tab
-          {:panes
-           [{:menuItem "Field Measurements"
-             :render   (fn [] (ui-tab-pane {}
-                                (comp/with-parent-context this
-                                  (doall
-                                    (vec (for [p Parameters]
-                                           (let [p-data (fs/add-form-config ParameterForm p)]
-                                             (ui-parameter-form p-data))))))))}
-            {:menuItem "Field Observations"
-             :render   (fn [] (ui-tab-pane {}
-                                (div :.ui.segment {:style {:padding 10}}
-                                  (div :.field {}
-                                    (label {} "")
-                                    (div {} "coming soon ...")))))}
-            {:menuItem "Grabs"
-             :render   (fn [] (ui-tab-pane {}
-                                (div :.ui.segment {:style {:padding 10}}
-                                  (div :.field {}
-                                    (label {} "")
-                                    (div {} "coming soon ...")))))}
-            {:menuItem "Stations"
-             :render   (fn [] (ui-tab-pane {}
-                                (div :.ui.segment {:style {:padding 10}}
-                                  (div :.field {}
-                                    (label {} "")
-                                    (div {} "coming soon ...")))))}]})
+            (ui-tab
+              {:panes
+               [{:menuItem "Field Measurements"
+                 :render   (fn [] (ui-tab-pane {}
+                                    (comp/with-parent-context this
+                                      (div {}
+                                        (div {}
+                                          (doall
+                                            (vec
+                                              (for [p Parameters]
+                                                (let [p-data (fs/add-form-config ParameterForm p)]
+                                                  (ui-parameter-form
+                                                    (comp/computed
+                                                      p-data
+                                                      {:proj-ident this-ident
+                                                       :cancel-new #(comp/transact! this `[(cancel-temp-param {:proj-ident ~this-ident :tempid ~%})])
+                                                       :on-save    on-save})))))))
+                                        (button :.ui.button.primary
+                                          {:onClick #(comp/transact! this
+                                                       `[(new-param
+                                                           {:proj-ident ~this-ident
+                                                            :type       :sampletypelookup.SampleTypeCode/FieldMeasure})])}
+                                          "Add")))))}
 
+                {:menuItem "Field Observations"
+                 :render   (fn [] (ui-tab-pane {}
+                                    (div :.ui.segment {:style {:padding 10}}
+                                      (div :.field {}
+                                        (label {} "")
+                                        (div {} "...")))))}
+                {:menuItem "Labs"
+                 :render   (fn [] (ui-tab-pane {}
+                                    (div :.ui.segment {:style {:padding 10}}
+                                      (div :.field {}
+                                        (label {} "")
+                                        (div {} "...")))))}]})
 
+            (div :.ui.segment {:style {:padding 10}}
+              (div :.field {}
+                (label {} "Sites")
+                (div {} "...")))
 
-
-        (ui-cancel-save this props dirty? {:cancelAlwaysOn true}))
+            (ui-cancel-save this props dirty?
+              {:onSave on-save}))))
 
       (div :.ui.segment {}
         (ui-header {} Name)
@@ -444,13 +527,12 @@
 (def ui-project-form (comp/factory ProjectForm {:keyfn :db/id}))
 
 
-(defmutation init-projects-forms [{:keys []}]
+(defmutation init-projects-forms [{:keys [ids]}]
   (action [{:keys [state]}]
     (swap! state
       (fn [s]
-        (let [ids (keys (get s :org.riverdb.db.projectslookup/gid))
-              s   (assoc-in s [:component/id :projects :projects] [])
-              s   (assoc-in s [:component/id :projects :ui/ready] true)]
+        (let [s (assoc-in s [:component/id :projects :projects] [])
+              s (assoc-in s [:component/id :projects :ui/ready] true)]
           (-> (reduce
                 (fn [s id]
                   (let [proj-ident [:org.riverdb.db.projectslookup/gid id]]
@@ -461,77 +543,56 @@
             ;; cleanup the load key
             (dissoc :org.riverdb.db.projectslookup)))))))
 
-(defmutation nop [{:keys []}]
-  (action [{:keys [state]}]
-    (debug "NOP")
-    (swap! state (fn [s]
-                   s))))
-
-(defn load-projs [this]
-  (let [props    (comp/props this)
-        ;app-state    (fapp/current-state SPA)
-        ;agency       (:riverdb.ui.root/current-agency props)
-        ;agency-ident (comp/get-ident agency)
-        ;proj-idents  (get-in app-state (conj agency-ident :projectslookup/_AgencyRef))
-        agency   (:riverdb.ui.root/current-agency props)
-        projs    (:projectslookup/_AgencyRef agency)
-        proj-ids (mapv :db/id projs)]
+(defn load-projs [this projs]
+  (let [proj-ids (mapv :db/id projs)]
     (debug "LOAD PROJECTS" proj-ids)
     (when proj-ids
       (df/load! this :org.riverdb.db.projectslookup ProjectForm
-        {:params        {:ids proj-ids}
-         :post-mutation `init-projects-forms
-         :without       #{[:riverdb.theta.options/ns '_]}}))))
+        {:params               {:ids proj-ids}
+         :post-mutation        `init-projects-forms
+         :post-mutation-params {:ids proj-ids}
+         :without              #{[:riverdb.theta.options/ns '_] [:root/tx-result '_]}}))))
 
+(defsc Projects [this {:keys                 [ui/ready projects]
+                       :riverdb.ui.root/keys [current-agency] :as props}]
+  {:ident             (fn [] [:component/id :projects])
+   :query             [{:projects (comp/get-query ProjectForm)}
+                       {[:riverdb.ui.root/current-agency '_] (comp/get-query Agency)}
+                       :ui/ready]
+   :initial-state     {:ui/ready true}
+   :route-segment     ["projects"]
+   :check-session     (fn [app session]
+                        (let [valid? (:session/valid? session)
+                              admin? (->
+                                       (:account/auth session)
+                                       :user
+                                       roles/user->roles
+                                       roles/admin?)
+                              result (and valid? admin?)]
+                          (debug "CHECK SESSION Projects" "valid?" valid? "admin?" admin? "result" result)
+                          result))
+   :componentDidMount (fn [this]
+                        (let [props  (comp/props this)
+                              agency (:riverdb.ui.root/current-agency props)
+                              projs  (:agencylookup/Projects agency)]
 
-(defsc Projects [this {:keys [ui/ready projects] :riverdb.ui.root/keys [current-agency] :as props}]
-  {:ident              (fn [] [:component/id :projects])
-   :query              [{:projects (comp/get-query ProjectForm)}
-                        ;{[:riverdb.ui.root/current-project '_] (comp/get-query ProjectForm)}
-                        ;[:org.riverdb.db.projectslookup/gid '_]
-                        {[:riverdb.ui.root/current-agency '_] (comp/get-query Agency)}
-                        :ui/ready]
-   :initial-state      {:ui/ready true}
-   :route-segment      ["projects"]
-   :componentDidUpdate (fn [this prev-props prev-state]
-                         (let [props   (comp/props this)
-                               diff    (clojure.data/diff prev-props props)
-                               changed (second diff)
-                               agency? (:riverdb.ui.root/current-agency changed)]))
-   ;(debug "DID UPDATE Projects agency?" agency?)
-   ;(when agency?
-   ;  (load-projs this))))
-   :componentDidMount  (fn [this]
-                         (let [props  (comp/props this)
-                               agency (:riverdb.ui.root/current-agency props)
-                               projs  (:projectslookup/_AgencyRef agency)]
-                           ;agency-ident (comp/get-ident agency)
-                           ;app-state    (fapp/current-state SPA)
-                           ;projs        (get-in app-state (conj agency-ident :projectslookup/_AgencyRef))] ;props (comp/props this)]
+                          (preload-options :entity.ns/constituentlookup)
+                          (preload-options :entity.ns/samplingdevicelookup)
+                          (preload-options :entity.ns/sampletypelookup)
 
-                           (preload-options :entity.ns/constituentlookup)
-                           (preload-options :entity.ns/samplingdevicelookup)
-                           (preload-options :entity.ns/sampletypelookup)
+                          (debug "DID MOUNT Projects.  Agency?" agency "PROJS?" projs)
+                          (when agency
+                            (load-projs this projs))))}
 
-                           (debug "DID MOUNT Projects.  Agency?" agency "PROJS?" projs)
-                           (when agency
-                             (load-projs this))))}
-  ;:pre-merge         (fn [{:keys [data-tree] :as env}]
-  ;                     (debug "PREMERGE Projects" (keys data-tree))
-  ;                     #_(postwalk prim/nillify-not-found data-tree)
-  ;                     env)}
-
-  ;(comp/transact! this `[(init-projects-forms)])))}
-  (let [;projects (get-in current-agency [:projectslookup/_AgencyRef])
-        _ (debug "PROJECTS" projects "READY" ready "KEYS" (keys props))]
+  (let [_ (debug "PROJECTS" projects "READY" ready "KEYS" (keys props))]
     (if ready
       (div :.ui.segment
-        (ui-header {} "Projects")
-        (ui-form {:key "form" :size "tiny"}
-          [(doall
-             (for [pj projects]
-               (let [{:keys [db/id ui/hidden] :projectslookup/keys [Name ProjectID Active Public]} pj]
-                 (ui-project-form pj))))]))
+        (ui-header {:key "title"} "Projects")
+        ;(ui-form {:key "form" :size "tiny"}
+        [(doall
+           (for [pj projects]
+             (let [{:keys [db/id ui/hidden] :projectslookup/keys [Name ProjectID Active Public]} pj]
+               (ui-project-form pj))))])
       #_(ui-loader {:active true}))))
 
 (def ui-projects (comp/factory Projects))

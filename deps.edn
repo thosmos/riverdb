@@ -83,7 +83,7 @@
         {org.clojure/clojure                 {:mvn/version "1.10.1"}
 
          ;thosmos/util                        {:local/root "../../clojure/thosmos.util"}
-         thosmos/util                        {:mvn/version "0.1.9" :exclusions [com.datomic/datomic-free]}
+         thosmos/util                        {:mvn/version "0.2.0"}
 
          ;; time
          tick                                {:mvn/version "0.4.21-alpha"}

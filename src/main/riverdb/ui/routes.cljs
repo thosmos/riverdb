@@ -39,6 +39,7 @@
 ;  (listen-nav-change #(change-route-from-nav-event SPA)))
 
 (declare replace!)
+(declare route-to!)
 
 (defn find-route-target [app-or-comp router new-route]
   (let [app        (comp/any->app app-or-comp)
@@ -60,25 +61,30 @@
   (pushy/pushy
     (fn [p]
       (let [r-segments   (vec (rest (str/split p "/")))
-            _            (log/info "URL Routing" p "=>" r-segments)
             target       (find-route-target SPA
                            (comp/registry-key->class :riverdb.ui.root/TopRouter) r-segments)
             target-opts  (comp/component-options target)
             check-fn     (:check-session target-opts)
             session      (get-in (fapp/current-state SPA) [:component/id :session])
-            check-result (when (and session check-fn) (check-fn SPA session))
+            sesh-valid?  (:session/valid? session)
+            _            (log/info "URL Routing" p "=>" r-segments "target?" target "target-opts?" target-opts)
+            check-result (if sesh-valid?
+                           (if check-fn
+                             (check-fn SPA session)
+                             true)
+                           false)
             reject?      (= false check-result)]
 
-        (debug "ROUTE Target" target "reject?" reject?)
+        (debug "ROUTE Target" target "reject?" reject? "check-result" check-result)
 
-        ;(timbre/spy :info r-segments)
         (cond
-          reject?
+          (and (seq r-segments) reject?)
           (replace! "/")
           (seq r-segments)
           (dr/change-route SPA r-segments)
           :else
-          (dr/change-route SPA ["main"])))) identity))
+          (dr/change-route SPA ["main"]))))
+    identity))
 
 (defn start! []
   (pushy/start! history)

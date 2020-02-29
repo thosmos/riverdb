@@ -2,21 +2,21 @@
   (:require
     [com.fulcrologic.fulcro.algorithms.data-targeting :as dt :refer [process-target]]
     [com.fulcrologic.fulcro.algorithms.normalize :as norm]
-    [com.fulcrologic.fulcro.application :as fa]
+    [com.fulcrologic.fulcro.application :as fapp]
     [com.fulcrologic.fulcro.mutations :refer [defmutation]]
     [com.fulcrologic.semantic-ui.collections.message.ui-message :refer [ui-message]]
-    [com.fulcrologic.fulcro.components :as om]
+    [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
     [theta.log :as log :refer [debug]]
     [riverdb.application :refer [SPA]]
     [riverdb.ui.lookups :as looks]
     [riverdb.util :as util :refer [sort-maps-by]]
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
-    [com.fulcrologic.fulcro.components :as comp]
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
     [com.fulcrologic.fulcro.mutations :as fm]
     [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
     [com.fulcrologic.fulcro.dom :as dom :refer [div]]
-    [com.fulcrologic.fulcro.algorithms.tempid :as tempid]))
+    [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
+    [riverdb.ui.routes :as routes]))
 
 ;;;  CLIENT
 
@@ -32,31 +32,14 @@
       (swap! state set-root-key* key value))))
 
 (defn set-root-key! [k v]
-  (om/transact! SPA `[(set-root-key {:key ~k :value ~v})]))
+  (comp/transact! SPA `[(set-root-key {:key ~k :value ~v})]))
 
-(defn merge-ident* [state ident props & targets]
-  (debug "MERGE IDENT" ident props targets)
-  (let [state (merge/merge-ident state ident props)
-        st'   (if targets
-                (apply dt/integrate-ident* state ident targets)
-                state)]
-    st'))
-
-(defmutation merge-ident [{:keys [ident props targets]}]
+(defmutation merge-ident [{:keys [ident props]}]
   (action [{:keys [state]}]
-    (if targets
-      (swap! state merge-ident* ident props targets)
-      (swap! state merge-ident* ident props))))
+    (swap! state merge/merge-ident ident props)))
 
-(defn merge-ident!
-  "Merge some data at an ident"
-  [ident props & targets]
-  (debug "merge-ident!" ident "targets:" targets)
-  (let [params {:ident ident :props props}
-        params (if targets
-                 (assoc params :targets targets)
-                 params)]
-    (om/transact! SPA `[(merge-ident ~params)])))
+(defn merge-ident! [ident props]
+  (comp/transact! SPA `[(merge-ident {:ident ~ident :props ~props})]))
 
 (defn merge-idents* [state ident-k ident-v coll & targets]
   (debug "MERGE IDENT" ident-k ident-v targets)
@@ -87,15 +70,8 @@
                      st coll)))))
 
 (defn merge-idents! [ident-k ident-v coll & targets]
-  (om/transact! SPA `[(merge-idents {:ident-k ~ident-k :ident-v ~ident-v :coll ~coll :targets ~targets})]))
+  (comp/transact! SPA `[(merge-idents {:ident-k ~ident-k :ident-v ~ident-v :coll ~coll :targets ~targets})]))
 
-(defmutation set-ident-value
-  "generic mutation to set an ident value"
-  [{:keys [ident value]}]
-  (action [{:keys [state]}]
-    (do
-      (debug "SET IDENT VALUE" ident value)
-      (swap! state assoc-in ident value))))
 
 ;(defmutation attempt-login
 ;  "Fulcro mutation: Attempt to log in the user. Triggers a server interaction to see if there is already a cookie."
@@ -136,7 +112,19 @@
                      (when-let [year (first years)]
                        year))))
 
-(defmutation process-project-years [_]
+(defsc Agency [_ _]
+  {:ident [:org.riverdb.db.agencylookup/gid :db/id]
+   :query [:db/id]})
+(defsc Project [_ _]
+  {:ident [:org.riverdb.db.projectslookup/gid :db/id],
+   :query [:db/id
+           :riverdb.entity/ns
+           :projectslookup/Active
+           :projectslookup/ProjectID
+           :projectslookup/Name
+           {:projectslookup/AgencyRef (comp/get-query Agency)}]})
+
+(defmutation process-project-years [{:keys [desired-path]}]
   (action [{:keys [state]}]
     (debug (clojure.string/upper-case "process-project-years"))
     (let [agency-project-years (get-in @state [:component/id :proj-years :agency-project-years])
@@ -158,56 +146,17 @@
         (fn [st]
           (cond-> st
             project
-            (merge-ident* (comp/get-ident looks/projectslookup-sum project) project
-              :replace [:riverdb.ui.root/current-project])
+            (merge/merge-component Project project :replace [:riverdb.ui.root/current-project])
             sites
             (->
               (set-root-key* :riverdb.ui.root/current-project-sites [])
               (merge-idents* :org.riverdb.db.stationlookup/gid :db/id sites
                 :append [:riverdb.ui.root/current-project-sites]))
             year
-            (set-root-key* :riverdb.ui.root/current-year year)))))))
-
-
-;(defmutation login-complete
-;  "Fulcro mutation: Attempted login post-mutation the update the UI with the result. Requires the app-root of the mounted application
-;  so routing can be started."
-;  [{:keys [app-root]}]
-;  (action [{:keys [component state]}]
-;    ; idempotent (start routing)
-;    (when app-root
-;      (r/start-routing app-root))
-;    (let [current-user (get-in @state (get @state :current-user))
-;          logged-in?   (and
-;                         (-> current-user :login/error not)
-;                         (-> current-user :uid pos-int?))]
-;      (let [desired-page (get @state :loaded-uri (or (and @r/history (pushy/get-token @r/history)) r/MAIN-URI))
-;            desired-page (if (= r/LOGIN-URI desired-page)
-;                           r/MAIN-URI
-;                           desired-page)]
-;        (swap! state assoc :ui/ready? true) ; Make the UI show up. (flicker prevention)
-;        (when logged-in?
-;          (swap! state update-in [:login :page] assoc :ui/username "" :ui/password "")
-;          (swap! state assoc :logged-in? true)
-;          (if (and @r/history @r/use-html5-routing)
-;            (pushy/set-token! @r/history desired-page)
-;            (swap! state ur/update-routing-links {:handler :main})))))))
-;
-;(defmutation logout
-;  "Fulcro mutation: Removes user identity from the local app and asks the server to forget the user as well."
-;  [p]
-;  (action [{:keys [state]}]
-;    (swap! state assoc :current-user nil :logged-in? false :user/by-id nil
-;      :tac-report-data nil :dataviz-data nil)
-;    ;(swap! state update
-;    ;  (fn [st]
-;    ;    (-> st
-;    ;      (assoc :logged-in? false)
-;    ;      (dissoc :current-user :user/by-id :tac-report-data :dataviz-data))))
-;    (when (and @r/use-html5-routing @r/history)
-;      (pushy/set-token! @r/history r/LOGIN-URI)))
-;  (remote [env] true))
-
+            (set-root-key* :riverdb.ui.root/current-year year))))
+      (when desired-path
+        (debug "ROUTE TO desired-path" desired-path)
+        (routes/route-to! desired-path)))))
 
 (defmutation process-tac-report
   "TAC Report post process"
@@ -332,6 +281,10 @@
   (action [{:keys [state]}]
     (swap! state fs/pristine->entity* ident)))
 
+(defmutation cancel-new-form! [{:keys [ident]}]
+  (action [{:keys [state]}]
+    (debug "MUTATION cancel-new-form!" ident)))
+
 
 (defn clear-tx-result* [state]
   (debug "CLEAR TX RESULT")
@@ -365,14 +318,19 @@
   (comp/transact! SPA `[(set-saving {:ident ~ident :busy ~busy})]))
 
 (comp/defsc TxResult [this {:keys [result error com.wsscode.pathom.core/reader-error]}]
-  {:query         [:result
-                   :error
-                   :com.wsscode.pathom.core/reader-error]
-   :initial-state {:result                               nil
-                   :error                                nil
-                   :com.wsscode.pathom.core/reader-error nil}}
+  {:query             [:result
+                       :error
+                       :com.wsscode.pathom.core/reader-error]
+   :initial-state     {:result                               nil
+                       :error                                nil
+                       :com.wsscode.pathom.core/reader-error nil}
+   :componentDidMount (fn [this]
+                        (let [props (comp/props this)]
+                         (debug "DID MOUNT TxResult" "props" props)
+                         (when-not (:error props)
+                           (js/setTimeout clear-tx-result! 2000))))}
   (let [error (or error reader-error)]
-    (debug "TxResult" error)
+    (debug "TxResult" "error" error "result" result)
     (div {:style {:position "fixed" :top "50px" :left 0 :right 0 :maxWidth 500 :margin "auto" :zIndex 1000}}
       (if error
         (ui-message {:error true}
@@ -411,38 +369,49 @@
     (debug "SAVE ENTITY DIFF" ident diff)
     (swap! state set-saving* ident true))
   (remote [env]
-    (update-in env [:ast :params] #(-> %
-                                     (dissoc :post-mutation)
-                                     (dissoc :post-params))))
-  (ok-action [{:keys [state] :as env}]
-    (debug "OK ACTION" "IDENT" ident "REF" (:ref env) "(comp/get-ident (:component env))" (comp/get-ident (:component env)))
+    (-> env
+      (update-in [:ast :params] #(-> %
+                                   (dissoc :post-mutation)
+                                   (dissoc :post-params)
+                                   (dissoc :success-msg)))
+      (fm/returning TxResult)
+      (fm/with-target [:root/tx-result])))
+  (ok-action [{:keys [state result] :as env}]
+    (debug "OK ACTION" "IDENT" ident "REF" (:ref env) "result" result "(comp/get-ident (:component env))" (comp/get-ident (:component env)))
     (debug ":tempid->realid" (:tempid->realid env))
     (debug "TRANSACTED AST"  (:transacted-ast env))
-    (try
-      (let [{:keys [post-mutation post-params]} (get-in env [:transacted-ast :params])
-            ident (get-new-ident env ident)]
+    (if-let [ok-err (get-in result [:body `save-entity :error])]
+      (do
+        (debug "OK ERROR" ok-err)
         (swap! state
           (fn [s]
             (-> s
-              (fs/entity->pristine* ident)
-              (set-saving* ident false)
-              (set-create* ident false)
-              (show-tx-result* {:result "Save Succeeded"}))))
-        (when post-mutation
-          (let [tempid (get-in env [:transacted-ast :params :ident 1])
-                new-id (get-in env [:tempid->realid tempid])
-                params (if new-id
-                         (assoc post-params :new-id new-id)
-                         params)
-                txd    `[(~post-mutation ~params)]]
-            (comp/transact! SPA txd))))
-      (catch js/Object ex (let [ident (get-new-ident env ident)]
-                            (log/error "OK Action handler failed: " ex)
-                            (swap! state
-                              (fn [st]
-                                (-> st
-                                  (set-saving* ident false)
-                                  (show-tx-result* {:error (str "TX Result Handler failed: " ex)}))))))))
+              (set-saving* ident false)))))
+      (try
+        (let [{:keys [post-mutation post-params success-msg]} (get-in env [:transacted-ast :params])
+              ident (get-new-ident env ident)]
+          (swap! state
+            (fn [s]
+              (-> s
+                (fs/entity->pristine* ident)
+                (show-tx-result* {:result (or success-msg "Save Succeeded")})
+                (set-saving* ident false)
+                (set-create* ident false))))
+          (when post-mutation
+            (let [tempid (get-in env [:transacted-ast :params :ident 1])
+                  new-id (get-in env [:tempid->realid tempid])
+                  params (if new-id
+                           (assoc post-params :new-id new-id)
+                           params)
+                  txd    `[(~post-mutation ~params)]]
+              (comp/transact! SPA txd))))
+        (catch js/Object ex (let [ident (get-new-ident env ident)]
+                              (log/error "OK Action handler failed: " ex)
+                              (swap! state
+                                (fn [st]
+                                  (-> st
+                                    (set-saving* ident false)
+                                    (assoc-in [:root/tx-result :error] (str "TX Result Handler failed: " ex))))))))))
 
 
 
@@ -452,7 +421,6 @@
       (fn [s]
         (-> s
           (set-saving* ident false)
-          (show-tx-result* (or
-                             (when-let [err (get-in result [:error-text])]
-                              {:error err})
-                             (get-in result [:body `save-entity]))))))))
+          (#(if-let [err (get-in result [:error-text])]
+              (assoc-in % [:root/tx-result :error] err)
+              %)))))))

@@ -14,7 +14,7 @@
            :agencylookup/AgencyCode
            :agencylookup/Name
            :agencylookup/NameShort
-           {:projectslookup/_AgencyRef (comp/get-query Project)}]})
+           {:agencylookup/Projects (comp/get-query Project)}]})
 
 (defn preload-agency [agID]
   (debug "PRELOAD AGENCY" agID)

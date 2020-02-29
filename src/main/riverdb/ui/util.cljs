@@ -4,6 +4,8 @@
     [edn-query-language.core :as eql]
     [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
+    [com.fulcrologic.fulcro.algorithms.data-targeting :as dt]
+    [com.fulcrologic.fulcro.application :as fapp]
     [com.fulcrologic.fulcro.dom :as dom :refer [div ul li p h3 button label span table tr th td thead tbody]]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
     [com.fulcrologic.fulcro.mutations :as fm :refer [defmutation]]
@@ -25,7 +27,10 @@
     [riverdb.application :refer [SPA]]
     [riverdb.api.mutations :as rm]
     [theta.log :as log :refer [debug]]
-    ["shortid" :as shorty :refer [generate]]))
+    ["shortid" :as shorty :refer [generate]]
+    [thosmos.util :as tu]
+    [clojure.string :as str]
+    [riverdb.ui.lookup :as look]))
 
 (defn shortid []
   (str "t" (shorty)))
@@ -34,12 +39,12 @@
   (tempid/tempid (str "t" (generate))))
 
 (defn walk-ident-refs*
-  "walks the props at ident replacing {:db/id :db/ident} refs with {:db/id \"123\"} refs."
+  "walks the props at ident searching for {:db/ident :db-ident-keyword} refs and adding :db/id resulting in: {:db/id \"123\" :db/ident :db-ident-keyword}"
   [state-map ident]
   (let [props     (get-in state-map ident)
         f         (fn [[k v]]
-                    (if (and (map? v) (keyword? (:db/id v)))
-                      (if-let [db-id (get-in state-map [:db/ident (:db/id v) :db/id])]
+                    (if (and (map? v) (keyword? (:db/ident v)))
+                      (if-let [db-id (get-in state-map [:db/ident (:db/ident v) :db/id])]
                         [k (assoc v :db/id db-id)]
                         [k v])
                       [k v]))
@@ -49,11 +54,11 @@
     (assoc-in state-map ident new-props)))
 
 (defn walk-ident-refs
-  "walks the props map replacing {:db/id :db/ident} maps with {:db/id \"123\"} maps.  returns an updated props map."
+  "walks the props map looking {:db/ident :ident-keyword} and adding :db/id to maps.  returns an updated props map."
   [state-or-ident-map props]
   (let [f         (fn [[k v]]
-                    (if (and (map? v) (keyword? (:db/id v)))
-                      (if-let [db-id (get-in state-or-ident-map [:db/ident (:db/id v) :db/id])]
+                    (if (and (map? v) (keyword? (:db/ident v)))
+                      (if-let [db-id (get-in state-or-ident-map [:db/ident (:db/ident v) :db/id])]
                         [k (assoc v :db/id db-id)]
                         [k v])
                       [k v]))
@@ -136,26 +141,106 @@
        (fs/merge-validity this-validity subform-validity)))))
 
 
-(defn get-ref-set-val [current id]
+(defn ent-ns->ident-k
+  ([ent-ns]
+   (when ent-ns
+     (keyword (str "org.riverdb.db." (name ent-ns)) "gid"))))
+
+(defn ent-ns->ident [ent-ns id]
+  (debug "ent-ns->db-ref" ent-ns id)
+  (when (and ent-ns id)
+    [(ent-ns->ident-k ent-ns) id]))
+
+(defn ident-k->ent-ns [ident-k]
+  (when (and ident-k (keyword? ident-k))
+    (tu/ns-kw "entity.ns" (last (str/split (namespace ident-k) #"\.")))))
+
+(defn ident->ent-ns [ident]
+  (when (eql/ident? ident)
+    (ident-k->ent-ns (first ident))))
+
+(defn ref-is-map? [db-ref]
+  (and
+    (map? db-ref)
+    (= (keys db-ref) '(:db/id))))
+
+(defn map-ref->ident [db-ref ident-k]
+  (if (ref-is-map? db-ref)
+    [ident-k (:db/id db-ref)]
+    db-ref))
+
+(defn convert-db-refs* [state-map ident]
+  (let [thing (get-in state-map ident)
+        ent-ns (ident->ent-ns ident)
+        ent-spec (get look/specs-map ent-ns)
+        out (reduce-kv
+              (fn [out attr-k {:attr/keys [type ref cardinality]}]
+                (let [attr-val (get out attr-k)
+                      is-ref?  (= type :ref)
+                      ident-k (when is-ref?
+                                (ent-ns->ident-k (:entity/ns ref)))
+                      attr-val' (if
+                                  (= cardinality :one)
+                                  (map-ref->ident attr-val ident-k)
+                                  (mapv #(map-ref->ident % ident-k) attr-val))]
+                  (if is-ref?
+                    (assoc out attr-k attr-val')
+                    out)))
+              thing
+              (:entity/attrs ent-spec))]
+    (debug "convert-db-refs*" "BEFORE" (get-in state-map ident) "AFTER" out)
+    (assoc-in state-map ident out)))
+
+(defn get-db-ident [ident]
+  (let [app-state (fapp/current-state SPA)
+        ident     (cond
+                    (and (map? ident) (keyword? (:db/ident ident)))
+                    (:db/ident ident)
+
+                    (keyword? ident)
+                    ident
+
+                    (and
+                      (vector? ident)
+                      (= 2 (count ident))
+                      (= (first ident) :db/ident)
+                      (keyword? (second ident)))
+                    (second ident))
+        result    (when ident
+                    (get-in app-state [:db/ident ident]))
+        _         (debug "get-db-ident" ident "result:" result)]
+
+    result))
+
+(defn db-ident->db-ref [ident]
+  (let [ident-m (get-db-ident ident)
+        ent-ns (:riverdb.entity/ns ident-m)
+        db-id (:db/id ident-m)
+        db-ref (ent-ns->ident ent-ns db-id)]
+    db-ref))
+
+(defn get-ref-set-val [current id-key id]
   (cond
     (nil? id)
     nil
     (eql/ident? current)
-    [(first current) id]
+    [id-key id]
     (vector? current)
-    (mapv #(get-ref-set-val (first current) %) id)
+    (mapv #(get-ref-set-val (first current) id-key %) id)
     :else
-    {:db/id id}))
+    [id-key id]))
 
 (defn get-ref-val [value]
-  (cond
-    (map? value)
-    (:db/id value)
-    (eql/ident? value)
-    (second value)
-    (vector? value)
-    (mapv get-ref-val value)
-    :else ""))
+  (let [result (cond
+                 (map? value)
+                 (:db/id value)
+                 (eql/ident? value)
+                 (second value)
+                 (vector? value)
+                 (mapv get-ref-val value)
+                 :else value)]
+    (debug "get-ref-val" value result)
+    result))
 
 ;(defn set-ref! [this k val]
 ;  (fm/set-value! this k val)
@@ -183,6 +268,9 @@
   (let [ident (comp/get-ident this)]
     (comp/transact! this `[(set-value {:ident ~ident :k ~k :v ~value})])))
 
+(defn set-ident-value! [ident k value]
+  (comp/transact! SPA `[(set-value {:ident ~ident :k ~k :v ~value})]))
+
 (fm/defmutation set-ref [{:keys [ident k v]}]
   (action [{:keys [state]}]
     (let [v {:db/id v}]
@@ -207,15 +295,16 @@
   (action [{:keys [state ref]}]
     (swap! state (assoc-in (comp/get-ident ref) :ui/editing editing))))
 
-(defn ui-cancel-save [this {:ui/keys [saving] :as props} dirty? {:keys [onCancel onSave cancelAlwaysOn]}]
+(defn ui-cancel-save [this {:ui/keys [saving] :as props} dirty? {:keys [onCancel onSave success-msg]}]
   (div {}
     (dom/button :.ui.button.secondary
       {;:disabled (and (not dirty?) (not cancelAlwaysOn))
        :onClick #(do
-                   (debug "CANCEL!" dirty?)
+                   (debug "CANCEL!" dirty? (when dirty? (fs/dirty-fields props false)))
                    (if dirty?
-                     (comp/transact! this
-                       `[(rm/reset-form ~{:ident (comp/get-ident this)})])
+                     (do
+                       (comp/transact! this
+                         `[(rm/reset-form ~{:ident (comp/get-ident this)})]))
                      (fm/set-value! this :ui/editing false))
                    (when onCancel
                      (onCancel)))}
@@ -223,11 +312,13 @@
 
     (dom/button :.ui.button.primary
       {:disabled (not dirty?)
-       :onClick  #(let [dirty-fields (fs/dirty-fields props true)]
-                    (debug "SAVE!" dirty? dirty-fields)
-                    (comp/transact! this
-                      `[(rm/save-entity ~{:ident (comp/get-ident this)
-                                          :diff  dirty-fields})])
+       :onClick  #(do
+                    ;let [dirty-fields (fs/dirty-fields props true)]
+                    ;(debug "SAVE!" dirty? dirty-fields)
+                    ;(comp/transact! this
+                    ;  `[(rm/save-entity ~{:ident (comp/get-ident this)
+                    ;                      :diff  dirty-fields
+                    ;                      :success-msg success-msg})])
                     (when onSave
                       (onSave)))}
       (if saving
@@ -251,6 +342,22 @@
                        (let [new-v (.. e -target -value)]
                          (debug "rui-input" k new-v)
                          (set-value! this k new-v)))})))))
+
+(defn rui-ident-input [ident k value opts]
+  (let [label   (get opts :label (clojure.string/capitalize (name k)))
+        opts    (dissoc opts :label)
+        control (get opts :control "input")]
+    (div :.field {}
+      (dom/label {} label)
+      (ui-input
+        (merge opts
+          {:control  control
+           :value    (or value "")
+           ;:fluid false
+           :onChange (fn [e]
+                       (let [new-v (.. e -target -value)]
+                         (debug "rui-input" k new-v)
+                         (set-ident-value! ident k new-v)))})))))
 
 (defn rui-bigdec [this k opts]
   (let [props (comp/props this)
@@ -310,3 +417,7 @@
     (if (js/Number.isNaN res)
       nil
       res)))
+
+
+(comment
+  (dt/integrate-ident*))

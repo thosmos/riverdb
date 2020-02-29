@@ -74,6 +74,11 @@
           :cardinality :one,
           :type :string,
           :strlen 50}
+   #:attr{:name "Projects",
+          :key :agencylookup/Projects,
+          :cardinality :many,
+          :type :ref,
+          :ref {:entity/ns :entity.ns/projectslookup}}
    #:attr{:name "River",
           :key :agencylookup/River,
           :cardinality :one,
@@ -1850,8 +1855,8 @@
           :cardinality :one,
           :type :string,
           :strlen 8}
-   #:attr{:name "ProjectsComments",
-          :key :projectslookup/ProjectsComments,
+   #:attr{:name "Description",
+          :key :projectslookup/Description,
           :position 8,
           :cardinality :one,
           :type :string,
@@ -2279,7 +2284,8 @@
   :entity/ns :entity.ns/sampletypelookup,
   :entity/pks [:sampletypelookup/SampleTypeCode],
   :entity/prKeys
-  [:sampletypelookup/Active
+  [:db/ident
+   :sampletypelookup/Active
    :sampletypelookup/SampleTypeCode
    :sampletypelookup/CollectionType
    :sampletypelookup/EventType1

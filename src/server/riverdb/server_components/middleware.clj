@@ -64,7 +64,7 @@
 ;; in a js var for use by the client.
 ;; ================================================================================
 (defn index [csrf-token]
-  ;(debug "GENERATE CLIENT HTML" csrf-token)
+  (debug "GENERATE CLIENT HTML" csrf-token)
   (html5
     [:html {:lang "en"}
      [:head {:lang "en"}
@@ -163,13 +163,13 @@
       ;(wrap-transit-response {:opts {:transform t/write-meta}})
       wrap-transit-response
       (wrap-html-routes)
+      (all-routes-to-index)
       ;; If you want to set something like session store, you'd do it against
       ;; the defaults-config here (which comes from an EDN file, so it can't have
       ;; code initialized).
       ;; E.g. (wrap-defaults (assoc-in defaults-config [:session :store] (my-store)))
       (wrap-defaults defaults-config)
-      wrap-gzip
-      (all-routes-to-index))))
+      wrap-gzip)))
 
 
 ;(comment

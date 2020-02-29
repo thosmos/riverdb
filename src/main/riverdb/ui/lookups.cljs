@@ -1122,6 +1122,7 @@
   {:riverdb.entity/ns :entity.ns/sampletypelookup, :db/id (tempid)},
   :query
   [:db/id
+   :db/ident
    :riverdb.entity/ns
    :sampletypelookup/Active
    :sampletypelookup/SampleTypeCode

@@ -2,6 +2,7 @@
   (:require
     [clojure.string :as str]
     [clojure.edn :as edn]
+    [clojure.data]
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
@@ -20,6 +21,7 @@
     [com.fulcrologic.semantic-ui.collections.form.ui-form-text-area :refer [ui-form-text-area]]
     [com.fulcrologic.semantic-ui.modules.dropdown.ui-dropdown :refer [ui-dropdown]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form :refer [ui-form]]
+    [com.fulcrologic.semantic-ui.elements.input.ui-input :refer [ui-input]]
     [com.fulcrologic.semantic-ui.elements.header.ui-header :refer [ui-header]]
     [com.fulcrologic.semantic-ui.elements.loader.ui-loader :refer [ui-loader]]
     [com.fulcrologic.semantic-ui.modules.dimmer.ui-dimmer :refer [ui-dimmer]]
@@ -34,6 +36,7 @@
     [riverdb.util :refer [sort-maps-by with-index]]
     [riverdb.ui.agency :refer [preload-agency Agency]]
     [riverdb.ui.components :refer [ui-datepicker]]
+    [riverdb.ui.forms :refer [SampleTypeCodeForm]]
     [riverdb.ui.globals :refer [Globals]]
     [riverdb.ui.lookup]
     [riverdb.ui.lookup-options :refer [preload-options ui-theta-options ThetaOptions]]
@@ -43,8 +46,9 @@
     [riverdb.ui.routes :as routes]
     [riverdb.ui.session :refer [Session]]
     [riverdb.ui.inputs :refer [ui-float-input]]
-    [riverdb.ui.util :refer [walk-ident-refs* walk-ident-refs make-tempid make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save set-editing set-value set-value! set-refs! set-ref! set-ref set-refs get-ref-set-val]]
+    [riverdb.ui.util :as rutil :refer [walk-ident-refs* walk-ident-refs make-tempid make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save set-editing set-value set-value! set-refs! set-ref! set-ref set-refs get-ref-set-val get-db-ident]]
     [riverdb.util :refer [paginate]]
+    [tick.alpha.api :as t]
     [theta.log :as log :refer [debug info]]
     [thosmos.util :as tu]
     [com.fulcrologic.fulcro.data-fetch :as df]
@@ -159,25 +163,6 @@
                    :labresult/LabReplicate     :param/rep
                    :labresult/ConstituentRowID :param/const}})
 
-(defsc SampleTypeCodeForm [this {:keys [] :as props}]
-  {:ident       [:org.riverdb.db.sampletypelookup/gid :db/id]
-   :query       [:db/id
-                 fs/form-config-join
-                 :riverdb.entity/ns
-                 :sampletypelookup/uuid
-                 :sampletypelookup/SampleTypeCode
-                 :sampletypelookup/CollectionType]
-   :form-fields #{:riverdb.entity/ns :sampletypelookup/uuid}})
-
-(defsc SampleTypeCode [this {:keys [] :as props}]
-  {:ident [:org.riverdb.db.sampletypelookup/gid :db/id]
-   :query [:db/id
-           :riverdb.entity/ns
-           :sampletypelookup/uuid
-           :sampletypelookup/SampleTypeCode
-           :sampletypelookup/CollectionType]})
-
-
 
 (defn set-in* [state path val]
   (assoc-in state path val))
@@ -226,20 +211,30 @@
                 (fs/mark-complete* [:org.riverdb.db.fieldresult/gid id] k)))
             s dbids))))))
 
-(fm/defmutation set-field-result [{:keys [i samp-ident const-id db-id val devType devID]}]
+(fm/defmutation set-field-result [{:keys [db-id val i samp-ident const-id devType devID rs-map]}]
   (action [{:keys [state]}]
-    (debug "MUTATION set-field-result" i val)
+    (debug "MUTATION set-field-result" i val rs-map)
     (cond
       (some? db-id)
       (if (some? val)
         (swap! state set-field-result* db-id val)
         (swap! state remove-field-result* samp-ident db-id))
       (and (nil? db-id) (some? val))
-      (let [new-id   (tempid/tempid)
-            new-fr   (comp/get-initial-state FieldResultForm
-                       {:id new-id :uuid (tempid/uuid) :const {:db/id const-id} :rep i :result val :devID devID :devType devType})
-            new-form (fs/add-form-config FieldResultForm new-fr)]
-        (swap! state merge/merge-component FieldResultForm new-form :append (conj samp-ident :sample/FieldResults))))))
+      (let [new-id     (tempid/tempid)
+            new-fr     (comp/get-initial-state FieldResultForm
+                         {:id new-id :uuid (tempid/uuid) :const {:db/id const-id} :rep i :result val :devID devID :devType devType})
+            new-form   (fs/add-form-config FieldResultForm new-fr)
+            new-rs-map (assoc rs-map i new-form)
+            frs        (mapv #(identity [:org.riverdb.db.fieldresult/gid (:db/id (second %))]) new-rs-map)]
+        (swap! state
+          (fn [st]
+            (-> st
+              (merge/merge-component FieldResultForm new-form)
+              (assoc-in (conj samp-ident :sample/FieldResults) frs))))
+
+
+
+        #_(swap! state merge/merge-component FieldResultForm new-form :append (conj samp-ident :sample/FieldResults))))))
 
 
 (defn rui-fieldres [samp-ident i const-id rs-map devType devID]
@@ -252,20 +247,23 @@
                                       v     %]
                                   (debug "CHANGE FIELD RESULT" db-id v)
                                   (comp/transact! SPA `[(set-field-result
-                                                          {:samp-ident ~samp-ident
-                                                           :const-id   ~const-id
-                                                           :devType    ~devType
-                                                           :devID      ~devID
-                                                           :db-id      ~db-id
-                                                           :val        ~v
-                                                           :i          ~i})]))})))
+                                                          ~{:samp-ident samp-ident
+                                                            :const-id   const-id
+                                                            :devType    devType
+                                                            :rs-map     rs-map
+                                                            :devID      devID
+                                                            :db-id      db-id
+                                                            :val        v
+                                                            :i          i})]))})))
 
-
+(fm/defmutation save-obs [{:keys [sample name text value obsvalue intval constituentlookupRef]}]
+  (action [{:keys [state]}]
+    (debug "SAVE OBS RESULT" "name" name "text" text "value" value "obsvalue" obsvalue "intval" intval "constituentlookupRef" constituentlookupRef)))
 
 (defsc FieldObsParamForm
   [this
    {:keys [fieldobs-results fieldobs-params] :as props}
-   {:keys [fieldobsVarLookup]}]
+   {:keys [fieldobsvarlookup-options sample]}]
   {:query             [:fieldobs-results :fieldobs-params]
    :initial-state     {:fieldobs-params  [{:parameter/name                 "CanopyCover"
                                            :parameter/constituentlookupRef {:db/id "17592186158390"}}
@@ -311,28 +309,36 @@
 
 
   (let []
-    (debug "RENDER SampleObsForm" fieldobs-results fieldobsVarLookup)
+    (debug "RENDER SampleObsForm" fieldobsvarlookup-options fieldobs-results fieldobs-params)
     (div {}
       (dom/h3 {} "Field Observations")
       (vec
         (map-indexed
           (fn [i {:parameter/keys [name constituentlookupRef]}]
-            (let [obsresult (filter #(= constituentlookupRef (:fieldobsresult/ConstituentRowID %)) fieldobs-results)
+            (let [obsresult (filter #(= (:db/id constituentlookupRef) (get-in % [:fieldobsresult/ConstituentRowID :db/id])) fieldobs-results)
                   obsvalue  (when (seq obsresult) (:fieldobsresult/TextResult (first obsresult)))
-                  options   (filter #(= (:filt %) name) (:ui/options fieldobsVarLookup))]
-              (div :.fields {:key i} name
-                (mapv
-                  (fn [{:keys [value text]}]
-                    (let []
-                      (ui-radio
-                        {:disabled true
-                         :key      value
-                         :label    (str text obsvalue)
-                         :name     name
-                         :value    value
-                         :checked  (= obsvalue text)
-                         :style    {:marginLeft 10}})))
-                  options))))
+                  intval    (when (seq obsresult) (:fieldobsresult/IntResult (first obsresult)))
+                  options   (filter #(= (:filt %) name) (:ui/options fieldobsvarlookup-options))]
+              (debug "Param" name "obsvalue" obsvalue "intval" intval "fieldobs-results" fieldobs-results)
+              (div :.fields {:key i} (str name ": (" intval ":" obsvalue ") ")
+                (vec
+                  (map-indexed
+                    (fn [j {:keys [value text]}]
+                      (let [checked  (= obsvalue text)
+                            ichecked (= (dec intval) j)]
+                        (ui-checkbox
+                          {:radio    true
+                           :key      value
+                           :label    text
+                           :name     name
+                           :value    value
+                           :checked  ichecked
+                           :style    {:marginLeft 10}
+                           :onChange #(let []
+                                        (debug "ON CHANGE" name value obsvalue text (not ichecked))
+                                        (comp/transact! this `[(save-obs {:sample ~sample :name ~name :text ~text :value ~value :obsvalue ~obsvalue :intval ~intval :const ~constituentlookupRef})])
+                                        #_(fm/set-value! this :fieldobsresult/TextResult text))})))
+                    options)))))
           fieldobs-params)))))
 
 
@@ -352,19 +358,19 @@
                            :parameter/name
                            :parameter/samplingdevicelookupRef])
    :initLocalState (fn [this props]
-                     (debug "INIT LOCAL STATE FieldMeasureParamForm" props)
-                     (let [cmp     (:fulcro.client.primitives/computed props)
-                           fst     (first (:fieldresults cmp))
-                           stuff   {:time          (:fieldresult/ResultTime fst)
-                                    :devType       (:fieldresult/SamplingDeviceCode fst)
-                                    :devID         (:fieldresult/SamplingDeviceID fst)
-                                    :setDeviceType #(do
-                                                      (debug "SET STATE :devType" %)
-                                                      (comp/set-state! this {:devType %}))
-                                    :setDeviceID #(do
+                     ;(debug "INIT LOCAL STATE FieldMeasureParamForm" props)
+                     (let [cmp   (:fulcro.client.primitives/computed props)
+                           fst   (first (:fieldresults cmp))
+                           stuff {:time          (:fieldresult/ResultTime fst)
+                                  :devType       (:fieldresult/SamplingDeviceCode fst)
+                                  :devID         (:fieldresult/SamplingDeviceID fst)
+                                  :setDeviceType #(do
+                                                    (debug "SET STATE :devType" %)
+                                                    (comp/set-state! this {:devType %}))
+                                  :setDeviceID   #(do
                                                     (debug "SET STATE :devID" %)
                                                     (comp/set-state! this {:devID %}))}]
-                       (debug "INIT LOCAL STATE FieldMeasureParamForm" stuff)
+                       ;(debug "INIT LOCAL STATE FieldMeasureParamForm" stuff)
                        stuff))}
 
   (let [p-name        (:parameter/name props)
@@ -377,7 +383,7 @@
                         (mapv parse-float)
                         (remove nil?))
         {:keys [time setDeviceType setDeviceID devType devID] :as state} (comp/get-state this)
-        _             (debug "READ STATE" state)
+        ;_             (debug "READ STATE" state)
         fst           (first fieldresults)
         devFst        (:fieldresult/SamplingDeviceCode fst)
         devType       (or devType devFst p-device)
@@ -415,7 +421,7 @@
                           (> rsd precRSD)))
         time          (or time (:fieldresult/ResultTime (first results)))
         unit          (get-in p-const [:constituentlookup/UnitCode :unitlookup/Unit])]
-    (debug "RENDER FieldMeasureParamForm" p-name)
+    #_(debug "RENDER FieldMeasureParamForm" p-name)
 
     (tr {:key id}
       (td {:key "name"} p-name)
@@ -439,8 +445,8 @@
                                :filter-val        devType
                                :opts              {:load false :style {:width 70 :minWidth 50}}})
                             {:changeMutation `set-all
-                             :changeParams   {:dbids (mapv :db/id results)
-                                              :k     :fieldresult/SamplingDeviceID
+                             :changeParams   {:dbids    (mapv :db/id results)
+                                              :k        :fieldresult/SamplingDeviceID
                                               :onChange setDeviceID}})))
 
       (td {:key "unit"} (or unit ""))
@@ -494,7 +500,7 @@
                        (max reps mx)
                        mx))
                    1 fieldmeasure-params)]
-    (debug "RENDER FieldMeasureParamList max-reps" max-reps "results" fieldresults "params" fieldmeasure-params)
+    #_(debug "RENDER FieldMeasureParamList max-reps" max-reps "results" fieldresults "params" fieldmeasure-params)
     (div {}
       (dom/h3 {} "Field Measurements")
       (table :.ui.very.compact.mini.table {:key "wqtab"}
@@ -535,7 +541,9 @@
   (filter #(= type (get-in % [:sample/SampleTypeCode :sampletypelookup/SampleTypeCode])) samples))
 
 (defn filter-param-typecode [type params]
-  (filter #(= type (get-in % [:parameter/sampleTypeRef :sampletypelookup/SampleTypeCode])) params))
+  (filter #(= type (get-in % [:parameter/sampleTypeRef :db/ident])) params))
+
+
 
 (defsc SampleForm [this
                    {:ui/keys [ready]
@@ -545,29 +553,46 @@
                                   LabResults
                                   uuid] :as props}
                    {:keys [samplingdevicelookup-options
+                           fieldobsvarlookup-options
                            active-params
-                           sv-comp]}]
+                           sv-comp
+                           onChange]}]
   {:ident             [:org.riverdb.db.sample/gid :db/id]
    :query             [:db/id
                        :riverdb.entity/ns
                        fs/form-config-join
                        :ui/ready
                        :sample/uuid
+                       :sample/SampleDate
                        :sample/SampleTime
+                       :sample/Time
                        {:sample/SampleTypeCode (comp/get-query SampleTypeCodeForm)}
                        {:sample/FieldResults (comp/get-query FieldResultForm)}
                        {:sample/FieldObsResults (comp/get-query FieldObsResultForm)}
                        {:sample/LabResults (comp/get-query LabResultForm)}
                        [:riverdb.theta.options/ns '_]]
 
+   :initLocalState    (fn [app props]
+                        (let [st {:sampleTypes
+                                  {:sampletypelookup.SampleTypeCode/Grab         (get-db-ident {:db/ident :sampletypelookup.SampleTypeCode/Grab})
+                                   :sampletypelookup.SampleTypeCode/FieldObs     (get-db-ident {:db/ident :sampletypelookup.SampleTypeCode/FieldObs})
+                                   :sampletypelookup.SampleTypeCode/FieldMeasure (get-db-ident {:db/ident :sampletypelookup.SampleTypeCode/FieldMeasure})}}]
+                          (debug "INIT LOCAL STATE SampleForm" "state" st)
+                          st))
+
+
    :initial-state     (fn [{:keys [type]}]
-                        {:db/id                 (tempid/tempid) ;(riverdb.ui.util/shortid)
-                         :ui/ready              false
-                         :riverdb.entity/ns     :entity.ns/sample
+                        {:db/id                 (tempid/tempid)
                          :sample/uuid           (tempid/uuid)
-                         :sample/FieldResults   []
-                         :sample/SampleTypeCode {:db/id :sampletypelookup.SampleTypeCode/FieldMeasure}})
-   ;:shouldComponentUpdate (fn [_ _ _] true)
+                         :riverdb.entity/ns     :entity.ns/sample
+                         :ui/ready              false
+                         :sample/SampleTypeCode (case type
+                                                  :fieldobs
+                                                  (get-db-ident {:db/ident :sampletypelookup.SampleTypeCode/FieldObs})
+                                                  :grab
+                                                  (get-db-ident {:db/ident :sampletypelookup.SampleTypeCode/Grab})
+                                                  ;; default:
+                                                  (get-db-ident {:db/ident :sampletypelookup.SampleTypeCode/FieldMeasure}))})
    :form-fields       #{:db/id
                         :sample/uuid
                         :riverdb.entity/ns
@@ -578,55 +603,45 @@
                         :sample/SampleTypeCode}
    :componentDidMount (fn [this]
                         (let [props    (comp/props this)
-                              sampType (get-in props [:sample/SampleTypeCode :sampletypelookup/SampleTypeCode])]
+                              sampType (get-in props [:sample/SampleTypeCode])]
                           (debug "DID MOUNT SampleForm" sampType)
-                          (fm/set-value! this :ui/ready true)
-                          #_(when (= sampType "FieldObs")
-                              (df/load! this :org.riverdb.db.fieldobsvarlookup/gid nil
-                                {:target nil}))))}
+                          (fm/set-value! this :ui/ready true)))}
 
-  ;(let [samp  (comp/get-initial-state SampleForm)
-  ;      ident [:org.riverdb.db.sample/gid (:db/id samp)]]
-  ;  (-> (fapp/current-state SPA)
-  ;    (merge/merge-component SampleForm samp)
-  ;    (walk-ident-refs* ident)
-  ;    (get-in ident))))}
-
-
-
-  (let [sample-type         (:sampletypelookup/SampleTypeCode SampleTypeCode)
-        fieldmeasure-params (filter-param-typecode sample-type active-params)
-        fieldobs-params     (filter-param-typecode sample-type active-params)
-        grab-params         (filter-param-typecode sample-type active-params)
-        deviceTypeLookup    (get-in props [:riverdb.theta.options/ns :entity.ns/samplingdevicelookup])
-        deviceLookup        (get-in props [:riverdb.theta.options/ns :entity.ns/samplingdevice])
-        fieldobsVarLookup   (get-in props [:riverdb.theta.options/ns :entity.ns/fieldobsvarlookup])]
-    (debug "RENDER SampleForm" sample-type "fm-params" fieldmeasure-params)
+  (let [sample-type      (:db/ident SampleTypeCode)
+        sampleTypes      (comp/get-state this :sampleTypes)
+        filtered-params  (filter-param-typecode sample-type active-params)
+        deviceTypeLookup (get-in props [:riverdb.theta.options/ns :entity.ns/samplingdevicelookup])
+        deviceLookup     (get-in props [:riverdb.theta.options/ns :entity.ns/samplingdevice])]
+    (debug "RENDER SampleForm" sample-type)
     (div :.ui.segment {}
       (case sample-type
-        "FieldObs"
-        (when FieldObsResults
-          (debug "TODO: RENDER Sample->FieldObsResults")
-          (ui-fieldobs-param-form
-            (comp/computed
-              (tu/merge-tree
-                (comp/get-initial-state FieldObsParamForm)
-                {:fieldobs-results FieldObsResults})
-              {:fieldobsVarLookup fieldobsVarLookup})))
-        "FieldMeasure"
-        (when FieldResults
+        :sampletypelookup.SampleTypeCode/FieldMeasure
+        (when true
+          (debug "filtered-params" filtered-params)
           (ui-fieldmeasure-param-list
             (comp/computed
               {:fieldresults        FieldResults
-               :fieldmeasure-params fieldmeasure-params}
+               :fieldmeasure-params filtered-params}
               {:sv-comp          sv-comp
                :sample-props     props
                :samp-ident       (comp/get-ident this)
                :deviceTypeLookup deviceTypeLookup
                :deviceLookup     deviceLookup})))
-        "Grab"
-        (when LabResults
-          (debug "TODO: RENDER Sample->LabResults"))))))
+        :sampletypelookup.SampleTypeCode/FieldObs
+        (when true
+          (debug "TODO: RENDER Sample->FieldObsResults" "fieldobsvarlookup-options" fieldobsvarlookup-options)
+          (ui-fieldobs-param-form
+            (comp/computed
+              (tu/merge-tree
+                (comp/get-initial-state FieldObsParamForm)
+                {:fieldobs-results FieldObsResults})
+              {:fieldobsvarlookup-options fieldobsvarlookup-options
+               :sample                    this})))
+        :sampletypelookup.SampleTypeCode/Grab
+        (when true
+          (debug "TODO: RENDER Sample->LabResults")
+          (dom/h3 {} "Grabs and Labs"))
+        (div {} "Unknown Sample Type")))))
 
 (def ui-sample-form (comp/factory SampleForm {:keyfn :db/id}))
 
@@ -711,7 +726,7 @@
       (swap! state
         (fn [st]
           (-> st
-            (rm/merge-ident* form-ident {field-k new-field-val})
+            (merge/merge-ident form-ident {field-k new-field-val})
             (assoc-in (conj modal-ident :ui/show) false)
             (assoc-in options-target opts)))))))
 
@@ -722,127 +737,92 @@
                        :sitevisit/keys [CheckPersonRef DataEntryDate DataEntryPersonRef
                                         Notes QAPersonRef QACheck QADate
                                         Samples SiteVisitDate StationID StationFailCode
-                                        Time Visitors VisitType] :as props}
+                                        Visitors VisitType] :as props}
                       {:keys [station-options person-options sitevisittype-options
                               stationfaillookup-options
                               current-project parameters current-agency person-lookup] :as cprops}]
-  {:ident         [:org.riverdb.db.sitevisit/gid :db/id]
-   :query         (fn [] [:db/id
-                          :riverdb.entity/ns
-                          fs/form-config-join
-                          :ui/ready
-                          :ui/create
-                          :sitevisit/AgencyCode
-                          :sitevisit/BacteriaCollected
-                          :sitevisit/BacteriaTime
-                          :sitevisit/CheckPersonRef
-                          :sitevisit/CreationTimestamp
-                          :sitevisit/DataEntryDate
-                          :sitevisit/DataEntryNotes
-                          :sitevisit/DataEntryPersonRef
-                          :sitevisit/Datum
-                          :sitevisit/DepthMeasured
-                          :sitevisit/GPSDeviceCode
-                          :sitevisit/HydroMod
-                          :sitevisit/HydroModLoc
-                          :sitevisit/Lat
-                          :sitevisit/Lon
-                          :sitevisit/MetalCollected
-                          :sitevisit/MetalTime
-                          :sitevisit/Notes
-                          :sitevisit/PointID
-                          :sitevisit/ProjectID
-                          :sitevisit/QACheck
-                          :sitevisit/QADate
-                          :sitevisit/QAPersonRef
-                          :sitevisit/SeasonCode
-                          :sitevisit/SiteVisitDate
-                          :sitevisit/SiteVisitID
-                          :sitevisit/StationFailCode
-                          :sitevisit/StationID
-                          :sitevisit/StreamWidth
-                          :sitevisit/Time
-                          :sitevisit/TssCollected
-                          :sitevisit/TssTime
-                          :sitevisit/TurbidityCollected
-                          :sitevisit/TurbidityTime
-                          :sitevisit/UnitStreamWidth
-                          :sitevisit/UnitWaterDepth
-                          :sitevisit/VisitType
-                          :sitevisit/WaterDepth
-                          :sitevisit/WidthMeasured
-                          :sitevisit/uuid
-                          :sitevisit/Visitors
-                          {:sitevisit/Samples (comp/get-query SampleForm)}
-                          {:ui/globals (comp/get-query Globals)}
-                          [:riverdb.theta.options/ns '_]])
+  {:ident          [:org.riverdb.db.sitevisit/gid :db/id]
+   :query          (fn [] [:db/id
+                           :riverdb.entity/ns
+                           fs/form-config-join
+                           :ui/ready
+                           :ui/create
+                           :sitevisit/AgencyCode
+                           :sitevisit/BacteriaCollected
+                           :sitevisit/BacteriaTime
+                           :sitevisit/CheckPersonRef
+                           :sitevisit/CreationTimestamp
+                           :sitevisit/DataEntryDate
+                           :sitevisit/DataEntryNotes
+                           :sitevisit/DataEntryPersonRef
+                           :sitevisit/Datum
+                           :sitevisit/DepthMeasured
+                           :sitevisit/GPSDeviceCode
+                           :sitevisit/HydroMod
+                           :sitevisit/HydroModLoc
+                           :sitevisit/Lat
+                           :sitevisit/Lon
+                           :sitevisit/MetalCollected
+                           :sitevisit/MetalTime
+                           :sitevisit/Notes
+                           :sitevisit/PointID
+                           :sitevisit/ProjectID
+                           :sitevisit/QACheck
+                           :sitevisit/QADate
+                           :sitevisit/QAPersonRef
+                           :sitevisit/SeasonCode
+                           :sitevisit/SiteVisitDate
+                           :sitevisit/SiteVisitID
+                           :sitevisit/StationFailCode
+                           :sitevisit/StationID
+                           :sitevisit/StreamWidth
+                           :sitevisit/Time
+                           :sitevisit/TssCollected
+                           :sitevisit/TssTime
+                           :sitevisit/TurbidityCollected
+                           :sitevisit/TurbidityTime
+                           :sitevisit/UnitStreamWidth
+                           :sitevisit/UnitWaterDepth
+                           :sitevisit/VisitType
+                           :sitevisit/WaterDepth
+                           :sitevisit/WidthMeasured
+                           :sitevisit/uuid
+                           :sitevisit/Visitors
+                           {:sitevisit/Samples (comp/get-query SampleForm)}
+                           {:ui/globals (comp/get-query Globals)}
+                           [:riverdb.theta.options/ns '_]])
 
-   ;{[:riverdb.theta.options/ns :entity.ns/person] (comp/get-query ThetaOptions)}])
+   :initial-state  (fn [{:keys [id agency project uuid VisitType StationFailCode] :as params}]
+                     {:db/id                       (tempid/tempid)
+                      :ui/ready                    true
+                      :ui/create                   true
+                      :riverdb.entity/ns           :entity.ns/sitevisit
+                      :sitevisit/AgencyCode        agency
+                      :sitevisit/ProjectID         project
+                      :sitevisit/uuid              (or uuid (tempid/uuid))
+                      :sitevisit/CreationTimestamp (js/Date.)
+                      :sitevisit/Visitors          []
+                      :sitevisit/Samples           [(comp/get-initial-state SampleForm {:type :fieldmeasure})
+                                                    (comp/get-initial-state SampleForm {:type :fieldobs})
+                                                    (comp/get-initial-state SampleForm {:type :grab})]
+                      :sitevisit/VisitType         (or VisitType {:db/ident :sitevisittype/Monthly})
+                      :sitevisit/StationFailCode   (or StationFailCode {:db/ident :stationfaillookup/None})})
 
-   :initial-state (fn [{:keys [id agency project uuid VisitType StationFailCode] :as params}]
-                    {:db/id                       (tempid/tempid)
-                     :ui/ready                    true
-                     :ui/create                   true
-                     :riverdb.entity/ns           :entity.ns/sitevisit
-                     :sitevisit/AgencyCode        agency
-                     :sitevisit/ProjectID         project
-                     :sitevisit/uuid              (or uuid (tempid/uuid))
-                     :sitevisit/CreationTimestamp (js/Date.)
-                     :sitevisit/Visitors          []
-                     :sitevisit/Samples           [(comp/get-initial-state SampleForm {})]
-                     :sitevisit/VisitType         (or VisitType {:db/id :sitevisittype/Monthly})
-                     :sitevisit/StationFailCode   (or StationFailCode {:db/id :stationfaillookup/None})})
+   :initLocalState (fn [this props]
+                     {:onChange #(debug "ON CHANGE SAMPLE" %)})
 
-   ;:shouldComponentUpdate (fn [_ _ _] true)
-
-   ;:initLocalState (fn [this props]
-   ;
-   ;                  {})
-
-   :form-fields   #{:riverdb.entity/ns :sitevisit/uuid
-                    :sitevisit/AgencyCode :sitevisit/ProjectID :sitevisit/Notes
-                    :sitevisit/StationID :sitevisit/DataEntryDate :sitevisit/SiteVisitDate :sitevisit/Time
-                    :sitevisit/Visitors :sitevisit/VisitType :sitevisit/StationFailCode
-                    :sitevisit/DataEntryPersonRef :sitevisit/CheckPersonRef
-                    :sitevisit/QAPersonRef :sitevisit/QACheck :sitevisit/QADate :sitevisit/Samples}}
-
-  ;:componentDidMount (fn [this]
-  ;                     (let [props (comp/props this)
-  ;                           {:keys [current-agency]} (comp/get-computed this)]
-  ;                       {[:riverdb.theta.options/ns :entity.ns/person] (comp/get-query ThetaOptions)}
-  ;                       person-lookup       (get props [:riverdb.theta.options/ns :entity.ns/person])
-  ;                       (debug "COMPONENT DID MOUNT SiteVisitForm agency:" current-agency)
-  ;                       (preload-options :entity.ns/person {:limit -1 :filter {:person/Agency (:db/id current-agency)}})))}
+   :form-fields    #{:riverdb.entity/ns :sitevisit/uuid
+                     :sitevisit/AgencyCode :sitevisit/ProjectID :sitevisit/Notes
+                     :sitevisit/StationID :sitevisit/DataEntryDate :sitevisit/SiteVisitDate :sitevisit/Time
+                     :sitevisit/Visitors :sitevisit/VisitType :sitevisit/StationFailCode
+                     :sitevisit/DataEntryPersonRef :sitevisit/CheckPersonRef
+                     :sitevisit/QAPersonRef :sitevisit/QACheck :sitevisit/QADate :sitevisit/Samples}}
 
   :componentDidMount (fn [this]
-                       ;; NOTE this is just to see if we loaded fresh straight into this form before the globals
-                       ;; and need to replace some lookup idents ... seems like there should be a better way ...
                        (debug "DID MOUNT SiteVisitForm" (comp/props this)))
-  ;(let [props           (comp/props this)
-  ;      this-ident      [:org.riverdb.db.sitevisit/gid (:db/id props)]
-  ;      lookup-keyword? (keyword? (-> props :sitevisit/VisitType first val))
-  ;      app-state       (fapp/current-state SPA)
-  ;      globals?        (get-in app-state [:component/id :globals])
-  ;      _               (debug "DID MOUNT SiteVisitForm" this-ident "GLOBALS YET?" globals?)]
-  ;  (when (and lookup-keyword? globals?)
-  ;    (let [ref-props  (get-in app-state this-ident)
-  ;          app-state' (walk-ident-refs* app-state this-ident)
-  ;          ref-props' (get-in app-state' this-ident)
-  ;          diff       (clojure.data/diff ref-props ref-props')]
-  ;      ;(debug "SV FORM globals?" globals? "PROPS DIFF" diff)
-  ;      (when (map? (second diff))
-  ;        ;(debug "MERGE IDENT!")
-  ;        (rm/merge-ident! this-ident ref-props'))))))
 
-
-
-  ;:pre-merge (fn [{:keys [current-normalized data-tree] :as env}]
-  ;             (debug "PREMERGE SiteVisitForm" current-normalized data-tree)
-  ;             (->> data-tree
-  ;               (merge current-normalized)
-  ;               (clojure.walk/postwalk
-  ;                 #(if (= % :com.fulcrologic.fulcro.algorithms.merge/not-found) nil %))))
-  (let [dirty-fields  (fs/dirty-fields props false)
+  (let [{:keys [onChangeSample]} (comp/get-state this)
+        dirty-fields  (fs/dirty-fields props false)
         dirty?        (some? (seq dirty-fields))
         active-params (filter :parameter/active parameters)
         this-ident    (when props
@@ -851,10 +831,14 @@
                        ;:allowAdditions   true
                        ;:additionPosition "bottom"
                        :style     {:maxWidth 168}}
+        sv-time       (:sitevisit/Time props)
+        sv-date       (:sitevisit/SiteVisitDate props)
         {person-options            :entity.ns/person
          stationlookup-options     :entity.ns/stationlookup
          sitevisittype-options     :entity.ns/sitevisittype
-         stationfaillookup-options :entity.ns/stationfaillookup} (:riverdb.theta.options/ns props)]
+         stationfaillookup-options :entity.ns/stationfaillookup
+         fieldobsvarlookup-options :entity.ns/fieldobsvarlookup} (:riverdb.theta.options/ns props)]
+
     (debug "RENDER SiteVisitForm" "props" props "params" active-params)
     (div :.dimmable.fields {:key "sv-form"}
       (ui-dimmer {:inverted true :active (or (not ready) (not props))}
@@ -869,7 +853,7 @@
                   (merge
                     person-options
                     {:riverdb.entity/ns :entity.ns/person
-                     :value             Visitors
+                     :value             (or Visitors [])
                      :opts              (merge
                                           default-opts
                                           {:multiple true})})
@@ -926,7 +910,7 @@
           (div :.dimmable.fields {:key "dates"}
             (div :.field {:key "svdate" :style {:width 180}}
               (label {} "Site Visit Date")
-              (ui-datepicker {:selected SiteVisitDate
+              (ui-datepicker {:selected (or sv-date "")
                               :onChange #(when (inst? %)
                                            (log/debug "date change" %)
                                            (set-value! this :sitevisit/SiteVisitDate %))}))
@@ -934,7 +918,7 @@
 
             (ui-form-input
               {:label    "Start Time"
-               :value    (or Time "")
+               :value    (or sv-time "")
                :style    {:width 168}
                :onChange #(do
                             (log/debug "Time change" (-> % .-target .-value))
@@ -1011,21 +995,37 @@
                                          (log/debug "publish change" value)
                                          (set-value! this :sitevisit/QACheck value))})))
 
-          (ui-form-text-area {:autoHeight true
-                              :label "Notes"
-                              :value (or Notes "")
+          (ui-form-text-area {;:autoHeight true
+                              :label    "Notes"
+                              :value    (or Notes "")
                               :onChange #(do
                                            (debug "CHANGED Notes" (-> % .-target .-value))
                                            (set-value! this :sitevisit/Notes (-> % .-target .-value)))})
 
 
           (when (not-empty Samples)
-            (vec
-              (for [sample Samples]
-                (ui-sample-form
-                  (comp/computed sample
-                    {:active-params active-params
-                     :sv-comp       this})))))
+            (let [fm   (first (filter-sample-typecode "FieldMeasure" Samples))
+                  obs  (first (filter-sample-typecode "FieldObs" Samples))
+                  grab (first (filter-sample-typecode "Grab" Samples))]
+              (debug "SAMPLES" "FM" fm "OBS" obs)
+              [(ui-sample-form
+                 (comp/computed (or fm (comp/get-initial-state SampleForm {:type :fieldmeasure}))
+                   {:active-params active-params
+                    :sv-comp       this
+                    :onChange      onChangeSample}))]))
+          ;(ui-sample-form
+          ;  (comp/computed (or obs (comp/get-initial-state SampleForm {:type :fieldobs}))
+          ;    {:active-params             active-params
+          ;     :sv-comp                   this
+          ;     :onChange                  onChangeSample
+          ;     :fieldobsvarlookup-options fieldobsvarlookup-options}))
+          ;(ui-sample-form
+          ;  (comp/computed (or grab (comp/get-initial-state SampleForm {:type :grab}))
+          ;    {:active-params active-params
+          ;     :sv-comp       this
+          ;     :onChange      onChangeSample}))]))
+
+
 
           (div {:style {:marginTop 10}}
             (dom/button :.ui.button.secondary
@@ -1072,6 +1072,8 @@
                        (assoc-in target (into {} ms))
                        (assoc-in select-target opts)))))))
 
+
+
 (fm/defmutation form-ready
   [{:keys [route-target form-ident]}]
   (action [{:keys [state]}]
@@ -1079,6 +1081,7 @@
     (swap! state
       (fn [st]
         (-> st
+          (rutil/convert-db-refs* form-ident)
           (fs/add-form-config* SiteVisitForm form-ident)
           (update-in form-ident assoc :ui/ready true))))
     (dr/target-ready! SPA route-target)))
@@ -1132,33 +1135,27 @@
                           result))
 
    :will-enter        (fn [app {:keys [sv-id] :as params}]
-                        (let [is-new?        (= sv-id "new")
-                              ident-key      :org.riverdb.db.sitevisit/gid
-                              editor-ident   [:component/id :sitevisit-editor]
-                              session-valid? (get-in (fapp/current-state app) [:component/id :session :session/valid?])]
-                          (log/debug "WILL ENTER SiteVisitEditor" "session-valid?" session-valid? "NEW?" is-new? "PARAMS" params)
-                          (if session-valid?
-                            (if is-new?
-                              (dr/route-deferred editor-ident
-                                #(let [] ;(riverdb.ui.util/shortid)]]
-                                   (log/debug "CREATING A NEW SITEVISIT")
-                                   (comp/transact! app `[(merge-new-sv2)])
-                                   (dr/target-ready! app editor-ident)))
-                              (dr/route-deferred editor-ident
-                                #(let [sv-ident [ident-key sv-id]]
-                                   (log/debug "LOADING AN EXISTING SITEVISIT" sv-ident)
-                                   (f/load! app sv-ident SiteVisitForm
-                                     {:target               (targeting/multiple-targets
-                                                              [:riverdb.ui.root/current-sv]
-                                                              [:component/id :sitevisit-editor :sitevisit])
-                                      :post-mutation        `form-ready
-                                      :post-mutation-params {:route-target editor-ident
-                                                             :form-ident   sv-ident}
-                                      :without              #{[:riverdb.theta.options/ns '_]}}))))
+                        (let [is-new?      (= sv-id "new")
+                              ident-key    :org.riverdb.db.sitevisit/gid
+                              editor-ident [:component/id :sitevisit-editor]]
+                          (log/debug "WILL ENTER SiteVisitEditor" "NEW?" is-new? "PARAMS" params)
+                          (if is-new?
                             (dr/route-deferred editor-ident
-                              #(do
-                                 (routes/replace! "/")
-                                 (dr/target-ready! app editor-ident))))))
+                              #(let [] ;(riverdb.ui.util/shortid)]]
+                                 (log/debug "CREATING A NEW SITEVISIT")
+                                 (comp/transact! app `[(merge-new-sv2)])
+                                 (dr/target-ready! app editor-ident)))
+                            (dr/route-deferred editor-ident
+                              #(let [sv-ident [ident-key sv-id]]
+                                 (log/debug "LOADING AN EXISTING SITEVISIT" sv-ident)
+                                 (f/load! app sv-ident SiteVisitForm
+                                   {:target               (targeting/multiple-targets
+                                                            [:riverdb.ui.root/current-sv]
+                                                            [:component/id :sitevisit-editor :sitevisit])
+                                    :post-mutation        `form-ready
+                                    :post-mutation-params {:route-target editor-ident
+                                                           :form-ident   sv-ident}
+                                    :without              #{[:riverdb.theta.options/ns '_]}}))))))
    :will-leave        (fn [this props]
                         (debug "WILL LEAVE EDITOR")
                         (dr/route-immediate [:component/id :sitevisit-editor]))
@@ -1209,44 +1206,55 @@
                                               :parameters      parameters}))))))
 
 
-(defsc SiteVisitSummary [this {:keys [db/id sitevisit/SiteVisitDate sitevisit/VisitType] :as props} {:keys [onEdit]}]
+(defsc SiteVisitSummary [this {:keys           [db/id]
+                               :sitevisit/keys [SiteVisitDate VisitType StationFailCode QACheck StationID]
+                               :as             props} {:keys [onEdit]}]
   {:query         [:db/id
                    :sitevisit/SiteVisitID
                    :sitevisit/SiteVisitDate
+                   :sitevisit/QACheck
+                   {:sitevisit/StationFailCode (comp/get-query looks/stationfaillookup-sum)}
                    {:sitevisit/StationID (comp/get-query looks/stationlookup-sum)}
                    {:sitevisit/VisitType (comp/get-query looks/sitevisittype)}]
    :ident         [:org.riverdb.db.sitevisit/gid :db/id]
-   :initial-state {:db/id                   (tempid/tempid)
-                   :sitevisit/SiteVisitDate (js/Date.)
-                   :sitevisit/StationID     {}
-                   :sitevisit/VisitType     {}}}
+   :initial-state {:db/id                     (tempid/tempid)
+                   :sitevisit/SiteVisitDate   (js/Date.)
+                   :sitevisit/StationID       {}
+                   :sitevisit/StationFailCode {}
+                   :sitevisit/VisitType       {}}}
   (let [type    (:sitevisittype/name VisitType)
+        fail    (:stationfaillookup/FailureReason StationFailCode)
+        site    (:stationlookup/StationName StationID)
+        siteID  (:stationlookup/StationID StationID)
         id      (if (tempid/tempid? id)
                   (.-id id)
                   id)
         edit-fn #(onEdit props)]
     (tr {:key id :style {:cursor "pointer"} :onClick edit-fn} ;:onMouseOver #(println "HOVER" id)}
-      (td {:key 1} (str SiteVisitDate))
-      (td {:key 2} type)
-      (td {:key 3 :padding 2}
-        (button :.ui.primary.basic.icon.button
-          {:style {:padding 5} :onClick edit-fn}
-          (dom/i :.pointer.edit.icon {}))))))
+      (td {:key 1} (str (t/date SiteVisitDate)))
+      (td {:key 2} siteID)
+      (td {:key 3} site)
+      (td {:key 4} type)
+      (td {:key 5} fail)
+      #_(td {:key 3 :padding 2}
+          (button :.ui.primary.basic.icon.button
+            {:style {:padding 5} :onClick edit-fn}
+            (dom/i :.pointer.edit.icon {}))))))
 
 (def ui-sv-summary (comp/factory SiteVisitSummary {:keyfn :db/id}))
 
 (defn load-sitevisits
-  ([this filter limit offset sort]
-   (let [params {:filter filter :limit limit :offset offset :sort sort}]
+  ([this filter limit offset sortField sortOrder]
+   (let [params {:filter filter :limit limit :offset offset :sortField sortField :sortOrder sortOrder}]
      (debug "LOAD SITEVISITS" params)
      (f/load! this :org.riverdb.db.sitevisit-meta nil
        {:parallel true
         :params   {:filter filter :meta-count true :limit 1}
         :target   [:component/id :sitevisit-list :ui/list-meta]})
-     (f/load! this :org.riverdb.db.sitevisit looks/sitevisit-sum
+     (f/load! this :org.riverdb.db.sitevisit SiteVisitSummary
        {:parallel true
         :target   [:component/id :sitevisit-list :sitevisits]
-        :params   {:filter filter :limit limit :offset offset :sort sort}}))))
+        :params   params}))))
 
 (defn load-sites [this agencyCode]
   (debug "LOAD SITES" agencyCode)
@@ -1259,10 +1267,23 @@
                               :ident-key   :org.riverdb.db.stationlookup/gid
                               :sort-fn     :stationlookup/StationID}})))
 
+(defn reset-sites [this]
+  (let [sites  (get (comp/props this) :riverdb.ui.root/current-project-sites)
+        target [:riverdb.ui.root/current-project-sites]]
+    (debug "RESET SITES" sites)
+    (fm/set-value! this :ui/site nil)
+    (comp/transact! this `[(rm/sort-ident-list-by {:idents-path ~target
+                                                   :ident-key   :org.riverdb.db.stationlookup/gid
+                                                   :sort-fn     :stationlookup/StationID})])))
+
 (defn make-filter
   ([props]
    (let [{:riverdb.ui.root/keys [current-agency current-project current-year]
           :ui/keys              [site]} props
+
+         ag-id     (:db/id current-agency)
+         pj-id     (:db/id current-project)
+
          year-from (when current-year
                      (js/parseInt current-year))
          year-to   (when year-from
@@ -1272,79 +1293,122 @@
                      (merge {:sitevisit/SiteVisitDate {:> (js/Date. (str year-from))
                                                        :< (js/Date. (str year-to))}})
                      site
-                     (merge {:sitevisit/StationID site}))]
-     (debug "MAKE FILTER" year-from year-to)
+                     (merge {:sitevisit/StationID site})
+
+                     ;ag-id
+                     ;(merge {:sitevisit/AgencyCode ag-id})
+
+                     pj-id
+                     (merge {:sitevisit/ProjectID pj-id}))]
+
+     (debug "MAKE FILTER" "project" pj-id "from" year-from "to" year-to)
      filter)))
 
 
 
 (defsc SiteVisitList
   "This tracks current-project, current-year, filter, limit, sort, and site"
-  [this {:keys                 [sitevisits sites project-years]
-         :riverdb.ui.root/keys [current-agency current-project current-year]
-         :ui/keys              [site sort limit offset list-meta] :as props}]
+  [this {:keys                 [sitevisits project-years]
+         :riverdb.ui.root/keys [current-agency current-project current-year current-project-sites]
+         :ui/keys              [site sortField sortOrder limit offset list-meta] :as props}]
   {:ident              (fn [] [:component/id :sitevisit-list])
    :query              [{:sitevisits (comp/get-query SiteVisitSummary)}
                         {:project-years (comp/get-query ProjectYears)}
-                        {:sites (comp/get-query looks/stationlookup-sum)}
+                        ;{:sites (comp/get-query looks/stationlookup-sum)}
                         {[:riverdb.ui.root/current-agency '_] (comp/get-query looks/agencylookup-sum)}
                         {[:riverdb.ui.root/current-project '_] (comp/get-query looks/projectslookup-sum)}
+                        {[:riverdb.ui.root/current-project-sites '_] (comp/get-query looks/stationlookup-sum)}
                         [:riverdb.ui.root/current-year '_]
                         :ui/limit
                         :ui/offset
-                        :ui/sort
+                        :ui/sortField
+                        :ui/sortOrder
                         :ui/site
                         :ui/list-meta]
    :route-segment      ["list"]
    :initial-state      {:sitevisits    []
-                        :sites         []
+                        ;:sites         []
                         :project-years {}
                         :ui/list-meta  nil
                         :ui/limit      15
                         :ui/offset     0
-                        :ui/sort       nil
+                        :ui/sortField  :sitevisit/SiteVisitDate
+                        :ui/sortOrder  :asc
                         :ui/site       nil}
    :componentDidUpdate (fn [this prev-props prev-state]
-                         (let [{:ui/keys              [limit offset sort site] :as props
+                         (let [{:ui/keys              [limit offset sortField sortOrder site] :as props
                                 :riverdb.ui.root/keys [current-project current-year]} (comp/props this)
-                               prev-proj   (get prev-props :riverdb.ui.root/current-project)
-                               prev-year   (get prev-props :riverdb.ui.root/current-year)
-                               prev-offset (get prev-props :ui/offset)
-                               prev-limit  (get prev-props :ui/limit)
-                               prev-sort   (get prev-props :ui/sort)
-                               prev-site   (get prev-props :ui/site)
-                               runQuery?   (or
-                                             (not= prev-proj current-project)
-                                             (not= prev-year current-year)
-                                             (not= offset prev-offset)
-                                             (not= limit prev-limit)
-                                             (not= sort prev-sort)
-                                             (not= site prev-site))]
-                           (debug "SV LIST :componentDidUpdate: RUN QUERY" runQuery?)
+                               diff         (clojure.data/diff prev-props props)
+                               changed-keys (clojure.set/union (keys (first diff)) (keys (second diff)))
+                               runQuery?    (some #{:riverdb.ui.root/current-project
+                                                    :riverdb.ui.root/current-year
+                                                    :ui/offset
+                                                    :ui/limit
+                                                    :ui/sortField
+                                                    :ui/sortOrder
+                                                    :ui/site}
+                                              changed-keys)
+                               sortSites?   (some #{:riverdb.ui.root/current-project} changed-keys)]
+                           (debug "DID UPDATE SiteVisitList" "runQuery?" runQuery? "sortSites?" sortSites?)
                            (when runQuery?
                              (let [filter (make-filter props)]
-                               (load-sitevisits this filter limit offset sort)))))
+                               (load-sitevisits this filter limit offset sortField sortOrder)))
+                           (when sortSites?
+                             (reset-sites this))))
    :componentDidMount  (fn [this]
-                         (let [{:ui/keys              [limit offset sort] :as props
+                         (let [{:ui/keys              [limit offset sortField sortOrder] :as props
                                 :riverdb.ui.root/keys [current-agency]} (comp/props this)
                                filter (make-filter props)
                                {:agencylookup/keys [AgencyCode]} current-agency]
-                           (debug "SV LIST :componentDidMount RUN QUERY" AgencyCode)
-                           (load-sitevisits this filter limit offset sort)
-                           (when AgencyCode
-                             (load-sites this AgencyCode))))}
+                           (debug "DID MOUNT SiteVisitList")
+                           (load-sitevisits this filter limit offset sortField sortOrder)
+                           (reset-sites this)))}
+  ;(when AgencyCode
+  ;  (load-sites this AgencyCode))))}
 
-  (let [activePage             (inc (/ offset limit))
+  (let [
+        offset                 (or offset 0)
+        limit                  (or limit 15)
+        activePage             (if (> limit 0)
+                                 (inc (/ offset limit))
+                                 1)
         query-count            (get list-meta :org.riverdb.meta/query-count 0)
-        totalPages             (int (Math/ceil (/ query-count limit)))
+        totalPages             (if (> limit 0)
+                                 (int (Math/ceil (/ query-count limit)))
+                                 1)
         handlePaginationChange (fn [e t]
                                  (let [page       (-> t .-activePage)
                                        new-offset (* (dec page) limit)]
                                    (log/debug "PAGINATION" "page" page "new-offset" new-offset)
-                                   (when (> new-offset -1) (fm/set-integer! this :ui/offset :value new-offset))))
-        onEdit                 (fn [sv]
-                                 (routes/route-to! (str "/sitevisit/edit/" (or (:db/id sv) "new"))))]
+                                   (when (> new-offset -1)
+                                     (fm/set-integer! this :ui/offset :value new-offset))))
 
+        sites                  current-project-sites
+
+
+        onEdit                 (fn [sv]
+                                 (routes/route-to! (str "/sitevisit/edit/" (or (:db/id sv) "new"))))
+
+
+        handleSort             (fn [field]
+                                 (if (not= field sortField)
+                                   (do
+                                     (fm/set-value! this :ui/sortField field)
+                                     (fm/set-value! this :ui/sortOrder :asc))
+                                   (if (= sortOrder :desc)
+                                     (do
+                                       (fm/set-value! this :ui/sortField nil)
+                                       (fm/set-value! this :ui/sortOrder nil))
+                                     (do
+                                       (fm/set-value! this :ui/sortOrder :desc)))))
+
+        th-fn                  (fn [i label sort-field]
+                                 (th {:key     i
+                                      :onClick #(handleSort sort-field)
+                                      :classes [(when (= sortField sort-field)
+                                                  (str "ui sorted " (if (= sortOrder :desc) "descending" "ascending")))]} label))]
+
+    (debug "RENDER SiteVisitList" "sites" sites)
     (div {}
       (div :#sv-list-menu.ui.menu {:key "title"}
         ;(div :.item {:style {}} "Site Visits")
@@ -1360,14 +1424,57 @@
                                              nil
                                              st)]
                                     (debug "set site" st)
+                                    (fm/set-value! this :ui/offset 0)
                                     (fm/set-value! this :ui/site st))}
                 (into
                   [(option {:value "" :key "none"} "")]
                   (doall
                     (for [{:keys [db/id stationlookup/StationName stationlookup/StationID]} sites]
                       (option {:value id :key id} (str StationID ": " StationName)))))))))
-        (div :.item
-          (button {:key "create" :onClick #(onEdit nil)} "New"))
+        (div :.item.float.right
+          (button {:key "create" :onClick #(onEdit nil)} "New Site Visit"))
+
+        #_(div :.item.right
+            (ui-pagination
+              {:id            "paginator"
+               :activePage    activePage
+               :boundaryRange 1
+               :onPageChange  handlePaginationChange
+               :size          "mini"
+               :siblingRange  1
+               :totalPages    totalPages})))
+
+      (when (seq sitevisits)
+        (table :.ui.sortable.selectable.very.compact.small.table {:key "sv-table"}
+          (thead {:key 1}
+            (tr {}
+              (th-fn 1 "Date" :sitevisit/SiteVisitDate)
+              (th-fn 2 "Site ID" {:sitevisit/StationID :stationlookup/StationID})
+              (th-fn 3 "Site" {:sitevisit/StationID :stationlookup/StationName})
+              (th-fn 4 "Type" {:sitevisit/VisitType :sitevisittype/name})
+              (th-fn 5 "Fail?" {:sitevisit/StationFailCode :stationfaillookup/FailureReason})))
+          (tbody {:key 2}
+            (vec
+              (for [sv sitevisits]
+                (ui-sv-summary (comp/computed sv {:onEdit onEdit})))))))
+
+      (div :.ui.menu
+        (div :.item {}
+          (dom/span {:style {}} "Results Per Page")
+          (ui-input {:style    {:width 70}
+                     :value    (str (if (= limit -1) "" limit))
+                     :onChange (fn [e]
+                                 (let [value (-> e .-target .-value)
+                                       value (if (= value "")
+                                               -1 value)]
+                                   (fm/set-integer! this :ui/limit :value value)))}))
+        (let [limit (if (< limit 0) 0 limit)
+              from  (-> activePage dec (* limit) inc)
+              to    (* activePage limit)
+              to    (if (= to 0) 1 to)]
+
+          (debug "LIMIT" limit "activePage" activePage)
+          (div :.item (str "Showing " from " to " to " of " query-count " results")))
 
         (div :.item.right
           (ui-pagination
@@ -1377,19 +1484,7 @@
              :onPageChange  handlePaginationChange
              :size          "mini"
              :siblingRange  1
-             :totalPages    totalPages})))
-
-      (when (seq sitevisits)
-        (table :.ui.selectable.very.compact.small.table {:key "sv-table"}
-          (thead {:key 1}
-            (tr {}
-              (th {:key 1} (str "Date " query-count))
-              (th {:key 2} "Type")
-              (th {:key 3} "Edit")))
-          (tbody {:key 2}
-            (vec
-              (for [sv sitevisits]
-                (ui-sv-summary (comp/computed sv {:onEdit onEdit}))))))))))
+             :totalPages    totalPages}))))))
 
 
 (dr/defrouter SVRouter [this props]

@@ -62,7 +62,7 @@
 
 (defmutation logout [env params]
   {::pc/output [:session/valid?]}
-  (response-updating-session env {:session/valid? false :account/name ""}))
+  (response-updating-session env {:session/valid? false :account/name "" :account/auth nil}))
 
 ;(defmutation signup! [env {:keys [email password]}]
 ;  {::pc/output [:signup/result]}
