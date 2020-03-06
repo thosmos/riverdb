@@ -117,7 +117,7 @@
                          (let [props     (comp/props this)
                                diff      (clojure.data/diff prev-props props)
                                changed?  (some #{:query-params :filter-key} (concat (keys (first diff)) (keys (second diff))))
-                               _         (debug "THETA OPTIONS CHANGED?" changed?)
+                               ;_         (debug "THETA OPTIONS CHANGED?" changed?)
                                ident-val (:riverdb.entity/ns props)
                                ident     [:riverdb.theta.options/ns ident-val]]
                            (when changed?
@@ -148,7 +148,7 @@
         options    (into [{:text "" :value ""}] (if (and filter-key filter-val)
                                                   (filterv #(= (:filt %) filter-val) options)
                                                   options))]
-    (debug "RENDER ThetaOptions" theta-k "text-key:" text-key "value:" ref-id) ;"loading:" loading "query-params:" query-params "filter-key:" filter-key "filter-val:" filter-val)
+    ;(debug "RENDER ThetaOptions" theta-k "text-key:" text-key "value:" ref-id) ;"loading:" loading "query-params:" query-params "filter-key:" filter-key "filter-val:" filter-val)
     (ui-dropdown {:loading          (not show?)
                   :search           true
                   :selection        true
@@ -159,7 +159,7 @@
                   :options          options
                   :value            ref-id
                   :autoComplete     "off"
-                  :style            (or style {:width "auto" :minWidth "10em"})
+                  :style            (merge {:width "auto" :minWidth "10em"} (or style {}))
                   :onChange         (fn [_ d]
                                       (when-let [val (-> d .-value)]
                                         (let [val     (if (= val "") nil val)

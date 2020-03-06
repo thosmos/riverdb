@@ -68,7 +68,7 @@
   (html5
     [:html {:lang "en"}
      [:head {:lang "en"}
-      [:title "Application"]
+      [:title "RiverDB"]
       [:meta {:charset "utf-8"}]
       [:meta {:name "viewport" :content "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"}]
       [:link {:href "/admin/css/semantic.min.css" :rel "stylesheet"}]

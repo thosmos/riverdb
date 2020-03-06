@@ -56,7 +56,7 @@
     [riverdb.ui.session :refer [ui-session Session]]
     [riverdb.ui.tac-report-page :refer [TacReportPage]]
     [riverdb.ui.util :as ui-util :refer [make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save
-                                         set-editing set-value set-value! set-refs! set-ref! set-ref set-refs get-ref-val get-ref-set-val get-db-ident db-ident->db-ref]]
+                                         set-editing set-value set-value! set-refs! set-ref! set-ref set-refs get-ref-val get-ref-set-val lookup-db-ident db-ident->db-ref]]
     [theta.log :as log :refer [debug]]
     [com.fulcrologic.fulcro.algorithms.tempid :as tempid]))
 

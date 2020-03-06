@@ -169,6 +169,48 @@
     [ident-k (:db/id db-ref)]
     db-ref))
 
+(defn map->ident [m ident-k]
+  (if (and (map? m) (:db/id m))
+    [ident-k (:db/id m)]
+    m))
+
+(defn thing->ident [thing]
+  (cond
+
+    (eql/ident? thing)
+    thing
+
+    (map? thing)
+    (let [dbid   (:db/id thing)
+          ent-ns (:riverdb.entity/ns thing)]
+      (if (and dbid ent-ns)
+        [(ent-ns->ident-k ent-ns) dbid]
+        thing))
+
+    :else
+    thing))
+
+(defn convert-db-refs [thing]
+  (let [ent-ns (:riverdb.entity/ns thing)
+        ent-spec (get look/specs-map ent-ns)
+        out (reduce-kv
+              (fn [out attr-k {:attr/keys [type ref cardinality]}]
+                (let [attr-val (get out attr-k)
+                      is-ref?  (= type :ref)
+                      ident-k (when is-ref?
+                                (ent-ns->ident-k (:entity/ns ref)))
+                      attr-val' (if
+                                  (= cardinality :one)
+                                  (map-ref->ident attr-val ident-k)
+                                  (mapv #(map-ref->ident % ident-k) attr-val))]
+                  (if is-ref?
+                    (assoc out attr-k attr-val')
+                    out)))
+              thing
+              (:entity/attrs ent-spec))]
+    ;(debug "convert-db-refs" "BEFORE" thing "AFTER" out)
+    out))
+
 (defn convert-db-refs* [state-map ident]
   (let [thing (get-in state-map ident)
         ent-ns (ident->ent-ns ident)
@@ -191,7 +233,7 @@
     (debug "convert-db-refs*" "BEFORE" (get-in state-map ident) "AFTER" out)
     (assoc-in state-map ident out)))
 
-(defn get-db-ident [ident]
+(defn lookup-db-ident [ident]
   (let [app-state (fapp/current-state SPA)
         ident     (cond
                     (and (map? ident) (keyword? (:db/ident ident)))
@@ -213,7 +255,7 @@
     result))
 
 (defn db-ident->db-ref [ident]
-  (let [ident-m (get-db-ident ident)
+  (let [ident-m (lookup-db-ident ident)
         ent-ns (:riverdb.entity/ns ident-m)
         db-id (:db/id ident-m)
         db-ref (ent-ns->ident ent-ns db-id)]
@@ -239,7 +281,7 @@
                  (vector? value)
                  (mapv get-ref-val value)
                  :else value)]
-    (debug "get-ref-val" value result)
+    ;(debug "get-ref-val" value result)
     result))
 
 ;(defn set-ref! [this k val]

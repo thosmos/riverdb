@@ -9,6 +9,7 @@
     [mount.core :as mount]
     [riverdb.server]
     [riverdb.state :refer [db cx]]
+    [com.rpl.specter :as sp]
     [thosmos.util :as tu]
     [thosmos.datomic :as tdb]))
 

@@ -14,7 +14,8 @@
     [riverdb.graphql.schema :refer [table-specs-ds specs-sorted specs-map]]
     [riverdb.state :refer [db cx]]
     [taoensso.timbre :as log :refer [debug]]
-    [thosmos.util :as tu :refer [walk-modify-k-vals limit-fn]])
+    [thosmos.util :as tu :refer [walk-modify-k-vals limit-fn]]
+    [riverdb.roles :as roles])
   (:import (java.math BigDecimal)))
 
 ;;;;  SERVER
@@ -135,20 +136,27 @@
 (defn save-entity* [env ident diff create]
   (debug "MUTATION!!! save-entity" "IDENT" ident "DIFF" diff (comment "ENV" (keys env) "SESSION" (:session (:ring/request env))))
   (let [session-valid? (get-in env [:ring/request :session :session/valid?])
-        user-email     (when session-valid?
-                         (get-in env [:ring/request :session :account/auth :user :user/email]))
-        karl?          (or
-                         (= user-email "karl@yubariver.org")
-                         (= user-email "mo@sierrastreamsinstitute.org"))
+        user           (when session-valid?
+                         (get-in env [:ring/request :session :account/auth :user]))
+        admin?         (when user
+                         (-> user
+                           roles/user->roles
+                           roles/admin?))
         tempids        (sp/select (sp/walker tempid/tempid?) diff)
         tmp-map        (into {} (map (fn [t] [t (-> t :id str (subs 0 20))]) tempids))
         _              (debug "PRE TEMPIDS" tempids tmp-map)]
-    (if karl?
+    (if (not admin?)
+      (do
+        (debug "ERROR save-entity*" "Unauthorized")
+        {:error "Unauthorized"})
       (let [result (try
                      (let [form-delta (sp/transform (sp/walker tempid/tempid?) tmp-map diff)
-                           txds        (delta->datomic-txn form-delta)
-                           _    (debug "SAVE-ENTITY TXDS" txds)
-                           tx   (d/transact (cx) txds)]
+                           txds       (delta->datomic-txn form-delta)
+                           txds       (conj txds {:db/id           "datomic.tx"
+                                                  :riverdb/tx-user (parse-long (:db/id user))
+                                                  :riverdb/tx-info "save-entity"})
+                           _          (debug "SAVE-ENTITY TXDS" txds)
+                           tx         (d/transact (cx) txds)]
                        (debug "TX" @tx)
                        @tx)
                      (catch Exception ex (do
@@ -162,10 +170,7 @@
                             [t (str (get db-tmps s))]))
                 _       (debug "POST TEMPIDS" tempids)]
             (debug "SAVE-ENTITY RESULT" result)
-            {:tempids tempids})))
-      (do
-        (debug "ERROR save-entity*" "Unauthorized")
-        {:error "Unauthorized"}))))
+            {:tempids tempids}))))))
 
 (pc/defmutation save-entity [env {:keys [ident diff create]}]
   {::pc/sym    `save-entity

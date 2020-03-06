@@ -46,13 +46,15 @@
     [riverdb.ui.routes :as routes]
     [riverdb.ui.session :refer [Session]]
     [riverdb.ui.inputs :refer [ui-float-input]]
-    [riverdb.ui.util :as rutil :refer [walk-ident-refs* walk-ident-refs make-tempid make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save set-editing set-value set-value! set-refs! set-ref! set-ref set-refs get-ref-set-val get-db-ident]]
+    [riverdb.ui.util :as rutil :refer [walk-ident-refs* walk-ident-refs make-tempid make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save set-editing set-value set-value! set-refs! set-ref! set-ref set-refs get-ref-set-val lookup-db-ident]]
     [riverdb.util :refer [paginate]]
+    [com.rpl.specter :as sp :refer [ALL LAST]]
     [tick.alpha.api :as t]
     [theta.log :as log :refer [debug info]]
     [thosmos.util :as tu]
     [com.fulcrologic.fulcro.data-fetch :as df]
-    [riverdb.roles :as roles]))
+    [riverdb.roles :as roles]
+    [edn-query-language.core :as eql]))
 
 (declare SVRouter)
 
@@ -163,102 +165,10 @@
                    :labresult/LabReplicate     :param/rep
                    :labresult/ConstituentRowID :param/const}})
 
-
-(defn set-in* [state path val]
-  (assoc-in state path val))
-(fm/defmutation set-in [{:keys [path val]}]
-  (action [{:keys [state]}]
-    (swap! state set-in* path val)))
-(defn set-in! [path val]
-  (comp/transact! SPA `[(set-in {:path ~path :val ~val})]))
-
-(defn set-field-result* [state db-id val]
-  (-> state
-    (assoc-in [:org.riverdb.db.fieldresult/gid db-id :fieldresult/Result] val)
-    (fs/mark-complete* [:org.riverdb.db.fieldresult/gid db-id] :fieldresult/Result)))
-
-(defn remove-field-result* [state samp-ident db-id]
-  (debug "MUTATION remove field result" samp-ident db-id)
-  (let [path     (conj samp-ident :sample/FieldResults)
-        frs      (get-in state path)
-        str-dbid (str db-id)
-        new-frs  (vec (remove nil?
-                        (for [fr frs]
-                          (let [id    (second fr)
-                                strid (str id)]
-                            (debug "FR" strid)
-                            (if (= strid str-dbid)
-                              nil
-                              fr)))))]
-    (-> state
-      (assoc-in path new-frs)
-      (#(if (tempid/tempid? db-id)
-          (update % :org.riverdb.db.fieldresult/gid dissoc db-id)
-          %)))))
-
-(fm/defmutation set-all [{:keys [k v dbids onChange]}]
-  (action [{:keys [state]}]
-    (let [val v]
-      (debug "MUTATION set-all" k val dbids onChange)
-      (when onChange
-        (onChange v))
-      (swap! state
-        (fn [s]
-          (reduce
-            (fn [s id]
-              (-> s
-                (assoc-in [:org.riverdb.db.fieldresult/gid id k] val)
-                (fs/mark-complete* [:org.riverdb.db.fieldresult/gid id] k)))
-            s dbids))))))
-
-(fm/defmutation set-field-result [{:keys [db-id val i samp-ident const-id devType devID rs-map]}]
-  (action [{:keys [state]}]
-    (debug "MUTATION set-field-result" i val rs-map)
-    (cond
-      (some? db-id)
-      (if (some? val)
-        (swap! state set-field-result* db-id val)
-        (swap! state remove-field-result* samp-ident db-id))
-      (and (nil? db-id) (some? val))
-      (let [new-id     (tempid/tempid)
-            new-fr     (comp/get-initial-state FieldResultForm
-                         {:id new-id :uuid (tempid/uuid) :const {:db/id const-id} :rep i :result val :devID devID :devType devType})
-            new-form   (fs/add-form-config FieldResultForm new-fr)
-            new-rs-map (assoc rs-map i new-form)
-            frs        (mapv #(identity [:org.riverdb.db.fieldresult/gid (:db/id (second %))]) new-rs-map)]
-        (swap! state
-          (fn [st]
-            (-> st
-              (merge/merge-component FieldResultForm new-form)
-              (assoc-in (conj samp-ident :sample/FieldResults) frs))))
-
-
-
-        #_(swap! state merge/merge-component FieldResultForm new-form :append (conj samp-ident :sample/FieldResults))))))
-
-
-(defn rui-fieldres [samp-ident i const-id rs-map devType devID]
-  (let [fr  (get rs-map i)
-        val (:fieldresult/Result fr)]
-    (ui-float-input {:type     "text"
-                     :value    val
-                     :style    {:width "60px"}
-                     :onChange #(let [db-id (:db/id fr)
-                                      v     %]
-                                  (debug "CHANGE FIELD RESULT" db-id v)
-                                  (comp/transact! SPA `[(set-field-result
-                                                          ~{:samp-ident samp-ident
-                                                            :const-id   const-id
-                                                            :devType    devType
-                                                            :rs-map     rs-map
-                                                            :devID      devID
-                                                            :db-id      db-id
-                                                            :val        v
-                                                            :i          i})]))})))
-
 (fm/defmutation save-obs [{:keys [sample name text value obsvalue intval constituentlookupRef]}]
   (action [{:keys [state]}]
     (debug "SAVE OBS RESULT" "name" name "text" text "value" value "obsvalue" obsvalue "intval" intval "constituentlookupRef" constituentlookupRef)))
+
 
 (defsc FieldObsParamForm
   [this
@@ -345,6 +255,123 @@
 (def ui-fieldobs-param-form (comp/factory FieldObsParamForm))
 
 
+(defn set-in* [state path val]
+  (assoc-in state path val))
+(fm/defmutation set-in [{:keys [path val]}]
+  (action [{:keys [state]}]
+    (swap! state set-in* path val)))
+(defn set-in! [path val]
+  (comp/transact! SPA `[(set-in {:path ~path :val ~val})]))
+
+(defn set-field-result* [state db-id val]
+  (-> state
+    (assoc-in [:org.riverdb.db.fieldresult/gid db-id :fieldresult/Result] val)
+    (fs/mark-complete* [:org.riverdb.db.fieldresult/gid db-id] :fieldresult/Result)))
+
+(defn remove-field-result* [state samp-ident db-id]
+  (debug "MUTATION remove field result" samp-ident db-id)
+  (let [path     (conj samp-ident :sample/FieldResults)
+        frs      (get-in state path)
+        str-dbid (str db-id)
+        new-frs  (vec (remove nil?
+                        (for [fr frs]
+                          (let [id    (second fr)
+                                strid (str id)]
+                            (debug "FR" strid)
+                            (if (= strid str-dbid)
+                              nil
+                              fr)))))]
+    (-> state
+      (assoc-in path new-frs)
+      (#(if (tempid/tempid? db-id)
+          (update % :org.riverdb.db.fieldresult/gid dissoc db-id)
+          %)))))
+
+(fm/defmutation set-all [{:keys [k v dbids onChange]}]
+  (action [{:keys [state]}]
+    (let [val v]
+      (debug "MUTATION set-all" k val dbids onChange)
+      (when onChange
+        (onChange v))
+      (swap! state
+        (fn [s]
+          (reduce
+            (fn [s id]
+              (-> s
+                (assoc-in [:org.riverdb.db.fieldresult/gid id k] val)
+                (fs/mark-complete* [:org.riverdb.db.fieldresult/gid id] k)))
+            s dbids))))))
+
+(defn filter-fieldresult-constituent [const results]
+  (filter #(= (rutil/get-ref-val const) (rutil/get-ref-val (:fieldresult/ConstituentRowID %))) results))
+
+(defn nest-by
+  [ks coll]
+  (let [keyfn (apply juxt ks)]
+    (reduce (fn [m x] (assoc-in m (keyfn x) x)) {} coll)))
+
+(defn fieldresults->fr-map [fieldresults]
+  (nest-by [#(-> % :fieldresult/ConstituentRowID (rutil/get-ref-val)) #(-> % :fieldresult/SamplingDeviceCode (rutil/get-ref-val)) :fieldresult/FieldReplicate] fieldresults))
+
+(defn fr-map->fieldresults [fr-map]
+  (sp/select [ALL LAST ALL LAST ALL LAST] fr-map))
+
+(fm/defmutation set-field-result [{:keys [val i samp-ident p-const devType devID fr-map]}]
+  (action [{:keys [state]}]
+    (let [const    (rutil/map->ident p-const :org.riverdb.db.constituentlookup/gid)
+          const-id (rutil/get-ref-val const)
+          dev-id   (rutil/get-ref-val devType)
+          current  (get-in fr-map [const-id dev-id i])
+          db-id    (:db/id current)]
+      (debug "MUTATION set-field-result" "samp-ident" samp-ident i val "const" const "devType" devType "current" current "fr-m" fr-map)
+
+      (cond
+
+        ;; NOTE updated existing fieldresult
+        (some? db-id)
+        (do
+          (debug "UPDATE EXISTING" db-id)
+          (if (some? val)
+            (swap! state set-field-result* db-id val)
+            (swap! state remove-field-result* samp-ident db-id)))
+
+        ;; NOTE add a new fieldresult
+        (and (nil? db-id) (some? val))
+        (let [new-id   (tempid/tempid)
+              new-fr   (comp/get-initial-state FieldResultForm
+                         {:id new-id :uuid (tempid/uuid) :const p-const :rep i :result val :devID devID :devType devType})
+              new-fr'  (rutil/convert-db-refs new-fr)
+              new-form (fs/add-form-config FieldResultForm new-fr')
+              fr-map'  (assoc-in fr-map [const-id dev-id i] new-form)
+              frs      (mapv rutil/thing->ident (fr-map->fieldresults fr-map'))]
+          (debug "CREATE NEW" "fr-map'" fr-map' "frs" frs)
+          (swap! state
+            (fn [st]
+              (-> st
+                (merge/merge-component FieldResultForm new-form)
+                (assoc-in (conj samp-ident :sample/FieldResults) frs)))))))))
+
+(defn rui-fieldres [samp-ident i p-const rs-map fr-map devType devID]
+  (let [fr  (get rs-map i)
+        val (:fieldresult/Result fr)]
+    (debug "RENDER rui-fieldres" i (pr-str val))
+    (ui-float-input {:type     "text"
+                     :value    val
+                     :style    {:width "60px" :paddingLeft 7 :paddingRight 7}
+                     :onChange #(let [db-id (:db/id fr)
+                                      v     %]
+                                  (debug "CHANGE FIELD RESULT" db-id v)
+                                  (comp/transact! SPA `[(set-field-result
+                                                          ~{:samp-ident samp-ident
+                                                            :p-const    p-const
+                                                            :devType    devType
+                                                            :fr-map     fr-map
+                                                            :devID      devID
+                                                            :val        v
+                                                            :i          i})]))})))
+
+
+
 (defsc FieldMeasureParamForm
   [this
    {:parameter/keys [replicates replicatesEntry
@@ -352,7 +379,7 @@
                      precisionCode high low]
     :keys           [db/id] :as props}
    {:keys [samplingdevicelookup-options
-           sv-comp sample-props fieldresults reps
+           sv-comp sample-props fieldresults fr-map reps
            samp-ident deviceTypeLookup deviceLookup]}]
   {:query          (fn [] [:db/id
                            :parameter/name
@@ -362,8 +389,8 @@
                      (let [cmp   (:fulcro.client.primitives/computed props)
                            fst   (first (:fieldresults cmp))
                            stuff {:time          (:fieldresult/ResultTime fst)
-                                  :devType       (:fieldresult/SamplingDeviceCode fst)
-                                  :devID         (:fieldresult/SamplingDeviceID fst)
+                                  ;:devType       (:fieldresult/SamplingDeviceCode fst)
+                                  ;:devID         (:fieldresult/SamplingDeviceID fst)
                                   :setDeviceType #(do
                                                     (debug "SET STATE :devType" %)
                                                     (comp/set-state! this {:devType %}))
@@ -376,7 +403,6 @@
   (let [p-name        (:parameter/name props)
         p-device      (:parameter/samplingdevicelookupRef props)
         p-const       (:parameter/constituentlookupRef props)
-        p-const-id    (:db/id p-const)
         results       fieldresults
         rs-map        (into {} (map #(identity [(:fieldresult/FieldReplicate %) %]) fieldresults))
         rslts         (->> (mapv :fieldresult/Result results)
@@ -386,10 +412,15 @@
         ;_             (debug "READ STATE" state)
         fst           (first fieldresults)
         devFst        (:fieldresult/SamplingDeviceCode fst)
-        devType       (or devType devFst p-device)
-        devType       (select-keys devType [:db/id])
+        devType       (if fst
+                        devFst
+                        (or devType p-device))
+        devType       (rutil/map->ident devType :org.riverdb.db.samplingdevicelookup/gid)
         devIDfst      (:fieldresult/SamplingDeviceID fst)
-        devID         (or devID devIDfst)
+        devID         (if fst
+                        devIDfst
+                        devID)
+        devID         (rutil/map->ident devID :org.riverdb.db.samplingdevice/gid)
         mean          (/ (reduce + rslts) (count rslts))
         stddev        (tu/std-dev rslts)
         rsd           (tu/round2 2 (tu/percent-prec mean stddev))
@@ -421,7 +452,7 @@
                           (> rsd precRSD)))
         time          (or time (:fieldresult/ResultTime (first results)))
         unit          (get-in p-const [:constituentlookup/UnitCode :unitlookup/Unit])]
-    #_(debug "RENDER FieldMeasureParamForm" p-name)
+    (debug "RENDER FieldMeasureParamForm" p-name "rs-map" rs-map) ; "devType" devType "devID" devID "p-const" p-const "fieldresults" fieldresults)
 
     (tr {:key id}
       (td {:key "name"} p-name)
@@ -430,7 +461,8 @@
                             (merge deviceTypeLookup
                               {:riverdb.entity/ns :entity.ns/samplingdevicelookup
                                :value             devType
-                               :opts              {:load false}})
+                               :opts              {:load false
+                                                   :style {:paddingLeft 5 :paddingRight 5}}})
                             {:changeMutation `set-all
                              :changeParams   {:dbids    (mapv :db/id results)
                                               :k        :fieldresult/SamplingDeviceCode
@@ -442,8 +474,8 @@
                               {:riverdb.entity/ns :entity.ns/samplingdevice
                                :value             devID
                                :filter-key        :samplingdevice/DeviceType
-                               :filter-val        devType
-                               :opts              {:load false :style {:width 70 :minWidth 50}}})
+                               :filter-val        {:db/id (second devType)}
+                               :opts              {:load false :style {:width 70 :minWidth 50 :paddingLeft 5 :paddingRight 5}}})
                             {:changeMutation `set-all
                              :changeParams   {:dbids    (mapv :db/id results)
                                               :k        :fieldresult/SamplingDeviceID
@@ -451,16 +483,16 @@
 
       (td {:key "unit"} (or unit ""))
 
-      ;; NOTE this is the shizzle here
+      ;; NOTE this is the (difficult) shizzle here
       (mapv
         (fn [i]
           (td {:key i}
-            (rui-fieldres samp-ident i p-const-id rs-map devType devID)))
+            (rui-fieldres samp-ident i (select-keys p-const [:db/id]) rs-map fr-map devType devID)))
         (range 1 (inc reps)))
 
 
       (td {:key "time"} (dom/input {:type     "text"
-                                    :style    {:width "80px"}
+                                    :style    {:width "80px" :paddingLeft 7 :paddingRight 7}
                                     :value    (or (str time) "")
                                     :onChange #(let [value (-> % .-target .-value)]
                                                  (comp/transact! this `[(set-all {:dbids ~(mapv :db/id results)
@@ -480,9 +512,6 @@
 
 (def ui-fieldmeasure-param-form (comp/factory FieldMeasureParamForm {:keyfn :db/id}))
 
-(defn filter-fieldresult-constituent [const results]
-  (filter #(= (:db/id const) (get-in % [:fieldresult/ConstituentRowID :db/id])) results))
-
 (defsc FieldMeasureParamList [this
                               {:keys [fieldresults
                                       fieldmeasure-params]}
@@ -499,8 +528,9 @@
                      (if-let [reps (:parameter/replicatesEntry p)]
                        (max reps mx)
                        mx))
-                   1 fieldmeasure-params)]
-    #_(debug "RENDER FieldMeasureParamList max-reps" max-reps "results" fieldresults "params" fieldmeasure-params)
+                   1 fieldmeasure-params)
+        fr-map   (fieldresults->fr-map (map rutil/convert-db-refs fieldresults))]
+    (debug "RENDER FieldMeasureParamList") ;"fr-map" fr-map "results" fieldresults) ;"params" fieldmeasure-params)
     (div {}
       (dom/h3 {} "Field Measurements")
       (table :.ui.very.compact.mini.table {:key "wqtab"}
@@ -533,8 +563,10 @@
                      :sv-comp                      sv-comp
                      :sample-props                 sample-props
                      :fieldresults                 f-results
+                     :fr-map                       fr-map
                      :reps                         max-reps
                      :samp-ident                   samp-ident}))))))))))
+
 (def ui-fieldmeasure-param-list (comp/factory FieldMeasureParamList))
 
 (defn filter-sample-typecode [type samples]
@@ -572,13 +604,13 @@
                        {:sample/LabResults (comp/get-query LabResultForm)}
                        [:riverdb.theta.options/ns '_]]
 
-   :initLocalState    (fn [app props]
-                        (let [st {:sampleTypes
-                                  {:sampletypelookup.SampleTypeCode/Grab         (get-db-ident {:db/ident :sampletypelookup.SampleTypeCode/Grab})
-                                   :sampletypelookup.SampleTypeCode/FieldObs     (get-db-ident {:db/ident :sampletypelookup.SampleTypeCode/FieldObs})
-                                   :sampletypelookup.SampleTypeCode/FieldMeasure (get-db-ident {:db/ident :sampletypelookup.SampleTypeCode/FieldMeasure})}}]
-                          (debug "INIT LOCAL STATE SampleForm" "state" st)
-                          st))
+   ;:initLocalState    (fn [app props]
+   ;                     (let [st {:sampleTypes
+   ;                               {:sampletypelookup.SampleTypeCode/Grab         (lookup-db-ident {:db/ident :sampletypelookup.SampleTypeCode/Grab})
+   ;                                :sampletypelookup.SampleTypeCode/FieldObs     (lookup-db-ident {:db/ident :sampletypelookup.SampleTypeCode/FieldObs})
+   ;                                :sampletypelookup.SampleTypeCode/FieldMeasure (lookup-db-ident {:db/ident :sampletypelookup.SampleTypeCode/FieldMeasure})}}]
+   ;                       (debug "INIT LOCAL STATE SampleForm" "state" st)
+   ;                       st))
 
 
    :initial-state     (fn [{:keys [type]}]
@@ -588,11 +620,11 @@
                          :ui/ready              false
                          :sample/SampleTypeCode (case type
                                                   :fieldobs
-                                                  (get-db-ident {:db/ident :sampletypelookup.SampleTypeCode/FieldObs})
+                                                  (lookup-db-ident {:db/ident :sampletypelookup.SampleTypeCode/FieldObs})
                                                   :grab
-                                                  (get-db-ident {:db/ident :sampletypelookup.SampleTypeCode/Grab})
+                                                  (lookup-db-ident {:db/ident :sampletypelookup.SampleTypeCode/Grab})
                                                   ;; default:
-                                                  (get-db-ident {:db/ident :sampletypelookup.SampleTypeCode/FieldMeasure}))})
+                                                  (lookup-db-ident {:db/ident :sampletypelookup.SampleTypeCode/FieldMeasure}))})
    :form-fields       #{:db/id
                         :sample/uuid
                         :riverdb.entity/ns
@@ -608,7 +640,6 @@
                           (fm/set-value! this :ui/ready true)))}
 
   (let [sample-type      (:db/ident SampleTypeCode)
-        sampleTypes      (comp/get-state this :sampleTypes)
         filtered-params  (filter-param-typecode sample-type active-params)
         deviceTypeLookup (get-in props [:riverdb.theta.options/ns :entity.ns/samplingdevicelookup])
         deviceLookup     (get-in props [:riverdb.theta.options/ns :entity.ns/samplingdevice])]
@@ -617,7 +648,7 @@
       (case sample-type
         :sampletypelookup.SampleTypeCode/FieldMeasure
         (when true
-          (debug "filtered-params" filtered-params)
+          ;(debug "active-params" active-params "filtered-params" filtered-params)
           (ui-fieldmeasure-param-list
             (comp/computed
               {:fieldresults        FieldResults
@@ -629,7 +660,7 @@
                :deviceLookup     deviceLookup})))
         :sampletypelookup.SampleTypeCode/FieldObs
         (when true
-          (debug "TODO: RENDER Sample->FieldObsResults" "fieldobsvarlookup-options" fieldobsvarlookup-options)
+          ;(debug "TODO: RENDER Sample->FieldObsResults" "fieldobsvarlookup-options" fieldobsvarlookup-options)
           (ui-fieldobs-param-form
             (comp/computed
               (tu/merge-tree
@@ -830,7 +861,7 @@
         default-opts  {:clearable true
                        ;:allowAdditions   true
                        ;:additionPosition "bottom"
-                       :style     {:maxWidth 168}}
+                       :style     {:maxWidth 168 :minWidth 168}}
         sv-time       (:sitevisit/Time props)
         sv-date       (:sitevisit/SiteVisitDate props)
         {person-options            :entity.ns/person
@@ -839,7 +870,7 @@
          stationfaillookup-options :entity.ns/stationfaillookup
          fieldobsvarlookup-options :entity.ns/fieldobsvarlookup} (:riverdb.theta.options/ns props)]
 
-    (debug "RENDER SiteVisitForm" "props" props "params" active-params)
+    (debug "RENDER SiteVisitForm") ;"props" props "params" active-params)
     (div :.dimmable.fields {:key "sv-form"}
       (ui-dimmer {:inverted true :active (or (not ready) (not props))}
         (ui-loader {:indeterminate true}))
@@ -1007,7 +1038,7 @@
             (let [fm   (first (filter-sample-typecode "FieldMeasure" Samples))
                   obs  (first (filter-sample-typecode "FieldObs" Samples))
                   grab (first (filter-sample-typecode "Grab" Samples))]
-              (debug "SAMPLES" "FM" fm "OBS" obs)
+              ;(debug "SAMPLES" "FM" fm "OBS" obs)
               [(ui-sample-form
                  (comp/computed (or fm (comp/get-initial-state SampleForm {:type :fieldmeasure}))
                    {:active-params active-params
@@ -1031,12 +1062,12 @@
             (dom/button :.ui.button.secondary
               {:onClick #(do
                            (debug "CANCEL!" dirty? (fs/dirty-fields props false))
-                           (if dirty?
+                           (when dirty?
                              (comp/transact! this
-                               `[(rm/reset-form {:ident ~this-ident})])
-                             (do
-                               (fm/set-value! this :ui/editing false)
-                               (routes/route-to! "/sitevisit/list"))))}
+                               `[(rm/reset-form {:ident ~this-ident})]))
+                           (when (or (not dirty?) create)
+                             (fm/set-value! this :ui/editing false)
+                             (routes/route-to! "/sitevisit/list")))}
               (if dirty?
                 "Cancel"
                 "Close"))
@@ -1083,6 +1114,7 @@
         (-> st
           (rutil/convert-db-refs* form-ident)
           (fs/add-form-config* SiteVisitForm form-ident)
+          (fs/entity->pristine* form-ident)
           (update-in form-ident assoc :ui/ready true))))
     (dr/target-ready! SPA route-target)))
 
@@ -1095,6 +1127,7 @@
           _               (debug "Merge SV!" sv current-project current-agency)
           sv              (walk-ident-refs @state sv)
           sv              (fs/add-form-config SiteVisitForm sv)]
+
       (debug "Merge new SV! do we have DB globals yet?" (get-in @state [:component/id :globals]))
       (swap! state
         (fn [st]
@@ -1160,18 +1193,12 @@
                         (debug "WILL LEAVE EDITOR")
                         (dr/route-immediate [:component/id :sitevisit-editor]))
 
-
-   ;:componentDidMount (fn [this]
-   ;                     (let [props (comp/props this)]
-   ;                       (preload-options :entity.ns/constituentlookup)
-   ;                       (fm/set-value! this :ui/ready true)))
-
    :componentDidMount (fn [this]
                         (let [props  (comp/props this)
                               {:keys [sitevisit]} props
                               {:sitevisit/keys [AgencyCode ProjectID]} sitevisit
-                              projID (:db/id ProjectID)
-                              agID   (:db/id AgencyCode)
+                              projID (if (eql/ident? ProjectID) (second ProjectID) (:db/id ProjectID))
+                              agID   (if (eql/ident? AgencyCode) (second AgencyCode) (:db/id AgencyCode))
                               _      (log/debug "DID MOUNT SiteVisitEditor" "AGENCY" AgencyCode "PROJECT" ProjectID "projID" projID "agID" agID)]
 
                           (preload-agency agID)
