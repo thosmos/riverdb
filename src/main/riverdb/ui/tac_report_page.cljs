@@ -4,6 +4,7 @@
     [com.fulcrologic.fulcro.components :as om :refer [defsc transact!]]
     [com.fulcrologic.fulcro.data-fetch :as f]
     [com.fulcrologic.fulcro.mutations :as fm]
+    [com.fulcrologic.semantic-ui.elements.loader.ui-loader :refer [ui-loader]]
     [riverdb.model.user :as user]
     [riverdb.api.mutations :as rm]
     [riverdb.util :refer [sort-maps-by with-index]]
@@ -12,7 +13,8 @@
     [riverdb.ui.project-years :refer [ProjectYears ui-project-years]]
     [theta.log :as log :refer [debug]]
     [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
-    [com.fulcrologic.fulcro.components :as comp]))
+    [com.fulcrologic.fulcro.components :as comp]
+    [com.fulcrologic.fulcro.data-fetch :as df]))
 
 (defn str-values [vals]
   (str "(" (clojure.string/join ", " vals) ")"))
@@ -247,13 +249,15 @@
                    {:project-years (om/get-query ProjectYears)}
                    {[:riverdb.ui.root/current-agency '_] (comp/get-query looks/agencylookup-sum)}
                    {[:riverdb.ui.root/current-project '_] (comp/get-query looks/projectslookup-sum)}
-                   [:riverdb.ui.root/current-year '_]]
+                   [:riverdb.ui.root/current-year '_]
+                   [df/marker-table ::tac]]
    :initial-state {:tac-report-data nil
                    :project-years   {}}
    :route-segment ["tac-report"]}
 
   (let [{:projectslookup/keys [ProjectID Name]} current-project
-        AgencyCode (:agencylookup/AgencyCode current-agency)]
+        AgencyCode (:agencylookup/AgencyCode current-agency)
+        marker (get props [df/marker-table ::tac])]
     (debug "RENDER TacReportPage" AgencyCode ProjectID)
     (dom/div {:className "tac-report-page"}
       (dom/div :.ui.menu {:style {}}
@@ -266,14 +270,17 @@
                                                                                                :project ProjectID
                                                                                                :year    current-year}
                                                                         :post-mutation-params {:order :asc}
-                                                                        :post-mutation        `rm/process-tac-report}))}
+                                                                        :post-mutation        `rm/process-tac-report
+                                                                        :marker               ::tac}))}
               (str "Generate TAC Report for " AgencyCode " " current-year)))))
 
-      (when tac-report-data
-        (div {:style {}}
-          ((om/factory TacReport) (om/computed {:tac-report-data tac-report-data} {:agency  AgencyCode
-                                                                                   :project Name
-                                                                                   :year    current-year})))))))
+      (if marker
+        (ui-loader {:active true})
+        (when tac-report-data
+          (div {:style {}}
+            ((om/factory TacReport) (om/computed {:tac-report-data tac-report-data} {:agency  AgencyCode
+                                                                                     :project Name
+                                                                                     :year    current-year}))))))))
 
 ;(doseq [[index file] (with-index files)]
 ;  (println index file)

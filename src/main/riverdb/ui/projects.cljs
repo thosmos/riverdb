@@ -551,6 +551,7 @@
         {:params               {:ids proj-ids}
          :post-mutation        `init-projects-forms
          :post-mutation-params {:ids proj-ids}
+         :marker               ::projs
          :without              #{[:riverdb.theta.options/ns '_] [:root/tx-result '_]}}))))
 
 (defsc Projects [this {:keys                 [ui/ready projects]
@@ -558,7 +559,8 @@
   {:ident             (fn [] [:component/id :projects])
    :query             [{:projects (comp/get-query ProjectForm)}
                        {[:riverdb.ui.root/current-agency '_] (comp/get-query Agency)}
-                       :ui/ready]
+                       :ui/ready
+                       [df/marker-table ::projs]]
    :initial-state     {:ui/ready true}
    :route-segment     ["projects"]
    :check-session     (fn [app session]
@@ -584,15 +586,18 @@
                           (when agency
                             (load-projs this projs))))}
 
-  (let [_ (debug "PROJECTS" projects "READY" ready "KEYS" (keys props))]
+  (let [_ (debug "PROJECTS" projects "READY" ready "KEYS" (keys props))
+        marker (get props [df/marker-table ::projs])]
     (if ready
       (div :.ui.segment
         (ui-header {:key "title"} "Projects")
         ;(ui-form {:key "form" :size "tiny"}
-        [(doall
-           (for [pj projects]
-             (let [{:keys [db/id ui/hidden] :projectslookup/keys [Name ProjectID Active Public]} pj]
-               (ui-project-form pj))))])
+        (if marker
+          (ui-loader {:active true})
+          [(doall
+             (for [pj projects]
+               (let [{:keys [db/id ui/hidden] :projectslookup/keys [Name ProjectID Active Public]} pj]
+                 (ui-project-form pj))))]))
       #_(ui-loader {:active true}))))
 
 (def ui-projects (comp/factory Projects))

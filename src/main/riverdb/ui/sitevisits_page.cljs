@@ -1175,7 +1175,8 @@
                        {[:riverdb.ui.root/current-agency '_] (comp/get-query looks/agencylookup-sum)}
                        {[:riverdb.ui.root/current-project '_] (comp/get-query ProjectInfo)}
                        {:session (comp/get-query Session)}
-                       [:db/ident '_]]
+                       [:db/ident '_]
+                       [df/marker-table ::sv]]
    :route-segment     ["edit" :sv-id]
    :check-session     (fn [app session]
                         (let [valid? (:session/valid? session)
@@ -1202,10 +1203,12 @@
                             (dr/route-deferred editor-ident
                               #(let [sv-ident [ident-key sv-id]]
                                  (log/debug "LOADING AN EXISTING SITEVISIT" sv-ident)
+                                 (dr/target-ready! SPA editor-ident)
                                  (f/load! app sv-ident SiteVisitForm
                                    {:target               (targeting/multiple-targets
                                                             [:riverdb.ui.root/current-sv]
                                                             [:component/id :sitevisit-editor :sitevisit])
+                                    :marker               ::sv
                                     :post-mutation        `form-ready
                                     :post-mutation-params {:route-target editor-ident
                                                            :form-ident   sv-ident}
@@ -1245,13 +1248,16 @@
                         :.ui.segment {:padding ".5em"}
                         :.ui.raised.segment {:padding ".3em"}
                         :.ui.table {:margin-top ".3em"}]]}
-  (let [parameters (get-in current-project [:projectslookup/Parameters])]
+  (let [parameters (get-in current-project [:projectslookup/Parameters])
+        marker (get props [df/marker-table ::sv])]
     (debug "RENDER SiteVisitsEditor")
     (div {}
-      (when sitevisit
-        (ui-sv-form (comp/computed sitevisit {:current-project current-project
-                                              :current-agency  current-agency
-                                              :parameters      parameters}))))))
+      (if marker
+        (ui-loader {:active true})
+        (when sitevisit
+          (ui-sv-form (comp/computed sitevisit {:current-project current-project
+                                                :current-agency  current-agency
+                                                :parameters      parameters})))))))
 
 
 (defsc SiteVisitSummary [this {:keys           [db/id]
@@ -1301,19 +1307,21 @@
         :target   [:component/id :sitevisit-list :ui/list-meta]})
      (f/load! this :org.riverdb.db.sitevisit SiteVisitSummary
        {:parallel true
+        :marker   ::svs
         :target   [:component/id :sitevisit-list :sitevisits]
         :params   params}))))
 
-(defn load-sites [this agencyCode]
-  (debug "LOAD SITES" agencyCode)
-  (let [target [:component/id :sitevisit-list :sites]]
-    (f/load! this :org.riverdb.db.stationlookup looks/stationlookup-sum
-      {:target               target
-       :params               {:limit -1 :filter {:stationlookup/Agency {:agencylookup/AgencyCode agencyCode}}}
-       :post-mutation        `rm/sort-ident-list-by
-       :post-mutation-params {:idents-path target
-                              :ident-key   :org.riverdb.db.stationlookup/gid
-                              :sort-fn     :stationlookup/StationID}})))
+;(defn load-sites [this agencyCode]
+;  (debug "LOAD SITES" agencyCode)
+;  (let [target [:component/id :sitevisit-list :sites]]
+;    (f/load! this :org.riverdb.db.stationlookup looks/stationlookup-sum
+;      {:target               target
+;       :params               {:limit -1 :filter {:stationlookup/Agency {:agencylookup/AgencyCode agencyCode}}}
+;       :post-mutation        `rm/sort-ident-list-by
+;       :marker               ::sites
+;       :post-mutation-params {:idents-path target
+;                              :ident-key   :org.riverdb.db.stationlookup/gid
+;                              :sort-fn     :stationlookup/StationID}})))
 
 (defn reset-sites [this]
   (let [sites  (get (comp/props this) :riverdb.ui.root/current-project-sites)
@@ -1367,6 +1375,7 @@
                         {[:riverdb.ui.root/current-project '_] (comp/get-query looks/projectslookup-sum)}
                         {[:riverdb.ui.root/current-project-sites '_] (comp/get-query looks/stationlookup-sum)}
                         [:riverdb.ui.root/current-year '_]
+                        [df/marker-table ::svs]
                         :ui/limit
                         :ui/offset
                         :ui/sortField
@@ -1454,7 +1463,9 @@
                                  (th {:key     i
                                       :onClick #(handleSort sort-field)
                                       :classes [(when (= sortField sort-field)
-                                                  (str "ui sorted " (if (= sortOrder :desc) "descending" "ascending")))]} label))]
+                                                  (str "ui sorted " (if (= sortOrder :desc) "descending" "ascending")))]} label))
+
+        marker (get props [df/marker-table ::svs])]
 
     (debug "RENDER SiteVisitList" "sites" sites)
     (div {}
@@ -1480,31 +1491,23 @@
                     (for [{:keys [db/id stationlookup/StationName stationlookup/StationID]} sites]
                       (option {:value id :key id} (str StationID ": " StationName)))))))))
         (div :.item.float.right
-          (button {:key "create" :onClick #(onEdit nil)} "New Site Visit"))
+          (button {:key "create" :onClick #(onEdit nil)} "New Site Visit")))
 
-        #_(div :.item.right
-            (ui-pagination
-              {:id            "paginator"
-               :activePage    activePage
-               :boundaryRange 1
-               :onPageChange  handlePaginationChange
-               :size          "mini"
-               :siblingRange  1
-               :totalPages    totalPages})))
-
-      (when (seq sitevisits)
-        (table :.ui.sortable.selectable.very.compact.small.table {:key "sv-table"}
-          (thead {:key 1}
-            (tr {}
-              (th-fn 1 "Date" :sitevisit/SiteVisitDate)
-              (th-fn 2 "Site ID" {:sitevisit/StationID :stationlookup/StationID})
-              (th-fn 3 "Site" {:sitevisit/StationID :stationlookup/StationName})
-              (th-fn 4 "Type" {:sitevisit/VisitType :sitevisittype/name})
-              (th-fn 5 "Fail?" {:sitevisit/StationFailCode :stationfaillookup/FailureReason})))
-          (tbody {:key 2}
-            (vec
-              (for [sv sitevisits]
-                (ui-sv-summary (comp/computed sv {:onEdit onEdit})))))))
+      (if marker
+        (ui-loader {:active true})
+        (when (seq sitevisits)
+          (table :.ui.sortable.selectable.very.compact.small.table {:key "sv-table"}
+            (thead {:key 1}
+              (tr {}
+                (th-fn 1 "Date" :sitevisit/SiteVisitDate)
+                (th-fn 2 "Site ID" {:sitevisit/StationID :stationlookup/StationID})
+                (th-fn 3 "Site" {:sitevisit/StationID :stationlookup/StationName})
+                (th-fn 4 "Type" {:sitevisit/VisitType :sitevisittype/name})
+                (th-fn 5 "Fail?" {:sitevisit/StationFailCode :stationfaillookup/FailureReason})))
+            (tbody {:key 2}
+              (vec
+                (for [sv sitevisits]
+                  (ui-sv-summary (comp/computed sv {:onEdit onEdit}))))))))
 
       (div :.ui.menu
         (div :.item {}

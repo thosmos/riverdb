@@ -2,6 +2,7 @@
   (:require
     [com.fulcrologic.fulcro.dom :as dom :refer [div span select option ul li p h2 h3 button table tr td th thead tbody]]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc transact!]]
+    [com.fulcrologic.semantic-ui.elements.loader.ui-loader :refer [ui-loader]]
     [com.fulcrologic.fulcro.data-fetch :as f]
     [com.fulcrologic.fulcro.mutations :as fm]
     [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
@@ -15,7 +16,8 @@
     [theta.log :as log :refer [debug]]
     [riverdb.util :as util :refer [sort-maps-by]]
     [riverdb.ui.user :refer [User]]
-    [goog.object :as gobj]))
+    [goog.object :as gobj]
+    [com.fulcrologic.fulcro.data-fetch :as df]))
 
 
 (defn get-params [z-params]
@@ -173,15 +175,17 @@
                    {:project-years (comp/get-query ProjectYears)}
                    {[:riverdb.ui.root/current-agency '_] (comp/get-query looks/agencylookup-sum)}
                    {[:riverdb.ui.root/current-project '_] (comp/get-query looks/projectslookup-sum)}
-                   [:riverdb.ui.root/current-year '_]]
+                   [:riverdb.ui.root/current-year '_]
+                   [df/marker-table ::table]]
    :initial-state (fn [params]
                     {:dataviz-data  nil
                      :project-years (comp/initial-state ProjectYears params)})
    :route-segment ["dataviz"]}
   (let [{:projectslookup/keys [ProjectID Name]} current-project
-        AgencyCode (:agencylookup/AgencyCode current-agency)
+        AgencyCode   (:agencylookup/AgencyCode current-agency)
         {:keys [results-rs param-config report-year]} dataviz-data
-        param-config (param-sort param-config)]
+        param-config (param-sort param-config)
+        marker       (get props [df/marker-table ::table])]
     (log/debug "RENDER DataVizPage" ProjectID current-year)
     (div :.ui.container {:className "dataviz-report" :style {:height "100%"}}
       (div :.ui.menu {:key "report-selectors" :style {}}
@@ -190,11 +194,14 @@
 
           (when current-year
             (button {:onClick #(do
-                                 (f/load this :dataviz-data nil {:params               {:project (name ProjectID)
-                                                                                        :agency  AgencyCode
-                                                                                        :year    current-year}
-                                                                 :post-mutation-params {:order :asc}
-                                                                 :post-mutation        `rm/process-dataviz-data}))}
+                                 (f/load this :dataviz-data nil
+                                   {:params               {:project (name ProjectID)
+                                                           :agency  AgencyCode
+                                                           :year    current-year}
+                                    :post-mutation-params {:order :asc}
+                                    :post-mutation        `rm/process-dataviz-data
+                                    :marker               ::table}))}
+
               (str "Generate Table for " current-year))))
 
 
@@ -208,12 +215,14 @@
             "Download CSV for All Years")))
 
 
-      (when dataviz-data
-        (let [cnt (count results-rs)
-              _   (log/debug "RESULTS COUNT" cnt)]
-          ((comp/factory DataVizComp) {:dataviz-data dataviz-data
-                                       :param-config param-config
-                                       :results-rs   results-rs}))))))
+      (if marker
+        (ui-loader {:active true})
+        (when dataviz-data
+          (let [cnt (count results-rs)
+                _   (log/debug "RESULTS COUNT" cnt)]
+            ((comp/factory DataVizComp) {:dataviz-data dataviz-data
+                                         :param-config param-config
+                                         :results-rs   results-rs})))))))
 
 
 
