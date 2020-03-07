@@ -31,6 +31,7 @@
     [com.fulcrologic.semantic-ui.collections.table.ui-table :refer [ui-table]]
     [com.fulcrologic.semantic-ui.collections.table.ui-table-body :refer [ui-table-body]]
     [com.fulcrologic.semantic-ui.modules.popup.ui-popup :refer [ui-popup]]
+    [com.fulcrologic.semantic-ui.addons.confirm.ui-confirm :refer [ui-confirm]]
     [riverdb.application :refer [SPA]]
     [riverdb.api.mutations :as rm]
     [riverdb.util :refer [sort-maps-by with-index]]
@@ -761,6 +762,10 @@
             (assoc-in (conj modal-ident :ui/show) false)
             (assoc-in options-target opts)))))))
 
+(fm/defmutation sv-deleted [{:keys [ident]}]
+  (action [{:keys [state]}]
+    (debug "SV deleted" ident)
+    (routes/route-to! "/sitevisit/list")))
 
 (defsc SiteVisitForm [this
                       {:ui/keys [ready create globals add-person-modal]
@@ -1059,7 +1064,35 @@
 
 
           (div {:style {:marginTop 10}}
-            (dom/button :.ui.button.secondary
+            (ui-confirm {:open      (comp/get-state this :confirm-delete)
+                         :onConfirm #(do
+                                       (comp/set-state! this {:confirm-delete false})
+                                       (comp/transact! this `[(rm/save-entity ~{:ident this-ident
+                                                                                :delete true
+                                                                                :post-mutation `sv-deleted
+                                                                                :post-params {}})]))
+                         :onCancel #(comp/set-state! this {:confirm-delete false})
+                         :content "Are you sure?"
+                         :confirmButton (dom/button :.ui.negative.button {} "Delete")})
+
+            (dom/button :.ui.negative.button
+              {:disabled (tempid/tempid? (second this-ident))
+               :onClick  #(comp/set-state! this {:confirm-delete true})}
+              "Delete")
+
+            (dom/button :.ui.right.floated.button.primary
+              {:disabled (not dirty?)
+               :onClick  #(let [dirty-fields (fs/dirty-fields props true)
+                                form-fields  (fs/get-form-fields SiteVisitForm)
+                                form-props   (select-keys props form-fields)]
+                            (debug "SAVE!" dirty? "dirty-fields" dirty-fields "form-props" form-props)
+                            (debug "DIFF" (tu/ppstr dirty-fields))
+                            (comp/transact! this
+                              `[(rm/save-entity ~{:ident this-ident
+                                                  :diff  dirty-fields})]))}
+              "Save")
+
+            (dom/button :.ui.right.floated.button.secondary
               {:onClick #(do
                            (debug "CANCEL!" dirty? (fs/dirty-fields props false))
                            (when dirty?
@@ -1070,19 +1103,7 @@
                              (routes/route-to! "/sitevisit/list")))}
               (if dirty?
                 "Cancel"
-                "Close"))
-
-            (dom/button :.ui.button.primary
-              {:disabled (not dirty?)
-               :onClick  #(let [dirty-fields (fs/dirty-fields props true)
-                                form-fields  (fs/get-form-fields SiteVisitForm)
-                                form-props   (select-keys props form-fields)]
-                            (debug "SAVE!" dirty? "dirty-fields" dirty-fields "form-props" form-props)
-                            (debug "DIFF" (tu/ppstr dirty-fields))
-                            (comp/transact! this
-                              `[(rm/save-entity ~{:ident this-ident
-                                                  :diff  dirty-fields})]))}
-              "Save")))))))
+                "Close"))))))))
 
 
 (def ui-sv-form (comp/factory SiteVisitForm {:keyfn :db/id}))

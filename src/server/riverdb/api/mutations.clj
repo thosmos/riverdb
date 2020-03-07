@@ -133,8 +133,8 @@
       delta)))
 
 
-(defn save-entity* [env ident diff create]
-  (debug "MUTATION!!! save-entity" "IDENT" ident "DIFF" diff (comment "ENV" (keys env) "SESSION" (:session (:ring/request env))))
+(defn save-entity* [env ident diff delete]
+  (debug "MUTATION!!!" "save-entity" (str (when delete "DELETE ")) "IDENT" ident "DIFF" diff)
   (let [session-valid? (get-in env [:ring/request :session :session/valid?])
         user           (when session-valid?
                          (get-in env [:ring/request :session :account/auth :user]))
@@ -150,8 +150,9 @@
         (debug "ERROR save-entity*" "Unauthorized")
         {:error "Unauthorized"})
       (let [result (try
-                     (let [form-delta (sp/transform (sp/walker tempid/tempid?) tmp-map diff)
-                           txds       (delta->datomic-txn form-delta)
+                     (let [txds       (if delete
+                                        [[:db.fn/retractEntity (ref->ident ident)]]
+                                        (delta->datomic-txn (sp/transform (sp/walker tempid/tempid?) tmp-map diff)))
                            txds       (conj txds {:db/id           "datomic.tx"
                                                   :riverdb/tx-user (parse-long (:db/id user))
                                                   :riverdb/tx-info "save-entity"})
@@ -172,11 +173,11 @@
             (debug "SAVE-ENTITY RESULT" result)
             {:tempids tempids}))))))
 
-(pc/defmutation save-entity [env {:keys [ident diff create]}]
+(pc/defmutation save-entity [env {:keys [ident diff delete]}]
   {::pc/sym    `save-entity
    ::pc/params [:ident :diff :create]
    ::pc/output [:error :tempids]}
-  (let [result (save-entity* env ident diff create)]
+  (let [result (save-entity* env ident diff delete)]
     (debug "RESULT save-entity" result)
     result))
 

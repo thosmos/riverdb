@@ -364,9 +364,11 @@
 
 (defmutation save-entity
   "saves an entity diff to the backend Datomic DB"
-  [{:keys [ident diff] :as params}]
+  [{:keys [ident diff delete] :as params}]
   (action [{:keys [state]}]
-    (debug "SAVE ENTITY DIFF" ident diff)
+    (if delete
+      (debug "DELETE ENTITY" ident)
+      (debug "SAVE ENTITY DIFF" ident diff))
     (swap! state set-saving* ident true))
   (remote [env]
     (-> env
@@ -388,15 +390,20 @@
             (-> s
               (set-saving* ident false)))))
       (try
-        (let [{:keys [post-mutation post-params success-msg]} (get-in env [:transacted-ast :params])
+        (let [{:keys [post-mutation post-params success-msg delete]} (get-in env [:transacted-ast :params])
               ident (get-new-ident env ident)]
-          (swap! state
-            (fn [s]
-              (-> s
-                (fs/entity->pristine* ident)
-                (show-tx-result* {:result (or success-msg "Save Succeeded")})
-                (set-saving* ident false)
-                (set-create* ident false))))
+          (if delete
+            (swap! state (fn [s] (-> s
+                                   (show-tx-result* {:result (or success-msg "Delete Succeeded")})
+                                   (set-saving* ident false)
+                                   (dissoc ident))))
+            (swap! state
+              (fn [s]
+                (-> s
+                  (fs/entity->pristine* ident)
+                  (show-tx-result* {:result (or success-msg "Save Succeeded")})
+                  (set-saving* ident false)
+                  (set-create* ident false)))))
           (when post-mutation
             (let [tempid (get-in env [:transacted-ast :params :ident 1])
                   new-id (get-in env [:tempid->realid tempid])
@@ -424,3 +431,5 @@
           (#(if-let [err (get-in result [:error-text])]
               (assoc-in % [:root/tx-result :error] err)
               %)))))))
+
+
