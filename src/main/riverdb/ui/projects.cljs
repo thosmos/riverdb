@@ -37,15 +37,19 @@
     [com.fulcrologic.semantic-ui.collections.form.ui-form-field :refer [ui-form-field]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-input :refer [ui-form-input]]
     [com.fulcrologic.semantic-ui.modules.checkbox.ui-checkbox :refer [ui-checkbox]]
+    [com.fulcrologic.semantic-ui.collections.table.ui-table :refer [ui-table]]
+    [com.fulcrologic.semantic-ui.collections.table.ui-table-row :refer [ui-table-row]]
+
     [com.fulcrologic.semantic-ui.modules.tab.ui-tab :refer [ui-tab]]
     [com.fulcrologic.semantic-ui.modules.tab.ui-tab-pane :refer [ui-tab-pane]]
     [com.fulcrologic.semantic-ui.elements.icon.ui-icon :refer [ui-icon]]
     [com.fulcrologic.semantic-ui.modules.popup.ui-popup :refer [ui-popup]]
-    [goog.object :as gob]
+    [goog.object :as gobj]
     [riverdb.application :refer [SPA]]
     [riverdb.roles :as roles]
     [riverdb.api.mutations :as rm :refer [TxResult ui-tx-result]]
     [riverdb.ui.agency :refer [Agency]]
+    [riverdb.ui.components :refer [ui-drag-drop-context ui-droppable ui-draggable ui-autosizer]]
     [riverdb.ui.dataviz-page :refer [DataVizPage]]
     [riverdb.ui.forms :refer [SampleTypeCodeForm]]
     [riverdb.ui.lookup :refer [specs-map]]
@@ -58,7 +62,8 @@
     [riverdb.ui.util :as ui-util :refer [make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save
                                          set-editing set-value set-value! set-refs! set-ref! set-ref set-refs get-ref-val get-ref-set-val lookup-db-ident db-ident->db-ref]]
     [theta.log :as log :refer [debug]]
-    [com.fulcrologic.fulcro.algorithms.tempid :as tempid]))
+    [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
+    [thosmos.util :as tu]))
 
 ;(cljs.reader/register-tag-parser! 'bigdec numeric)
 
@@ -206,7 +211,7 @@
 
 
 
-(defsc ParameterForm [this {:keys           [root/tx-result]
+(defsc ParameterForm [this {:keys           [root/tx-result db/id]
                             :ui/keys        [editing saving]
                             :parameter/keys [active name nameShort high low
                                              precisionCode replicates
@@ -214,7 +219,7 @@
                                              samplingdevicelookupRef
                                              sampleTypeRef]
                             :as             props}
-                      {:keys [cancel-new on-save]}]
+                      {:keys [cancel-new on-save i]}]
   {:ident         [:org.riverdb.db.parameter/gid :db/id]
    :query         [fs/form-config-join
                    :db/id
@@ -241,6 +246,8 @@
                    {[:root/tx-result '_] (comp/get-query TxResult)}]
    ;[:riverdb.theta.options/ns :entity.ns/constituentlookup]
    ;[:riverdb.theta.options/ns :entity.ns/samplingdevicelookup]]
+   :initLocalState (fn [this props]
+                     {:onEdit #(fm/toggle! this :ui/editing)})
    :initial-state {:db/id                   (tempid/tempid)
                    :parameter/uuid          (tempid/uuid)
                    :riverdb.entity/ns       :entity.ns/parameter
@@ -275,6 +282,7 @@
         dirty-fields (fs/dirty-fields props true)
         dirty?       (some? (seq dirty-fields))
         param-specs  (get-in specs-map [:entity.ns/parameter :entity/attrs])
+        {:keys [onEdit]} (comp/get-state this)
         {sampletypelookup-options     :entity.ns/sampletypelookup
          constituentlookup-options    :entity.ns/constituentlookup
          samplingdevicelookup-options :entity.ns/samplingdevicelookup} (:riverdb.theta.options/ns props)]
@@ -361,13 +369,39 @@
                 "SAVING")
               (ui-cancel-save this props dirty?
                 {:success-msg (str "Parameter " name " Saved")
-                 :onCancel    #(when (tempid/tempid? (:db/id props))
-                                 (cancel-new (:db/id props)))
+                 :onCancel    #(when (tempid/tempid? id)
+                                 (cancel-new id))
                  :onSave      on-save})))))
-      (div {:style {:padding 0}}
-        (div :.ui.horizontal.list {}
-          (div :.ui.item {}
-            (dom/a {:onClick #(fm/toggle! this :ui/editing)} name)))))))
+      ;(ui-droppable {:droppableId "tableBody"}
+      ;  (fn [provided snapshot]
+      ;    (comp/with-parent-context this
+      ;      (tbody (merge
+      ;               {:ref (. provided -innerRef)}
+      ;               (js->clj (. provided -droppableProps)))))))
+      (ui-draggable {:draggableId (str id)
+                     :index i
+                     :key (str id)}
+        (fn [provided snapshot]
+          (let [{:keys [dragHandleProps
+                        draggableProps
+                        innerRef] :as prov} (js->clj provided :keywordize-keys true)]
+            (tr (tu/merge-tree
+                  {:ref innerRef
+                   :style {:backgroundColor "white"}}
+                  draggableProps)
+              (td (tu/merge-tree
+                    {:style {:width "20px"}}
+                    dragHandleProps)
+                (ui-icon {:name "bars" :color "grey"}))
+              (td #_{:style {:width "50%"}} name)
+              (td #_{:style {:width "20%"}} (str active))
+              (td #_{:style {:width "30%"}} (button :.ui.button.primary
+                                              {:onClick onEdit
+                                               :style   {:padding 5}}
+                                              "Edit")))))))))
+
+
+
 
 (def ui-parameter-form (comp/factory ParameterForm {:keyfn :db/id}))
 
@@ -430,8 +464,8 @@
                         :projectslookup/Parameters}
    :initLocalState    (fn [this props]
                         (debug "INIT LOCAL STATE ProjectForm")
-                        {:onNewParam #(do
-                                        (comp/transact! this `[(new-param {})]))})
+                        {:onDragEnd    #(debug ":onDragEnd" %)
+                         :onDragStart  #(debug ":onDragStart" %)})
    :initial-state     (fn [params]
                         (fs/add-form-config
                           ProjectForm
@@ -446,6 +480,7 @@
         dirty-fields (fs/dirty-fields props true)
         dirty?       (some? (seq dirty-fields))
         _            (debug "DIRTY?" dirty? dirty-fields)
+        {:keys [onDragEnd onDragStart]} (comp/get-state this)
         on-save      #(do
                         (debug "SAVE!" dirty? dirty-fields)
                         (comp/transact! this
@@ -478,26 +513,49 @@
             (ui-tab
               {:panes
                [{:menuItem "Field Measurements"
-                 :render   (fn [] (ui-tab-pane {}
-                                    (comp/with-parent-context this
-                                      (div {}
-                                        (div {}
-                                          (doall
-                                            (vec
-                                              (for [p Parameters]
-                                                (let [p-data (fs/add-form-config ParameterForm p)]
-                                                  (ui-parameter-form
-                                                    (comp/computed
-                                                      p-data
-                                                      {:proj-ident this-ident
-                                                       :cancel-new #(comp/transact! this `[(cancel-temp-param {:proj-ident ~this-ident :tempid ~%})])
-                                                       :on-save    on-save})))))))
-                                        (button :.ui.button.primary
-                                          {:onClick #(comp/transact! this
-                                                       `[(new-param
-                                                           {:proj-ident ~this-ident
-                                                            :type       :sampletypelookup.SampleTypeCode/FieldMeasure})])}
-                                          "Add")))))}
+                 :render   (fn []
+                             (ui-tab-pane {}
+                               (comp/with-parent-context this
+                                 (div #_{:style {:backgroundColor "green"}}
+                                   (ui-drag-drop-context {:onDragEnd   onDragEnd
+                                                          :onDragStart onDragStart}
+                                     (table :.ui.very.compact.mini.table
+                                       {:style {:minHeight       "10px"}}
+                                       (thead nil
+                                         (tr nil
+                                           (th nil "")
+                                           (th nil "Name")
+                                           (th nil "Active")
+                                           (th nil "Edit")))
+                                       (ui-droppable {:droppableId "tableBody"}
+                                         (fn [provided snapshot]
+                                           (debug "PROVIDED" (gobj/getKeys provided))
+                                           (comp/with-parent-context this
+                                             (tbody (tu/merge-tree
+                                                      {:ref   (. provided -innerRef)
+                                                       :style {}}
+                                                      (js->clj (. provided -droppableProps)))
+                                               (map-indexed
+                                                 (fn [i p]
+                                                   (let [p-data (fs/add-form-config ParameterForm p)]
+                                                     (debug "param" i)
+                                                     (ui-parameter-form
+                                                       (comp/computed
+                                                         p-data
+                                                         {:proj-ident this-ident
+                                                          :cancel-new #(comp/transact! this `[(cancel-temp-param {:proj-ident ~this-ident :tempid ~%})])
+                                                          :on-save    on-save
+                                                          :i          i}))))
+                                                 Parameters)
+                                               (. provided -placeholder)))))))
+                                   (button :.ui.button.primary
+                                     {:onClick #(comp/transact! this
+                                                  `[(new-param
+                                                      {:proj-ident ~this-ident
+                                                       :type       :sampletypelookup.SampleTypeCode/FieldMeasure})])}
+                                     "Add")))))}
+
+
 
                 {:menuItem "Field Observations"
                  :render   (fn [] (ui-tab-pane {}
@@ -591,7 +649,6 @@
     (if ready
       (div :.ui.segment
         (ui-header {:key "title"} "Projects")
-        ;(ui-form {:key "form" :size "tiny"}
         (if marker
           (ui-loader {:active true})
           [(doall

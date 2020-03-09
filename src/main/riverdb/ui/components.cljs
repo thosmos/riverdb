@@ -8,7 +8,6 @@
     [com.fulcrologic.fulcro.algorithms.react-interop :as interop]
     [com.fulcrologic.fulcro.mutations :as fm]
     [goog.object :as gobj]
-
     [tick.alpha.api :as t]
     [tick.timezone]
     [theta.log :refer [debug]]
@@ -16,7 +15,24 @@
     ["js-joda/dist/js-joda" :as js-joda :refer [DateTimeFormatter, LocalDateTime, LocalDate]]
     ;["react-treeview-semantic" :default SourceTree]))
     ["react-treeview/lib/react-treeview" :as TreeView]
-    ["react-virtualized-auto-sizer/dist/index.cjs.js" :as AutoSizer]))
+    ["react-virtualized-auto-sizer/dist/index.cjs.js" :as AutoSizer]
+    ["react-virtualized-auto-sizer/dist/tr.cjs.js" :as AutoSizerTR]
+    ["react-beautiful-dnd" :refer [DragDropContext Droppable Draggable]]))
+
+(defn f
+  "Wraps a React component into a Fulcro factory and then calls it with the same args"
+  [react-class & args]
+  (apply (interop/react-factory react-class) args))
+
+(defn ui-drag-drop-context [& args]
+  (apply f DragDropContext args))
+
+(defn ui-droppable [& args]
+  (apply f Droppable args))
+
+(defn ui-draggable [& args]
+  (apply f Draggable args))
+
 
 (debug "HEY from js-joda" (.. LocalDate (parse "2012-12-24") (atStartOfDay) (plusMonths 2) (format (.ofPattern DateTimeFormatter "M/d/yyyy"))))
 ;(debug "JS Date from js-joda" (.. LocalDate (js/Date) (atStartOfDay) (plusMonths 2) (format (.ofPattern DateTimeFormatter "M/d/yyyy"))))
@@ -49,6 +65,7 @@
 (def ui-datepicker (factory DatePicker))
 (def ui-treeview (factory TreeView))
 (def ui-autosizer (factory AutoSizer))
+(def ui-autosizer-tr (factory AutoSizerTR))
 
 (defsc PlaceholderImage
   "Generates an SVG image placeholder of the given size and with the given label

@@ -97,7 +97,7 @@
 (def sidebar-pushable (factory (.-Pushable Sidebar)))
 (def sidebar-pusher (factory (.-Pusher Sidebar)))
 
-(defn sem
+(defn f
   "Wraps a React component into a Fulcro factory and then calls it with the same args"
   [react-class & args]
   (apply (factory react-class) args))
