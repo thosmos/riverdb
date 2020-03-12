@@ -226,49 +226,6 @@
                                  (applySnapshot snap?)
                                  (swap! snapshot-map dissoc cellId)))))
 
-   :getSnapshotBeforeUpdate (fn [this prev-props _]
-                              (let [{:keys [cellId isDragging] :as props} (comp/props this)
-                                    isDragStarting (and
-                                                     (:isDragOccurring props)
-                                                     (not (:isDragOccurring prev-props)))
-                                    getSnapshot    (comp/get-state this :getSnapshot)]
-                                ;(debug "GET SNAP BEFORE UPDATE" "isDragging" isDragging "isDragStarting" isDragStarting)
-                                (cond
-                                  isDragging
-                                  nil
-                                  (not isDragStarting)
-                                  nil
-                                  :else
-                                  (getSnapshot))))
-
-   :componentDidUpdate      (fn [this _ _ snapshot]
-                              (let [ref             (gobj/get this "cell-ref")
-                                    {:keys [isDragging]}           (comp/props this)
-                                    applySnapshot   (comp/get-state this :applySnapshot)
-                                    isDragOccurring (:isDragOccurring (comp/props this))]
-
-                                (when snapshot
-                                  (debug "DID UPDATE" ref "isDragging" isDragging "isDragOccurring" isDragOccurring "snapshot" snapshot))
-
-                                (when ref
-                                  (cond
-                                    snapshot
-                                    (applySnapshot snapshot)
-
-                                    isDragOccurring
-                                    nil
-
-                                    ;; inline styles not applied
-                                    (nil? (.. ref -style -width))
-                                    nil))))
-
-                                    ;;; no snapshot and drag is finished - clear the inline styles
-                                    ;:else
-                                    ;(do
-                                    ;  (debug "REMOVE STYLES" ref)
-                                    ;  (.. ref -style (removeProperty "width"))
-                                    ;  (.. ref -style (removeProperty "height")))))))
-
    :componentWillUnmount (fn [this]
                            (let [{:keys [cellId]} (comp/props this)]
                              ;(debug "WILL UNMOUNT" cellId "@isDragOccurring" @isDragOccurring)
