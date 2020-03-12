@@ -70,55 +70,17 @@
     [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
     [thosmos.util :as tu]))
 
-;(cljs.reader/register-tag-parser! 'bigdec numeric)
 
-;; TASK per group
-
-;(def qapp-requirements
-;  {:H2O_Temp {:precision  {:unit 1.0}
-;              :exceedance {:high 20.0}}
-;   :H2O_Cond {:precision {:unit 10.0}}
-;   :H2O_DO   {:precision  {:percent 10.0}
-;              :exceedance {:low 7.0}}
-;   :H2O_pH   {:precision  {:unit 0.4}
-;              :exceedance {:low  6.5
-;                           :high 8.5}}
-;   :H2O_Turb {:precision {:percent   10.0
-;                          :unit      0.6
-;                          :threshold 10.0}}
-;   :H2O_PO4  {:precision {:percent   20.0
-;                          :unit      0.06
-;                          :threshold 0.1}}
-;   :H2O_NO3  {:precision {:percent   20.0
-;                          :unit      0.06
-;                          :threshold 0.1}}})
-;
-;;; FIXME per group
-;
-;(def param-config
-;  {:Air_Temp     {:order 0 :count 1 :name "Air_Temp"}
-;   :H2O_Temp     {:order 1 :count 3 :name "H2O_Temp"}
-;   :H2O_Cond     {:order 2 :count 3 :name "Cond"}
-;   :H2O_DO       {:order 3 :count 3 :name "DO"}
-;   :H2O_pH       {:order 4 :count 3 :name "pH"}
-;   :H2O_Turb     {:order 5 :count 3 :name "Turb"}
-;   :H2O_NO3      {:order 6 :count 3 :name "NO3" :optional true}
-;   :H2O_PO4      {:order 7 :count 3 :name "PO4" :optional true}
-;   :H2O_Velocity {:elide? true}})
-
-
-;; NOTE create portal table for DnD
+;; NOTE portal table for DnD params
 (def table-portal (js/document.createElement "table"))
 (js/Object.assign
   (. table-portal -style) #js
     {:margin  0
      :padding 0
      :border  0
-     :height  "100px"
-     :width   "300px"})
+     :height  0
+     :width   0})
 (def tbody-portal (js/document.createElement "tbody"))
-(def tr-portal (js/document.createElement "tr"))
-(. tbody-portal (appendChild tr-portal))
 (. table-portal (appendChild tbody-portal))
 (js/document.body.appendChild table-portal)
 
@@ -185,7 +147,6 @@
 
           (ui-input {:className "ui small input"
                      :value     range
-                     ;:disabled  (not (or range? thresh?))
                      :onChange  (save-fn :range)
                      :style     {:width 80}}))
 
@@ -195,7 +156,6 @@
 
           (ui-input {:className "ui small input"
                      :value     rsd
-                     ;:disabled  (not (or rds? thresh?))
                      :style     {:width 80}
                      :onChange  (save-fn :rsd)}))
 
@@ -205,7 +165,6 @@
 
           (ui-input {:className "ui small input"
                      :value     threshold
-                     ;:disabled  (not thresh?)
                      :style     {:width 80}
                      :onChange  (save-fn :threshold)}))))))
 
@@ -262,7 +221,6 @@
         props (-> props
                 (dissoc :isDragging)
                 (dissoc :cellId))]
-                ;(dissoc :isDragOccurring))]
     ;(debug "RENDER ParamCell" props)
     (apply td (merge props {:ref setRef}) (comp/children this))))
 
@@ -273,7 +231,6 @@
   ;(debug "RENDER ParamRow" name)
   (let [{:keys [dragHandleProps draggableProps innerRef]} (js->clj provided :keywordize-keys true)
         isDragging  (. snapshot -isDragging)]
-        ;isDragOccur @isDragOccurring]
 
     (tr (tu/merge-tree
           {:ref   innerRef
