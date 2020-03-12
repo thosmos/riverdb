@@ -37,7 +37,12 @@
     [com.fulcrologic.semantic-ui.collections.form.ui-form-field :refer [ui-form-field]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-input :refer [ui-form-input]]
     [com.fulcrologic.semantic-ui.modules.checkbox.ui-checkbox :refer [ui-checkbox]]
+
     [com.fulcrologic.semantic-ui.collections.table.ui-table :refer [ui-table]]
+    [com.fulcrologic.semantic-ui.collections.table.ui-table-header :refer [ui-table-header]]
+    [com.fulcrologic.semantic-ui.collections.table.ui-table-body :refer [ui-table-body]]
+    [com.fulcrologic.semantic-ui.collections.table.ui-table-header-cell :refer [ui-table-header-cell]]
+    [com.fulcrologic.semantic-ui.collections.table.ui-table-cell :refer [ui-table-cell]]
     [com.fulcrologic.semantic-ui.collections.table.ui-table-row :refer [ui-table-row]]
 
     [com.fulcrologic.semantic-ui.modules.tab.ui-tab :refer [ui-tab]]
@@ -69,57 +74,53 @@
 
 ;; TASK per group
 
-(def qapp-requirements
-  {:H2O_Temp {:precision  {:unit 1.0}
-              :exceedance {:high 20.0}}
-   :H2O_Cond {:precision {:unit 10.0}}
-   :H2O_DO   {:precision  {:percent 10.0}
-              :exceedance {:low 7.0}}
-   :H2O_pH   {:precision  {:unit 0.4}
-              :exceedance {:low  6.5
-                           :high 8.5}}
-   :H2O_Turb {:precision {:percent   10.0
-                          :unit      0.6
-                          :threshold 10.0}}
-   :H2O_PO4  {:precision {:percent   20.0
-                          :unit      0.06
-                          :threshold 0.1}}
-   :H2O_NO3  {:precision {:percent   20.0
-                          :unit      0.06
-                          :threshold 0.1}}})
+;(def qapp-requirements
+;  {:H2O_Temp {:precision  {:unit 1.0}
+;              :exceedance {:high 20.0}}
+;   :H2O_Cond {:precision {:unit 10.0}}
+;   :H2O_DO   {:precision  {:percent 10.0}
+;              :exceedance {:low 7.0}}
+;   :H2O_pH   {:precision  {:unit 0.4}
+;              :exceedance {:low  6.5
+;                           :high 8.5}}
+;   :H2O_Turb {:precision {:percent   10.0
+;                          :unit      0.6
+;                          :threshold 10.0}}
+;   :H2O_PO4  {:precision {:percent   20.0
+;                          :unit      0.06
+;                          :threshold 0.1}}
+;   :H2O_NO3  {:precision {:percent   20.0
+;                          :unit      0.06
+;                          :threshold 0.1}}})
+;
+;;; FIXME per group
+;
+;(def param-config
+;  {:Air_Temp     {:order 0 :count 1 :name "Air_Temp"}
+;   :H2O_Temp     {:order 1 :count 3 :name "H2O_Temp"}
+;   :H2O_Cond     {:order 2 :count 3 :name "Cond"}
+;   :H2O_DO       {:order 3 :count 3 :name "DO"}
+;   :H2O_pH       {:order 4 :count 3 :name "pH"}
+;   :H2O_Turb     {:order 5 :count 3 :name "Turb"}
+;   :H2O_NO3      {:order 6 :count 3 :name "NO3" :optional true}
+;   :H2O_PO4      {:order 7 :count 3 :name "PO4" :optional true}
+;   :H2O_Velocity {:elide? true}})
 
-;; FIXME per group
 
-(def param-config
-  {:Air_Temp     {:order 0 :count 1 :name "Air_Temp"}
-   :H2O_Temp     {:order 1 :count 3 :name "H2O_Temp"}
-   :H2O_Cond     {:order 2 :count 3 :name "Cond"}
-   :H2O_DO       {:order 3 :count 3 :name "DO"}
-   :H2O_pH       {:order 4 :count 3 :name "pH"}
-   :H2O_Turb     {:order 5 :count 3 :name "Turb"}
-   :H2O_NO3      {:order 6 :count 3 :name "NO3" :optional true}
-   :H2O_PO4      {:order 7 :count 3 :name "PO4" :optional true}
-   :H2O_Velocity {:elide? true}})
-
-
-(defn field-attrs
-  "A helper function for getting aspects of a particular field."
-  [component field]
-  (let [form         (comp/props component)
-        entity-ident (comp/get-ident component form)
-        id           (str (first entity-ident) "-" (second entity-ident))
-        is-dirty?    (fs/dirty? form field)
-        clean?       (not is-dirty?)
-        validity     (fs/get-spec-validity form field)
-        is-invalid?  (= :invalid validity)
-        value        (get form field "")]
-    {:dirty?   is-dirty?
-     :ident    entity-ident
-     :id       id
-     :clean?   clean?
-     :validity validity
-     :invalid? is-invalid?
-     :value    value}))
+;; NOTE create portal table for DnD
+(def table-portal (js/document.createElement "table"))
+(js/Object.assign
+  (. table-portal -style) #js
+    {:margin  0
+     :padding 0
+     :border  0
+     :height  "100px"
+     :width   "300px"})
+(def tbody-portal (js/document.createElement "tbody"))
+(def tr-portal (js/document.createElement "tr"))
+(. tbody-portal (appendChild tr-portal))
+(. table-portal (appendChild tbody-portal))
+(js/document.body.appendChild table-portal)
 
 
 (s/def ::range number?)
@@ -208,6 +209,142 @@
                      :style     {:width 80}
                      :onChange  (save-fn :threshold)}))))))
 
+(def snapshot-map (atom {}))
+(def isDragOccurring (atom false))
+
+(defsc ParamCell [this props]
+  {:componentDidMount    (fn [this]
+                           (let [{:keys [cellId isDragging]} (comp/props this)
+                                 applySnapshot (comp/get-state this :applySnapshot)
+                                 snap?         (get @snapshot-map cellId)]
+
+                             ;(when isDragging
+                             ;  (debug "DID MOUNT ParamCell" cellId "isDragging" isDragging "snap?" snap?))
+
+                             (when snap?
+                               (if isDragging
+                                 (applySnapshot snap?)
+                                 (swap! snapshot-map dissoc cellId)))))
+
+   :getSnapshotBeforeUpdate (fn [this prev-props _]
+                              (let [{:keys [cellId isDragging] :as props} (comp/props this)
+                                    isDragStarting (and
+                                                     (:isDragOccurring props)
+                                                     (not (:isDragOccurring prev-props)))
+                                    getSnapshot    (comp/get-state this :getSnapshot)]
+                                ;(debug "GET SNAP BEFORE UPDATE" "isDragging" isDragging "isDragStarting" isDragStarting)
+                                (cond
+                                  isDragging
+                                  nil
+                                  (not isDragStarting)
+                                  nil
+                                  :else
+                                  (getSnapshot))))
+
+   :componentDidUpdate      (fn [this _ _ snapshot]
+                              (let [ref             (gobj/get this "cell-ref")
+                                    {:keys [isDragging]}           (comp/props this)
+                                    applySnapshot   (comp/get-state this :applySnapshot)
+                                    isDragOccurring (:isDragOccurring (comp/props this))]
+
+                                (when snapshot
+                                  (debug "DID UPDATE" ref "isDragging" isDragging "isDragOccurring" isDragOccurring "snapshot" snapshot))
+
+                                (when ref
+                                  (cond
+                                    snapshot
+                                    (applySnapshot snapshot)
+
+                                    isDragOccurring
+                                    nil
+
+                                    ;; inline styles not applied
+                                    (nil? (.. ref -style -width))
+                                    nil))))
+
+                                    ;;; no snapshot and drag is finished - clear the inline styles
+                                    ;:else
+                                    ;(do
+                                    ;  (debug "REMOVE STYLES" ref)
+                                    ;  (.. ref -style (removeProperty "width"))
+                                    ;  (.. ref -style (removeProperty "height")))))))
+
+   :componentWillUnmount (fn [this]
+                           (let [{:keys [cellId]} (comp/props this)]
+                             ;(debug "WILL UNMOUNT" cellId "@isDragOccurring" @isDragOccurring)
+                             (when @isDragOccurring
+                               (let [getSnapshot (comp/get-state this :getSnapshot)
+                                     snap        (getSnapshot)]
+                                 (swap! snapshot-map assoc cellId snap)))))
+
+   :initLocalState       (fn [this _]
+                           {:setRef        (fn [r] (gobj/set this "cell-ref" r))
+                            :getSnapshot   (fn []
+                                             (let [ref (gobj/get this "cell-ref")]
+                                               (when ref
+                                                 (let [bounds (. ref getBoundingClientRect)
+                                                       snap   {:width  (. bounds -width)
+                                                               :height (. bounds -height)}]
+                                                   ;(debug "GET SNAPSHOT" ref snap)
+                                                   snap))))
+
+                            :applySnapshot (fn [snap]
+                                             (let [ref   (gobj/get this "cell-ref")
+                                                   style (when ref
+                                                           (gobj/get ref "style"))]
+                                               (when (and ref
+                                                       (not=
+                                                         (gobj/get style "width")
+                                                         (:width snap)))
+                                                 ;(debug "APPLY SNAPSHOT PRE" "ref" ref "style" style "snap" snap)
+                                                 (gobj/set style "width" (str (:width snap) "px"))
+                                                 (gobj/set style "height" (str (:height snap) "px")))))})}
+
+
+  (let [{:keys [setRef]} (comp/get-state this)
+        props (-> props
+                (dissoc :isDragging)
+                (dissoc :cellId))]
+                ;(dissoc :isDragOccurring))]
+    ;(debug "RENDER ParamCell" props)
+    (apply td (merge props {:ref setRef}) (comp/children this))))
+
+(def ui-param-cell (comp/factory ParamCell))
+
+(defsc ParamRow [this {:parameter/keys [name active] :as props} {:keys [provided snapshot onEdit] :as computed}]
+  {}
+  ;(debug "RENDER ParamRow" name)
+  (let [{:keys [dragHandleProps draggableProps innerRef]} (js->clj provided :keywordize-keys true)
+        isDragging  (. snapshot -isDragging)]
+        ;isDragOccur @isDragOccurring]
+
+    (tr (tu/merge-tree
+          {:ref   innerRef
+           :style {:backgroundColor "white"}}
+          draggableProps)
+      (ui-param-cell
+        (tu/merge-tree
+          {:style           {:width "20px"}
+           :cellId          "handle"
+           :isDragging      isDragging}
+          dragHandleProps)
+        (ui-icon {:name "bars" :color "grey"}))
+      (ui-param-cell
+        {:cellId          "name"
+         :isDragging      isDragging}
+        name)
+      (ui-param-cell
+        {:cellId          "active"
+         :isDragging      isDragging}
+        (str active))
+      (ui-param-cell
+        {:cellId          "edit"
+         :isDragging      isDragging}
+        (button :.ui.button.primary
+          {:onClick onEdit
+           :style   {:padding 5}}
+          "Edit")))))
+(def ui-param-row (comp/factory ParamRow))
 
 
 
@@ -220,64 +357,67 @@
                                              sampleTypeRef]
                             :as             props}
                       {:keys [cancel-new on-save i]}]
-  {:ident         [:org.riverdb.db.parameter/gid :db/id]
-   :query         [fs/form-config-join
-                   :db/id
-                   :riverdb.entity/ns
-                   :parameter/active
-                   :parameter/color
-                   :parameter/high
-                   :parameter/lines
-                   :parameter/low
-                   :parameter/name
-                   :parameter/nameShort
-                   :parameter/precisionCode
-                   :parameter/replicates
-                   :parameter/replicatesEntry
-                   :parameter/replicatesElide
-                   :parameter/uuid
-                   ;; passed to lookup dropdowns
-                   :parameter/constituentlookupRef
-                   :parameter/samplingdevicelookupRef
-                   :parameter/sampleTypeRef
-                   :ui/editing
-                   :ui/saving
-                   [:riverdb.theta.options/ns '_]
-                   {[:root/tx-result '_] (comp/get-query TxResult)}]
-   ;[:riverdb.theta.options/ns :entity.ns/constituentlookup]
-   ;[:riverdb.theta.options/ns :entity.ns/samplingdevicelookup]]
-   :initLocalState (fn [this props]
-                     {:onEdit #(fm/toggle! this :ui/editing)})
-   :initial-state {:db/id                   (tempid/tempid)
-                   :parameter/uuid          (tempid/uuid)
-                   :riverdb.entity/ns       :entity.ns/parameter
-                   :parameter/name          ""
-                   :ui/editing              true
-                   :ui/saving               false
-                   :parameter/active        false
-                   :parameter/sampleTypeRef :param/type}
-   :form-fields   #{:db/id
+  {:ident          [:org.riverdb.db.parameter/gid :db/id]
+   :query          [fs/form-config-join
+                    :db/id
                     :riverdb.entity/ns
-                    :parameter/uuid
-                    :parameter/name
                     :parameter/active
-                    :parameter/constituentlookupRef
-                    :parameter/samplingdevicelookupRef
-                    :parameter/sampleTypeRef
                     :parameter/color
                     :parameter/high
                     :parameter/lines
                     :parameter/low
+                    :parameter/name
                     :parameter/nameShort
+                    :parameter/order
+                    :parameter/precisionCode
                     :parameter/replicates
                     :parameter/replicatesEntry
                     :parameter/replicatesElide
-                    :parameter/precisionCode}
-   :pre-merge     (fn [{:keys [current-normalized data-tree] :as env}]
-                    (debug "PREMERGE ParameterForm" (:parameter/active data-tree) current-normalized data-tree)
-                    (->> data-tree
-                      (clojure.walk/postwalk #(if (= % :com.fulcrologic.fulcro.algorithms.merge/not-found) nil %))
-                      (merge current-normalized)))}
+                    ;; passed to lookup dropdowns
+                    :parameter/uuid
+                    :parameter/constituentlookupRef
+                    :parameter/samplingdevicelookupRef
+                    :parameter/sampleTypeRef
+                    :ui/editing
+                    :ui/saving
+                    [:riverdb.theta.options/ns '_]
+                    {[:root/tx-result '_] (comp/get-query TxResult)}]
+   ;[:riverdb.theta.options/ns :entity.ns/constituentlookup]
+   ;[:riverdb.theta.options/ns :entity.ns/samplingdevicelookup]]
+   :initLocalState (fn [this props]
+                     {:onEdit #(fm/toggle! this :ui/editing)})
+   :initial-state  {:db/id                   (tempid/tempid)
+                    :parameter/uuid          (tempid/uuid)
+                    :riverdb.entity/ns       :entity.ns/parameter
+                    :parameter/name          ""
+                    :ui/editing              true
+                    :ui/saving               false
+                    :parameter/active        false
+                    :parameter/order         9999
+                    :parameter/sampleTypeRef :param/type}
+   :form-fields    #{:db/id
+                     :riverdb.entity/ns
+                     :parameter/uuid
+                     :parameter/name
+                     :parameter/active
+                     :parameter/constituentlookupRef
+                     :parameter/samplingdevicelookupRef
+                     :parameter/sampleTypeRef
+                     :parameter/color
+                     :parameter/high
+                     :parameter/lines
+                     :parameter/low
+                     :parameter/nameShort
+                     :parameter/order
+                     :parameter/replicates
+                     :parameter/replicatesEntry
+                     :parameter/replicatesElide
+                     :parameter/precisionCode}}
+  ;:pre-merge     (fn [{:keys [current-normalized data-tree] :as env}]
+  ;                 ;(debug "PREMERGE ParameterForm" (:parameter/active data-tree) current-normalized data-tree)
+  ;                 (->> data-tree
+  ;                   (clojure.walk/postwalk #(if (= % :com.fulcrologic.fulcro.algorithms.merge/not-found) nil %))
+  ;                   (merge current-normalized)))}
   (let [this-ident   (comp/get-ident this)
         dirty-fields (fs/dirty-fields props true)
         dirty?       (some? (seq dirty-fields))
@@ -286,7 +426,7 @@
         {sampletypelookup-options     :entity.ns/sampletypelookup
          constituentlookup-options    :entity.ns/constituentlookup
          samplingdevicelookup-options :entity.ns/samplingdevicelookup} (:riverdb.theta.options/ns props)]
-    (debug "RENDER ParameterForm" props)
+    ;(debug "RENDER ParameterForm" name) ;props)
     (if editing
       (ui-modal {:open editing}
         (ui-modal-header {:content (str "Edit Parameter: " name)})
@@ -379,26 +519,11 @@
       ;               {:ref (. provided -innerRef)}
       ;               (js->clj (. provided -droppableProps)))))))
       (ui-draggable {:draggableId (str id)
-                     :index i
-                     :key (str id)}
+                     :index       i
+                     :key         (str id)}
         (fn [provided snapshot]
-          (let [{:keys [dragHandleProps
-                        draggableProps
-                        innerRef] :as prov} (js->clj provided :keywordize-keys true)]
-            (tr (tu/merge-tree
-                  {:ref innerRef
-                   :style {:backgroundColor "white"}}
-                  draggableProps)
-              (td (tu/merge-tree
-                    {:style {:width "20px"}}
-                    dragHandleProps)
-                (ui-icon {:name "bars" :color "grey"}))
-              (td #_{:style {:width "50%"}} name)
-              (td #_{:style {:width "20%"}} (str active))
-              (td #_{:style {:width "30%"}} (button :.ui.button.primary
-                                              {:onClick onEdit
-                                               :style   {:padding 5}}
-                                              "Edit")))))))))
+          (comp/with-parent-context this
+            (ui-param-row (comp/computed props {:provided provided :snapshot snapshot :onEdit onEdit}))))))))
 
 
 
@@ -436,6 +561,15 @@
 ;      content)))
 ;(def ui-modal-form (comp/factory ModalForm))
 
+(defmutation reorder-params [{:keys [proj-ident param-ids]}]
+  (action [{:keys [state]}]
+    (debug "MUTATION reorder-params" proj-ident "current" (get-in @state (conj proj-ident :projectslookup/Parameters)) "new" param-ids)
+    (swap! state
+      (fn [st]
+        (-> st
+          (assoc-in (conj proj-ident :projectslookup/Parameters) param-ids)
+          (assoc-in (conj proj-ident :projectslookup/ParamOrder) (pr-str param-ids)))))))
+
 (defsc ProjectForm [this {:keys [db/id ui/ready ui/editing root/tx-result] :projectslookup/keys [ProjectID Name Parameters Active Public] :as props}] ;Parameters
   {:ident             [:org.riverdb.db.projectslookup/gid :db/id]
    :query             [:riverdb.entity/ns
@@ -464,8 +598,13 @@
                         :projectslookup/Parameters}
    :initLocalState    (fn [this props]
                         (debug "INIT LOCAL STATE ProjectForm")
-                        {:onDragEnd    #(debug ":onDragEnd" %)
-                         :onDragStart  #(debug ":onDragStart" %)})
+                        {:onDragEnd         (fn [{:keys [reason destination] :as result}]
+                                              (debug ":onDragEnd" result))
+                         :onDragStart       #(debug ":onDragStart" %)
+                         :onBeforeDragStart (fn []
+                                              (debug ":onBeforeDragStart" "isDragOccurring" true)
+                                              (reset! isDragOccurring true))})
+
    :initial-state     (fn [params]
                         (fs/add-form-config
                           ProjectForm
@@ -480,16 +619,40 @@
         dirty-fields (fs/dirty-fields props true)
         dirty?       (some? (seq dirty-fields))
         _            (debug "DIRTY?" dirty? dirty-fields)
-        {:keys [onDragEnd onDragStart]} (comp/get-state this)
+        {:keys [onDragEnd onDragStart onBeforeDragStart] :as state} (comp/get-state this)
+
+        onDragEnd    (fn [e]
+                       (let [{:keys [source reason destination] :as result} (js->clj e :keywordize-keys true)
+                             fromIndex (:index source)
+                             toIndex   (:index destination)]
+                         (debug ":onDragEnd" "FROM" fromIndex "TO" toIndex)
+                         (reset! isDragOccurring false)
+                         (cond
+                           (or
+                             (not destination)
+                             (= reason "CANCEL"))
+                           nil
+                           (and
+                             (= (:droppableId destination) (:droppableId source))
+                             (= toIndex fromIndex))
+                           nil
+                           :else
+                           (let [pids  (mapv #(comp/get-ident ParameterForm %) Parameters)
+                                 moved (get pids fromIndex)
+                                 pids' (into [] (tu/vec-add toIndex moved (tu/vec-remove fromIndex pids)))]
+                             ;(debug "BEFORE" pids "AFTER" pids')
+                             (comp/transact! this `[(reorder-params ~{:proj-ident this-ident :param-ids pids'})])))))
+
         on-save      #(do
                         (debug "SAVE!" dirty? dirty-fields)
                         (comp/transact! this
                           `[(rm/save-entity ~{:ident       this-ident
                                               :diff        dirty-fields
                                               :success-msg "Project saved"})]))]
-    (debug "RENDER ProjectForm" id ready "tx-result" tx-result)
+
+    (debug "RENDER ProjectForm" id ready "state" state "tx-result" tx-result)
     (if editing
-      (ui-modal {:open editing}
+      (ui-modal {:open editing :dimmer "inverted"}
         (ui-modal-header {:content (str "Edit Project: " Name)})
         (ui-modal-content {}
           (when (not (empty? tx-result))
@@ -516,29 +679,44 @@
                  :render   (fn []
                              (ui-tab-pane {}
                                (comp/with-parent-context this
-                                 (div #_{:style {:backgroundColor "green"}}
-                                   (ui-drag-drop-context {:onDragEnd   onDragEnd
-                                                          :onDragStart onDragStart}
-                                     (table :.ui.very.compact.mini.table
-                                       {:style {:minHeight       "10px"}}
-                                       (thead nil
-                                         (tr nil
-                                           (th nil "")
-                                           (th nil "Name")
-                                           (th nil "Active")
-                                           (th nil "Edit")))
-                                       (ui-droppable {:droppableId "tableBody"}
+                                 (div nil
+                                   (ui-drag-drop-context {:onDragEnd         onDragEnd
+                                                          :onDragStart       onDragStart
+                                                          :onBeforeDragStart onBeforeDragStart}
+                                     (ui-table
+                                       {:compact "very"
+                                        :size    "small"
+                                        :style   {:minHeight "10px"}}
+                                       (ui-table-header nil
+                                         (ui-table-row nil
+                                           (ui-table-header-cell nil "")
+                                           (ui-table-header-cell nil "Name")
+                                           (ui-table-header-cell nil "Active")
+                                           (ui-table-header-cell nil "Edit")))
+                                       (ui-droppable
+                                         {:droppableId          "tableBody"
+                                          :getContainerForClone (fn [] tbody-portal)
+                                          :renderClone          (fn [provided snapshot rubric]
+                                                                  (let [param (get Parameters (.. rubric -source -index))]
+                                                                    ;(debug "RENDER CLONE" "param" param)
+                                                                    (comp/with-parent-context this
+                                                                      (ui-param-row
+                                                                        (comp/computed
+                                                                          param
+                                                                          {:provided provided
+                                                                           :snapshot snapshot})))))}
                                          (fn [provided snapshot]
-                                           (debug "PROVIDED" (gobj/getKeys provided))
+                                           ;(debug "PROVIDED" (gobj/getKeys provided))
                                            (comp/with-parent-context this
-                                             (tbody (tu/merge-tree
-                                                      {:ref   (. provided -innerRef)
-                                                       :style {}}
-                                                      (js->clj (. provided -droppableProps)))
+                                             (tbody
+                                               (tu/merge-tree
+                                                 {:ref   (. provided -innerRef)
+                                                  :style {}}
+                                                 (js->clj (. provided -droppableProps)))
                                                (map-indexed
                                                  (fn [i p]
                                                    (let [p-data (fs/add-form-config ParameterForm p)]
-                                                     (debug "param" i)
+                                                     ;(debug "param" i)
                                                      (ui-parameter-form
                                                        (comp/computed
                                                          p-data
@@ -640,12 +818,11 @@
                           (preload-options :entity.ns/samplingdevicelookup)
                           (preload-options :entity.ns/sampletypelookup)
 
-                          (debug "DID MOUNT Projects.  Agency?" agency "PROJS?" projs)
+                          (debug "DID MOUNT Projects") ; "Agency?" agency "PROJS?" projs)
                           (when agency
                             (load-projs this projs))))}
 
-  (let [_ (debug "PROJECTS" projects "READY" ready "KEYS" (keys props))
-        marker (get props [df/marker-table ::projs])]
+  (let [marker (get props [df/marker-table ::projs])]
     (if ready
       (div :.ui.segment
         (ui-header {:key "title"} "Projects")

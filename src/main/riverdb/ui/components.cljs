@@ -16,7 +16,6 @@
     ;["react-treeview-semantic" :default SourceTree]))
     ["react-treeview/lib/react-treeview" :as TreeView]
     ["react-virtualized-auto-sizer/dist/index.cjs.js" :as AutoSizer]
-    ["react-virtualized-auto-sizer/dist/tr.cjs.js" :as AutoSizerTR]
     ["react-beautiful-dnd" :refer [DragDropContext Droppable Draggable]]))
 
 (defn f
@@ -65,7 +64,6 @@
 (def ui-datepicker (factory DatePicker))
 (def ui-treeview (factory TreeView))
 (def ui-autosizer (factory AutoSizer))
-(def ui-autosizer-tr (factory AutoSizerTR))
 
 (defsc PlaceholderImage
   "Generates an SVG image placeholder of the given size and with the given label
