@@ -15,6 +15,7 @@
            :parameter/low
            :parameter/name
            :parameter/nameShort
+           :parameter/order
            :parameter/precisionCode
            :parameter/replicates
            :parameter/replicatesEntry

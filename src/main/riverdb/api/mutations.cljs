@@ -251,20 +251,23 @@
 
 (defn sort-ident-list-by*
   "Sort the idents in the list path by the indicated field. Returns the new app-state."
-  [state path ident-key sort-fn]
-  (let [idents       (get-in state path [])
-        items        (map (fn [ident] (get-in state ident)) idents)
-        sorted-items (sort-by sort-fn items)
-        new-idents   (mapv (fn [item] [ident-key (:db/id item)]) sorted-items)]
-    (debug "SORTED" new-idents)
-    (assoc-in state path new-idents)))
+  ([state path sort-fn]
+   (sort-ident-list-by* state path sort-fn nil))
+  ([state path sort-fn ident-key]
+   (let [idents       (get-in state path [])
+         ident-key    (or ident-key (ffirst idents))
+         items        (map (fn [ident] (get-in state ident)) idents)
+         sorted-items (sort-by sort-fn items)
+         new-idents   (mapv (fn [item] [ident-key (:db/id item)]) sorted-items)]
+     (debug "SORTED" new-idents)
+     (assoc-in state path new-idents))))
 
 (defmutation sort-ident-list-by
   "sorts a seq of maps at target location by running sort-fn on the maps"
-  [{:keys [idents-path ident-key sort-fn]}]
+  [{:keys [idents-path sort-fn ident-key]}]
   (action [{:keys [state]}]
     (debug "SORTING SITES")
-    (swap! state sort-ident-list-by* idents-path ident-key sort-fn)))
+    (swap! state sort-ident-list-by* idents-path sort-fn ident-key)))
 
 
 

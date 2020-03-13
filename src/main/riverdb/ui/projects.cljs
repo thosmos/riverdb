@@ -307,7 +307,7 @@
                     :ui/editing              true
                     :ui/saving               false
                     :parameter/active        false
-                    :parameter/order         9999
+                    :parameter/order         999
                     :parameter/sampleTypeRef :param/type}
    :form-fields    #{:db/id
                      :riverdb.entity/ns
@@ -426,12 +426,7 @@
                  :onCancel    #(when (tempid/tempid? id)
                                  (cancel-new id))
                  :onSave      on-save})))))
-      ;(ui-droppable {:droppableId "tableBody"}
-      ;  (fn [provided snapshot]
-      ;    (comp/with-parent-context this
-      ;      (tbody (merge
-      ;               {:ref (. provided -innerRef)}
-      ;               (js->clj (. provided -droppableProps)))))))
+
       (ui-draggable {:draggableId (str id)
                      :index       i
                      :key         (str id)}
@@ -475,17 +470,20 @@
 ;      content)))
 ;(def ui-modal-form (comp/factory ModalForm))
 
+(defn update-param-order* [state param-idents]
+  (loop [i 0 st state]
+    (if-let [ident (get param-idents i)]
+      (recur (inc i) (assoc-in st (conj ident :parameter/order) i))
+      st)))
+
 (defmutation reorder-params [{:keys [proj-ident param-ids]}]
   (action [{:keys [state]}]
-    (debug "MUTATION reorder-params" proj-ident "current" (get-in @state (conj proj-ident :projectslookup/Parameters)) "new" param-ids)
-    (swap! state
-      (fn [st]
-        (-> st
-          (assoc-in (conj proj-ident :projectslookup/Parameters) param-ids)
-          (assoc-in (conj proj-ident :projectslookup/ParamOrder) (pr-str param-ids)))))))
+    (swap! state update-param-order* param-ids)))
 
-(defsc ProjectForm [this {:keys [db/id ui/ready ui/editing root/tx-result] :projectslookup/keys [ProjectID Name Parameters Active Public] :as props}] ;Parameters
+
+(defsc ProjectForm [this {:keys [db/id ui/ready ui/editing root/tx-result] :projectslookup/keys [ProjectID Name Parameters Active Public] :as props}]
   {:ident             [:org.riverdb.db.projectslookup/gid :db/id]
+
    :query             [:riverdb.entity/ns
                        :db/id
                        :ui/ready
@@ -502,6 +500,7 @@
                        {:stationlookup/_Project (comp/get-query looks/stationlookup-sum)}
                        {:projectslookup/Parameters (comp/get-query ParameterForm)}
                        {[:root/tx-result '_] (comp/get-query TxResult)}]
+
    :form-fields       #{:projectslookup/ProjectID
                         :projectslookup/Name
                         :projectslookup/Description
@@ -510,14 +509,6 @@
                         :projectslookup/QAPPVersion
                         :projectslookup/qappURL
                         :projectslookup/Parameters}
-   :initLocalState    (fn [this props]
-                        (debug "INIT LOCAL STATE ProjectForm")
-                        {:onDragEnd         (fn [{:keys [reason destination] :as result}]
-                                              (debug ":onDragEnd" result))
-                         :onDragStart       #(debug ":onDragStart" %)
-                         :onBeforeDragStart (fn []
-                                              (debug ":onBeforeDragStart" "isDragOccurring" true)
-                                              (reset! isDragOccurring true))})
 
    :initial-state     (fn [params]
                         (fs/add-form-config
@@ -526,10 +517,20 @@
                            :projectslookup/Parameters []
                            :ui/ready                  true
                            :ui/editing                false}))
+
+   :initLocalState    (fn [this props]
+                        (debug "INIT LOCAL STATE ProjectForm" props)
+                        {:onDragEnd         (fn [{:keys [reason destination] :as result}]
+                                              (debug ":onDragEnd" result))
+                         :onDragStart       #(debug ":onDragStart" %)
+                         :onBeforeDragStart (fn []
+                                              (debug ":onBeforeDragStart" "isDragOccurring" true)
+                                              (reset! isDragOccurring true))})
    :componentDidMount (fn [this]
                         (let [props (comp/props this)]
                           #_(fm/set-value! this :ui/ready true)))}
   (let [this-ident   (comp/get-ident this)
+        Parameters   (vec (riverdb.util/sort-maps-by Parameters [:parameter/order]))
         dirty-fields (fs/dirty-fields props true)
         dirty?       (some? (seq dirty-fields))
         _            (debug "DIRTY?" dirty? dirty-fields)
@@ -676,7 +677,6 @@
 
 (def ui-project-form (comp/factory ProjectForm {:keyfn :db/id}))
 
-
 (defmutation init-projects-forms [{:keys [ids]}]
   (action [{:keys [state]}]
     (swap! state
@@ -687,6 +687,7 @@
                 (fn [s id]
                   (let [proj-ident [:org.riverdb.db.projectslookup/gid id]]
                     (-> s
+                      (rm/sort-ident-list-by* (conj proj-ident :projectslookup/Parameters) :parameter/order)
                       (fs/add-form-config* ProjectForm proj-ident)
                       (update-in [:component/id :projects :projects] (fnil conj []) proj-ident))))
                 s ids)

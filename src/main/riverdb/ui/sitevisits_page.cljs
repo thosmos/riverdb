@@ -531,7 +531,7 @@
                        mx))
                    1 fieldmeasure-params)
         fr-map   (fieldresults->fr-map (map rutil/convert-db-refs fieldresults))]
-    (debug "RENDER FieldMeasureParamList") ;"fr-map" fr-map "results" fieldresults) ;"params" fieldmeasure-params)
+    ;(debug "RENDER FieldMeasureParamList" "params" fieldmeasure-params) ;"fr-map" fr-map "results" fieldresults) ;"params" fieldmeasure-params)
     (div {}
       (dom/h3 {} "Field Measurements")
       (table :.ui.very.compact.mini.table {:key "wqtab"}
@@ -1249,6 +1249,7 @@
                         :.ui.raised.segment {:padding ".3em"}
                         :.ui.table {:margin-top ".3em"}]]}
   (let [parameters (get-in current-project [:projectslookup/Parameters])
+        parameters (vec (riverdb.util/sort-maps-by parameters [:parameter/order]))
         marker (get props [df/marker-table ::sv])]
     (debug "RENDER SiteVisitsEditor")
     (div {}
