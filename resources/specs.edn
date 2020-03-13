@@ -1519,6 +1519,11 @@
                           :cardinality :one,
                           :type        :string,
                           :doc         "a short name used for import/export and compact table columns"}
+                   #:attr{:name        "Order",
+                          :key         :parameter/order,
+                          :cardinality :one,
+                          :type        :long,
+                          :doc         "used to order parameters in forms and reports; not unique across sampletypes"}                   
                    #:attr{:name        "Precision Code",
                           :key         :parameter/precisionCode,
                           :cardinality :one,
