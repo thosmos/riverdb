@@ -47,8 +47,8 @@
     [riverdb.ui.routes :as routes]
     [riverdb.ui.session :refer [Session]]
     [riverdb.ui.inputs :refer [ui-float-input]]
-    [riverdb.ui.util :as rutil :refer [walk-ident-refs* walk-ident-refs make-tempid make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save set-editing set-value set-value! set-refs! set-ref! set-ref set-refs get-ref-set-val lookup-db-ident]]
-    [riverdb.util :refer [paginate]]
+    [riverdb.ui.util :as rutil :refer [walk-ident-refs* walk-ident-refs make-tempid make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save set-editing set-value set-value! set-refs! set-ref! set-ref set-refs get-ref-set-val lookup-db-ident filter-param-typecode]]
+    [riverdb.util :refer [paginate nest-by]]
     [com.rpl.specter :as sp :refer [ALL LAST]]
     [tick.alpha.api :as t]
     [theta.log :as log :refer [debug info]]
@@ -305,11 +305,6 @@
 
 (defn filter-fieldresult-constituent [const results]
   (filter #(= (rutil/get-ref-val const) (rutil/get-ref-val (:fieldresult/ConstituentRowID %))) results))
-
-(defn nest-by
-  [ks coll]
-  (let [keyfn (apply juxt ks)]
-    (reduce (fn [m x] (assoc-in m (keyfn x) x)) {} coll)))
 
 (defn fieldresults->fr-map [fieldresults]
   (nest-by [#(-> % :fieldresult/ConstituentRowID (rutil/get-ref-val)) #(-> % :fieldresult/SamplingDeviceCode (rutil/get-ref-val)) :fieldresult/FieldReplicate] fieldresults))
@@ -572,11 +567,6 @@
 
 (defn filter-sample-typecode [type samples]
   (filter #(= type (get-in % [:sample/SampleTypeCode :sampletypelookup/SampleTypeCode])) samples))
-
-(defn filter-param-typecode [type params]
-  (filter #(= type (get-in % [:parameter/sampleTypeRef :db/ident])) params))
-
-
 
 (defsc SampleForm [this
                    {:ui/keys [ready]

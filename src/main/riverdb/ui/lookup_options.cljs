@@ -191,7 +191,7 @@
    (preload-options ent-ns nil))
   ([ent-ns
     {{:keys [limit filter sortField]} :query-params
-     :keys                            [text-key text-fn sort-key filter-key] :as props}]
+     :keys                            [text-key text-fn sort-key filter-key query-keys] :as props}]
    (let [ident     [:riverdb.theta.options/ns ent-ns]
          ref-props (get-in (fapp/current-state SPA) ident)
          {:ui/keys [options loading]} ref-props]

@@ -40,6 +40,10 @@
         sorted-items (sort-maps-by items keys)]
     (assoc-in state path sorted-items)))
 
+(defn nest-by
+  [ks coll]
+  (let [keyfn (apply juxt ks)]
+    (reduce (fn [m x] (assoc-in m (keyfn x) x)) {} coll)))
 
 (defn with-index
   "return the sequence with an index for every element.

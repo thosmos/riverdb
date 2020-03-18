@@ -64,8 +64,11 @@
     [riverdb.ui.sitevisits-page :refer [SiteVisitsPage]]
     [riverdb.ui.session :refer [ui-session Session]]
     [riverdb.ui.tac-report-page :refer [TacReportPage]]
-    [riverdb.ui.util :as ui-util :refer [make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save
-                                         set-editing set-value set-value! set-refs! set-ref! set-ref set-refs get-ref-val get-ref-set-val lookup-db-ident db-ident->db-ref]]
+    [riverdb.ui.util :as ui-util :refer
+     [make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save
+      set-editing set-value set-value! set-refs! set-ref! set-ref set-refs get-ref-val
+      get-ref-set-val lookup-db-ident db-ident->db-ref filter-param-typecode]]
+    [riverdb.util :refer [nest-by]]
     [theta.log :as log :refer [debug]]
     [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
     [thosmos.util :as tu]))
@@ -230,7 +233,7 @@
   {}
   ;(debug "RENDER ParamRow" name)
   (let [{:keys [dragHandleProps draggableProps innerRef]} (js->clj provided :keywordize-keys true)
-        isDragging  (. snapshot -isDragging)]
+        isDragging (. snapshot -isDragging)]
 
     (tr (tu/merge-tree
           {:ref   innerRef
@@ -238,29 +241,36 @@
           draggableProps)
       (ui-param-cell
         (tu/merge-tree
-          {:style           {:width "20px"}
-           :cellId          "handle"
-           :isDragging      isDragging}
+          {:style      {:width "20px"}
+           :cellId     "handle"
+           :isDragging isDragging}
           dragHandleProps)
         (ui-icon {:name "bars" :color "grey"}))
       (ui-param-cell
-        {:cellId          "name"
-         :isDragging      isDragging}
+        {:cellId     "name"
+         :isDragging isDragging}
         name)
       (ui-param-cell
-        {:cellId          "active"
-         :isDragging      isDragging}
+        {:cellId     "active"
+         :isDragging isDragging}
         (str active))
       (ui-param-cell
-        {:cellId          "edit"
-         :isDragging      isDragging}
+        {:cellId     "edit"
+         :isDragging isDragging}
         (button :.ui.button.primary
           {:onClick onEdit
            :style   {:padding 5}}
           "Edit")))))
 (def ui-param-row (comp/factory ParamRow))
 
-
+(defsc SampleTypeForm [_ _]
+  {:ident       [:org.riverdb.db.sampletypelookup/gid :db/id]
+   :query       [fs/form-config-join
+                 :db/id
+                 :db/ident
+                 :riverdb.entity/ns
+                 :sampletypelookup/SampleTypeCode]
+   :form-fields #{:db/id :db/ident}})
 
 (defsc ParameterForm [this {:keys           [root/tx-result db/id]
                             :ui/keys        [editing saving]
@@ -272,43 +282,47 @@
                             :as             props}
                       {:keys [cancel-new on-save i]}]
   {:ident          [:org.riverdb.db.parameter/gid :db/id]
-   :query          [fs/form-config-join
-                    :db/id
-                    :riverdb.entity/ns
-                    :parameter/active
-                    :parameter/color
-                    :parameter/high
-                    :parameter/lines
-                    :parameter/low
-                    :parameter/name
-                    :parameter/nameShort
-                    :parameter/order
-                    :parameter/precisionCode
-                    :parameter/replicates
-                    :parameter/replicatesEntry
-                    :parameter/replicatesElide
-                    ;; passed to lookup dropdowns
-                    :parameter/uuid
-                    :parameter/constituentlookupRef
-                    :parameter/samplingdevicelookupRef
-                    :parameter/sampleTypeRef
-                    :ui/editing
-                    :ui/saving
-                    [:riverdb.theta.options/ns '_]
-                    {[:root/tx-result '_] (comp/get-query TxResult)}]
+   :query          (fn []
+                     [fs/form-config-join
+                      :db/id
+                      :riverdb.entity/ns
+                      :parameter/active
+                      :parameter/color
+                      :parameter/high
+                      :parameter/lines
+                      :parameter/low
+                      :parameter/name
+                      :parameter/nameShort
+                      :parameter/order
+                      :parameter/precisionCode
+                      :parameter/replicates
+                      :parameter/replicatesEntry
+                      :parameter/replicatesElide
+                      ;; passed to lookup dropdowns
+                      :parameter/uuid
+                      :parameter/constituentlookupRef
+                      :parameter/samplingdevicelookupRef
+                      ;:parameter/sampleTypeRef
+                      {:parameter/sampleTypeRef (comp/get-query SampleTypeForm)}
+                      :ui/editing
+                      :ui/saving
+                      [:riverdb.theta.options/ns '_]
+                      {[:root/tx-result '_] (comp/get-query TxResult)}])
    ;[:riverdb.theta.options/ns :entity.ns/constituentlookup]
    ;[:riverdb.theta.options/ns :entity.ns/samplingdevicelookup]]
    :initLocalState (fn [this props]
                      {:onEdit #(fm/toggle! this :ui/editing)})
-   :initial-state  {:db/id                   (tempid/tempid)
-                    :parameter/uuid          (tempid/uuid)
-                    :riverdb.entity/ns       :entity.ns/parameter
-                    :parameter/name          ""
-                    :ui/editing              true
-                    :ui/saving               false
-                    :parameter/active        false
-                    :parameter/order         999
-                    :parameter/sampleTypeRef :param/type}
+   :initial-state  (fn [{:keys [type]}]
+                     (debug "INITIAL STATE ParameterForm" type)
+                     {:db/id                   (tempid/tempid)
+                      :parameter/uuid          (tempid/uuid)
+                      :riverdb.entity/ns       :entity.ns/parameter
+                      :parameter/name          ""
+                      :ui/editing              true
+                      :ui/saving               false
+                      :parameter/active        false
+                      :parameter/order         999
+                      :parameter/sampleTypeRef type})
    :form-fields    #{:db/id
                      :riverdb.entity/ns
                      :parameter/uuid
@@ -340,7 +354,7 @@
         {sampletypelookup-options     :entity.ns/sampletypelookup
          constituentlookup-options    :entity.ns/constituentlookup
          samplingdevicelookup-options :entity.ns/samplingdevicelookup} (:riverdb.theta.options/ns props)]
-    ;(debug "RENDER ParameterForm" name) ;props)
+    (debug "RENDER ParameterForm" name props)
     (if editing
       (ui-modal {:open editing}
         (ui-modal-header {:content (str "Edit Parameter: " name)})
@@ -373,7 +387,7 @@
                      :changeParams   {:ident this-ident
                                       :k     :parameter/sampleTypeRef}})))
               (div :.field {}
-                (dom/label {} "Constituent")
+                (dom/label {} "Constituent (Analyte | Matrix | Unit | Method | Fraction)")
                 (ui-theta-options
                   (comp/computed
                     (merge
@@ -442,9 +456,10 @@
 (fm/defmutation new-param [{:keys [proj-ident type] :as p}]
   (action [{:keys [state]}]
     (let [type-ref (db-ident->db-ref type)
-          p'       (comp/get-initial-state ParameterForm {:type type-ref})
+          typ      (get-in @state type-ref)
+          p'       (comp/get-initial-state ParameterForm {:type typ})
           p-form   (fs/add-form-config ParameterForm p')]
-      (debug "MUTATION new-param" p')
+      (debug "MUTATION new-param" p' "type" type "type-ref" type-ref "typ" typ)
       (swap! state merge/merge-component ParameterForm p-form
         :append (conj proj-ident :projectslookup/Parameters)))))
 
@@ -476,10 +491,95 @@
       (recur (inc i) (assoc-in st (conj ident :parameter/order) i))
       st)))
 
-(defmutation reorder-params [{:keys [proj-ident param-ids]}]
+(defmutation reorder-params [{:keys [param-ids]}]
   (action [{:keys [state]}]
     (swap! state update-param-order* param-ids)))
 
+
+(defn ui-param-list-fn [this {:keys [type params proj-ident on-save label]}]
+  (let [onBeforeDragStart (fn []
+                            (debug ":onBeforeDragStart" "isDragOccurring" true)
+                            (reset! isDragOccurring true))
+        onDragStart       #(debug ":onDragStart" %)
+        onDragEnd         (fn [e]
+                            (let [{:keys [source reason destination] :as result} (js->clj e :keywordize-keys true)
+                                  fromIndex (:index source)
+                                  toIndex   (:index destination)
+                                  {:keys [params]} (comp/props this)]
+                              (debug ":onDragEnd" "FROM" fromIndex "TO" toIndex)
+                              (reset! isDragOccurring false)
+                              (cond
+                                (or
+                                  (not destination)
+                                  (= reason "CANCEL"))
+                                nil
+                                (and
+                                  (= (:droppableId destination) (:droppableId source))
+                                  (= toIndex fromIndex))
+                                nil
+                                :else
+                                (let [pids  (mapv #(comp/get-ident ParameterForm %) params)
+                                      moved (get pids fromIndex)
+                                      pids' (into [] (tu/vec-add toIndex moved (tu/vec-remove fromIndex pids)))]
+                                  (comp/transact! this `[(reorder-params ~{:param-ids pids'})])))))]
+    (debug "RENDER ParamList" label type "params" params)
+    {:menuItem label
+     :render   (fn []
+                 (ui-tab-pane {}
+                   (comp/with-parent-context this
+                     (div nil
+                       (ui-drag-drop-context {:onDragEnd         onDragEnd
+                                              :onDragStart       onDragStart
+                                              :onBeforeDragStart onBeforeDragStart}
+                         (ui-table
+                           {:compact "very"
+                            :size    "small"
+                            :style   {:minHeight "10px"}}
+                           (ui-table-header nil
+                             (ui-table-row nil
+                               (ui-table-header-cell nil "")
+                               (ui-table-header-cell nil "Name")
+                               (ui-table-header-cell nil "Active")
+                               (ui-table-header-cell nil "Edit")))
+                           (ui-droppable
+                             {:droppableId          "tableBody"
+                              :getContainerForClone (fn [] tbody-portal)
+                              :renderClone          (fn [provided snapshot rubric]
+                                                      (let [param (get params (.. rubric -source -index))]
+                                                        ;(debug "RENDER CLONE" "param" param)
+                                                        (comp/with-parent-context this
+                                                          (ui-param-row
+                                                            (comp/computed
+                                                              param
+                                                              {:provided provided
+                                                               :snapshot snapshot})))))}
+                             (fn [provided snapshot]
+                               ;(debug "PROVIDED" (gobj/getKeys provided))
+                               (comp/with-parent-context this
+                                 (tbody
+                                   (tu/merge-tree
+                                     {:ref   (. provided -innerRef)
+                                      :style {}}
+                                     (js->clj (. provided -droppableProps)))
+                                   (map-indexed
+                                     (fn [i p]
+                                       (let [p-data (fs/add-form-config ParameterForm p)]
+                                         (debug "param" i p-data)
+                                         (ui-parameter-form
+                                           (comp/computed
+                                             p-data
+                                             {:proj-ident proj-ident
+                                              :cancel-new #(comp/transact! this `[(cancel-temp-param {:proj-ident ~proj-ident :tempid ~%})])
+                                              :on-save    on-save
+                                              :i          i}))))
+                                     params)
+                                   (. provided -placeholder)))))))
+                       (button :.ui.button.primary
+                         {:onClick #(comp/transact! this
+                                      `[(new-param
+                                          {:proj-ident ~proj-ident
+                                           :type       ~type})])}
+                         "Add")))))}))
 
 (defsc ProjectForm [this {:keys [db/id ui/ready ui/editing root/tx-result] :projectslookup/keys [ProjectID Name Parameters Active Public] :as props}]
   {:ident             [:org.riverdb.db.projectslookup/gid :db/id]
@@ -518,46 +618,18 @@
                            :ui/ready                  true
                            :ui/editing                false}))
 
-   :initLocalState    (fn [this props]
-                        (debug "INIT LOCAL STATE ProjectForm" props)
-                        {:onDragEnd         (fn [{:keys [reason destination] :as result}]
-                                              (debug ":onDragEnd" result))
-                         :onDragStart       #(debug ":onDragStart" %)
-                         :onBeforeDragStart (fn []
-                                              (debug ":onBeforeDragStart" "isDragOccurring" true)
-                                              (reset! isDragOccurring true))})
+
    :componentDidMount (fn [this]
                         (let [props (comp/props this)]
                           #_(fm/set-value! this :ui/ready true)))}
   (let [this-ident   (comp/get-ident this)
         Parameters   (vec (riverdb.util/sort-maps-by Parameters [:parameter/order]))
+        fm-params    (filter-param-typecode :sampletypelookup.SampleTypeCode/FieldMeasure Parameters)
+        obs-params   (filter-param-typecode :sampletypelookup.SampleTypeCode/FieldObs Parameters)
+        lab-params   (filter-param-typecode :sampletypelookup.SampleTypeCode/Grab Parameters)
         dirty-fields (fs/dirty-fields props true)
         dirty?       (some? (seq dirty-fields))
         _            (debug "DIRTY?" dirty? dirty-fields)
-        {:keys [onDragEnd onDragStart onBeforeDragStart] :as state} (comp/get-state this)
-
-        onDragEnd    (fn [e]
-                       (let [{:keys [source reason destination] :as result} (js->clj e :keywordize-keys true)
-                             fromIndex (:index source)
-                             toIndex   (:index destination)]
-                         (debug ":onDragEnd" "FROM" fromIndex "TO" toIndex)
-                         (reset! isDragOccurring false)
-                         (cond
-                           (or
-                             (not destination)
-                             (= reason "CANCEL"))
-                           nil
-                           (and
-                             (= (:droppableId destination) (:droppableId source))
-                             (= toIndex fromIndex))
-                           nil
-                           :else
-                           (let [pids  (mapv #(comp/get-ident ParameterForm %) Parameters)
-                                 moved (get pids fromIndex)
-                                 pids' (into [] (tu/vec-add toIndex moved (tu/vec-remove fromIndex pids)))]
-                             ;(debug "BEFORE" pids "AFTER" pids')
-                             (comp/transact! this `[(reorder-params ~{:proj-ident this-ident :param-ids pids'})])))))
-
         on-save      #(do
                         (debug "SAVE!" dirty? dirty-fields)
                         (comp/transact! this
@@ -565,7 +637,7 @@
                                               :diff        dirty-fields
                                               :success-msg "Project saved"})]))]
 
-    (debug "RENDER ProjectForm" id ready "state" state "tx-result" tx-result)
+    (debug "RENDER ProjectForm" id Parameters)
     (if editing
       (ui-modal {:open editing :dimmer "inverted"}
         (ui-modal-header {:content (str "Edit Project: " Name)})
@@ -588,80 +660,27 @@
             (rui-input this :projectslookup/QAPPVersion {:label "QAPP Version"})
             (rui-input this :projectslookup/qappURL {:label "QAPP Link"})
 
+            (debug "RENDER PARAM LISTS")
             (ui-tab
               {:panes
-               [{:menuItem "Field Measurements"
-                 :render   (fn []
-                             (ui-tab-pane {}
-                               (comp/with-parent-context this
-                                 (div nil
-                                   (ui-drag-drop-context {:onDragEnd         onDragEnd
-                                                          :onDragStart       onDragStart
-                                                          :onBeforeDragStart onBeforeDragStart}
-                                     (ui-table
-                                       {:compact "very"
-                                        :size    "small"
-                                        :style   {:minHeight "10px"}}
-                                       (ui-table-header nil
-                                         (ui-table-row nil
-                                           (ui-table-header-cell nil "")
-                                           (ui-table-header-cell nil "Name")
-                                           (ui-table-header-cell nil "Active")
-                                           (ui-table-header-cell nil "Edit")))
-                                       (ui-droppable
-                                         {:droppableId          "tableBody"
-                                          :getContainerForClone (fn [] tbody-portal)
-                                          :renderClone          (fn [provided snapshot rubric]
-                                                                  (let [param (get Parameters (.. rubric -source -index))]
-                                                                    ;(debug "RENDER CLONE" "param" param)
-                                                                    (comp/with-parent-context this
-                                                                      (ui-param-row
-                                                                        (comp/computed
-                                                                          param
-                                                                          {:provided provided
-                                                                           :snapshot snapshot})))))}
-                                         (fn [provided snapshot]
-                                           ;(debug "PROVIDED" (gobj/getKeys provided))
-                                           (comp/with-parent-context this
-                                             (tbody
-                                               (tu/merge-tree
-                                                 {:ref   (. provided -innerRef)
-                                                  :style {}}
-                                                 (js->clj (. provided -droppableProps)))
-                                               (map-indexed
-                                                 (fn [i p]
-                                                   (let [p-data (fs/add-form-config ParameterForm p)]
-                                                     ;(debug "param" i)
-                                                     (ui-parameter-form
-                                                       (comp/computed
-                                                         p-data
-                                                         {:proj-ident this-ident
-                                                          :cancel-new #(comp/transact! this `[(cancel-temp-param {:proj-ident ~this-ident :tempid ~%})])
-                                                          :on-save    on-save
-                                                          :i          i}))))
-                                                 Parameters)
-                                               (. provided -placeholder)))))))
-                                   (button :.ui.button.primary
-                                     {:onClick #(comp/transact! this
-                                                  `[(new-param
-                                                      {:proj-ident ~this-ident
-                                                       :type       :sampletypelookup.SampleTypeCode/FieldMeasure})])}
-                                     "Add")))))}
+               [
+                (ui-param-list-fn this {:type       :sampletypelookup.SampleTypeCode/FieldMeasure
+                                        :label      "Field Measurements"
+                                        :params     fm-params
+                                        :proj-ident this-ident
+                                        :on-save    on-save})
 
+                (ui-param-list-fn this {:type       :sampletypelookup.SampleTypeCode/FieldObs
+                                        :label      "Field Observations"
+                                        :params     obs-params
+                                        :proj-ident this-ident
+                                        :on-save    on-save})
 
-
-                {:menuItem "Field Observations"
-                 :render   (fn [] (ui-tab-pane {}
-                                    (div :.ui.segment {:style {:padding 10}}
-                                      (div :.field {}
-                                        (label {} "")
-                                        (div {} "...")))))}
-                {:menuItem "Labs"
-                 :render   (fn [] (ui-tab-pane {}
-                                    (div :.ui.segment {:style {:padding 10}}
-                                      (div :.field {}
-                                        (label {} "")
-                                        (div {} "...")))))}]})
+                (ui-param-list-fn this {:type       :sampletypelookup.SampleTypeCode/Grab
+                                        :label      "Labs"
+                                        :params     lab-params
+                                        :proj-ident this-ident
+                                        :on-save    on-save})]})
 
             (div :.ui.segment {:style {:padding 10}}
               (div :.field {}
@@ -679,6 +698,7 @@
 
 (defmutation init-projects-forms [{:keys [ids]}]
   (action [{:keys [state]}]
+    (debug "MUTATION" init-projects-forms)
     (swap! state
       (fn [s]
         (let [s (assoc-in s [:component/id :projects :projects] [])
@@ -729,9 +749,9 @@
                               agency (:riverdb.ui.root/current-agency props)
                               projs  (:agencylookup/Projects agency)]
 
-                          (preload-options :entity.ns/constituentlookup)
+                          (preload-options :entity.ns/constituentlookup {:filter-key :constituentlookup/MethodCode})
                           (preload-options :entity.ns/samplingdevicelookup)
-                          (preload-options :entity.ns/sampletypelookup)
+                          (preload-options :entity.ns/sampletypelookup {:filter-key :db/ident})
 
                           (debug "DID MOUNT Projects") ; "Agency?" agency "PROJS?" projs)
                           (when agency

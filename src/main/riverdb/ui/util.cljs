@@ -460,6 +460,9 @@
       nil
       res)))
 
+(defn filter-param-typecode [type params]
+  (filterv #(= type (get-in % [:parameter/sampleTypeRef :db/ident])) params))
+
 
 (comment
   (dt/integrate-ident*))

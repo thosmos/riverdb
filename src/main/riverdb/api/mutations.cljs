@@ -259,7 +259,7 @@
          items        (map (fn [ident] (get-in state ident)) idents)
          sorted-items (sort-by sort-fn items)
          new-idents   (mapv (fn [item] [ident-key (:db/id item)]) sorted-items)]
-     (debug "SORTED" new-idents)
+     ;(debug "SORTED" new-idents)
      (assoc-in state path new-idents))))
 
 (defmutation sort-ident-list-by

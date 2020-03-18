@@ -4,4 +4,14 @@
         :key         :riverdb.entity/ns,
         :cardinality :one,
         :type        :keyword
-        :doc         "matches entity spec's `:entity/ns` value, for example `:entity.ns/sample` - used for bulk lookups by type"}]
+        :doc         "matches entity spec's `:entity/ns` value, for example `:entity.ns/sample` - used for bulk lookups by type"}
+ #:attr{:name        "Transaction Info",
+        :key         :riverdb/tx-info,
+        :cardinality :one,
+        :type        :string
+        :doc         "metadata about a TX"}
+ #:attr{:name        "Transaction Info",
+        :key         :riverdb/tx-user,
+        :cardinality :one,
+        :type        :ref
+        :doc         "user that triggered this TX"}]
