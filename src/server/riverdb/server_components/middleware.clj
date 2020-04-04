@@ -64,7 +64,7 @@
 ;; in a js var for use by the client.
 ;; ================================================================================
 (defn index [csrf-token]
-  (debug "GENERATE CLIENT HTML" csrf-token)
+  (debug "GENERATE ADMIN CLIENT HTML" csrf-token)
   (html5
     [:html {:lang "en"}
      [:head {:lang "en"}
@@ -82,6 +82,18 @@
      [:body
       [:div#app]
       [:script {:src "/admin/js/main/main.js"}]]]))
+
+(defn disabled []
+  (debug "GENERATE ADMIN DISABLED HTML")
+  (html5
+    [:html {:lang "en"}
+     [:head {:lang "en"}
+      [:title "RiverDB Admin DISABLED"]
+      [:meta {:charset "utf-8"}]
+      [:meta {:name "viewport" :content "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"}]
+      [:link {:rel "shortcut icon" :href "data:image/x-icon;," :type "image/x-icon"}]]
+     [:body
+      [:h2 "RiverDB Admin is disabled for maintenance"]]]))
 
 ;; ================================================================================
 ;; Workspaces can be accessed via shadow's http server on http://localhost:8023/workspaces.html
@@ -124,7 +136,10 @@
       ;(resp/content-type "text/html"))
 
       (#{"/" "/index.html"} uri)
-      (-> (resp/response (index anti-forgery-token))
+      (->
+        (if (:admin-disabled config)
+          (resp/response (disabled))
+          (resp/response (index anti-forgery-token)))
         (resp/content-type "text/html"))
 
       ;; FIXME all-routes-to-index (below) makes this inaccessible

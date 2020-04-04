@@ -9,61 +9,61 @@
             [clojure.spec.alpha :as s]
             [clojure.tools.logging :as log :refer [debug info warn error]]
             [clojure.string :as str]
-            [com.walmartlabs.lacinia.schema :as schema]
+            ;[com.walmartlabs.lacinia.schema :as schema]
             [datomic.api :as d]
-            [domain-spec.core :as ds]
+            ;[domain-spec.core :as ds]
             [java-time :as jt]
-            [riverdb.api.geo :as geo]
+            ;[riverdb.api.geo :as geo]
             [riverdb.db :as rdb]
             [riverdb.state :as state :refer [db cx]]
             [theta.util :refer [parse-bool parse-long parse-double parse-date parse-bigdec]]
             [thosmos.util :as tu])
   (:import (java.util Date)))
 
-(def uri-dbf (or (dotenv/env :DATOMIC_URI_DBF) "datomic:free://localhost:4334/test-dbf"))
+;(def uri-dbf (or (dotenv/env :DATOMIC_URI_DBF) "datomic:free://localhost:4334/test-dbf"))
+;
 
 
 
 
-
-(def qapp-requirements
-  {:include-elided? false
-   :min-samples     3
-   :elide-extra?    true
-   :params          {:H2O_Temp {:precision  {:unit 0.5}
-                                :exceedance {:high 20.0}}
-                     :H2O_Cond {:precision {:unit 5.0}}
-                     :H2O_DO   {:precision  {:percent 5.0}
-                                :exceedance {:low 7.0}}
-                     :H2O_pH   {:precision  {:unit 0.2}
-                                :exceedance {:low  6.5
-                                             :high 8.5}}
-                     :H2O_Turb {:precision {:percent   5.0
-                                            :unit      0.3
-                                            :threshold 10.0}}
-                     :H2O_PO4  {:precision {:percent   10.0
-                                            :unit      0.03
-                                            :threshold 0.1}}
-                     :H2O_NO3  {:precision {:percent   10.0
-                                            :unit      0.03
-                                            :threshold 0.1}}}})
-
-
-(def qapp-requirements-wcca
-  {:include-elided? false
-   :min-samples     3
-   :elide-extra?    true
-   :params          {:H2O_Temp {:precision  {:unit 0.5}
-                                :exceedance {:high 20.0}}
-                     :H2O_Cond {:precision {:unit 5.0}}
-                     :H2O_DO   {:precision  {:percent 5.0}
-                                :exceedance {:low 7.0}}
-                     :H2O_pH   {:precision  {:unit 0.2}
-                                :exceedance {:low  6.5
-                                             :high 8.5}}
-                     :H2O_Turb {:precision {:percent   5.0
-                                            :unit      0.3
-                                            :threshold 10.0}}}})
+;(def qapp-requirements
+;  {:include-elided? false
+;   :min-samples     3
+;   :elide-extra?    true
+;   :params          {:H2O_Temp {:precision  {:unit 0.5}
+;                                :exceedance {:high 20.0}}
+;                     :H2O_Cond {:precision {:unit 5.0}}
+;                     :H2O_DO   {:precision  {:percent 5.0}
+;                                :exceedance {:low 7.0}}
+;                     :H2O_pH   {:precision  {:unit 0.2}
+;                                :exceedance {:low  6.5
+;                                             :high 8.5}}
+;                     :H2O_Turb {:precision {:percent   5.0
+;                                            :unit      0.3
+;                                            :threshold 10.0}}
+;                     :H2O_PO4  {:precision {:percent   10.0
+;                                            :unit      0.03
+;                                            :threshold 0.1}}
+;                     :H2O_NO3  {:precision {:percent   10.0
+;                                            :unit      0.03
+;                                            :threshold 0.1}}}})
+;
+;
+;(def qapp-requirements-wcca
+;  {:include-elided? false
+;   :min-samples     3
+;   :elide-extra?    true
+;   :params          {:H2O_Temp {:precision  {:unit 0.5}
+;                                :exceedance {:high 20.0}}
+;                     :H2O_Cond {:precision {:unit 5.0}}
+;                     :H2O_DO   {:precision  {:percent 5.0}
+;                                :exceedance {:low 7.0}}
+;                     :H2O_pH   {:precision  {:unit 0.2}
+;                                :exceedance {:low  6.5
+;                                             :high 8.5}}
+;                     :H2O_Turb {:precision {:percent   5.0
+;                                            :unit      0.3
+;                                            :threshold 10.0}}}})
 
 
 ;(def params
@@ -71,106 +71,192 @@
 
 ;; FIXME per group
 
-(def param-config
-  {:Air_Temp     {:order 0 :count 1 :name "Air_Temp"}
-   :H2O_Temp     {:order 1 :count 6 :name "H2O_Temp"}
-   :H2O_Cond     {:order 2 :count 3 :name "Cond"}
-   :H2O_DO       {:order 3 :count 3 :name "DO"}
-   :H2O_pH       {:order 4 :count 3 :name "pH"}
-   :H2O_Turb     {:order 5 :count 3 :name "Turb"}
-   :H2O_NO3      {:order 6 :count 3 :name "NO3" :optional true}
-   :H2O_PO4      {:order 7 :count 3 :name "PO4" :optional true}
-   :H2O_Velocity {:elide? true}})
+;(def param-config
+;  {:Air_Temp     {:order 0 :count 1 :name "Air_Temp"}
+;   :H2O_Temp     {:order 1 :count 6 :name "H2O_Temp"}
+;   :H2O_Cond     {:order 2 :count 3 :name "Cond"}
+;   :H2O_DO       {:order 3 :count 3 :name "DO"}
+;   :H2O_pH       {:order 4 :count 3 :name "pH"}
+;   :H2O_Turb     {:order 5 :count 3 :name "Turb"}
+;   :H2O_NO3      {:order 6 :count 3 :name "NO3" :optional true}
+;   :H2O_PO4      {:order 7 :count 3 :name "PO4" :optional true}
+;   :H2O_Velocity {:elide? true}})
 
-(def param-config-wcca
-  {:Air_Temp   {:order 0 :count 1 :name "Air_Temp_C"}
-   :Cond       {:order 2 :count 3 :name "Cond_uS"}
-   :DO_mgL     {:order 3 :count 3 :name "DOxy_mgL"}
-   :DO_Percent {:order 3 :count 3 :name "DOxy_Percent"}
-   :H2O_Temp   {:order 1 :count 3 :name "H2OTemp_C"}
-   :H2O_TempDO {:order 1 :count 3 :name "H2OTempDO_C"}
-   :pH         {:order 4 :count 3 :name "pH"}
-   :Turb       {:order 5 :count 3 :name "Turb_NTUs"}})
+;(def param-config-wcca
+;  {:Air_Temp   {:order 0 :count 1 :name "Air_Temp_C"}
+;   :Cond       {:order 2 :count 3 :name "Cond_uS"}
+;   :DO_mgL     {:order 3 :count 3 :name "DOxy_mgL"}
+;   :DO_Percent {:order 3 :count 3 :name "DOxy_Percent"}
+;   :H2O_Temp   {:order 1 :count 3 :name "H2OTemp_C"}
+;   :H2O_TempDO {:order 1 :count 3 :name "H2OTempDO_C"}
+;   :pH         {:order 4 :count 3 :name "pH"}
+;   :Turb       {:order 5 :count 3 :name "Turb_NTUs"}})
 
-(def wcca-param->constituent
-  {:Air_Temp   [:constituentlookup/ConstituentCode "10-42-100-0-31"]
-   :Cond       [:constituentlookup/ConstituentCode "5-42-24-0-25"]
-   :DO_mgL     [:constituentlookup/ConstituentCode "WCCA-DO-H2O-mg/L-PROBE-NONE-5-42-38-0-6"]
-   :DO_Percent [:constituentlookup/ConstituentCode "WCCA-DO-H2O-%-PROBE-NONE-5-42-38-0-13"]
-   :H2O_Temp   [:constituentlookup/ConstituentCode "WCCA 5-42-100-0-31"]
-   :H2O_TempDO [:constituentlookup/ConstituentCode "WCCA-TempDO-5-42-100-0-31"]
-   :pH         [:constituentlookup/ConstituentCode "5-42-78-0-0"]
-   :Turb       [:constituentlookup/ConstituentCode "5-42-108-0-9"]})
+;(def wcca-param->constituent
+;  {:Air_Temp   [:constituentlookup/ConstituentCode "10-42-100-0-31"]
+;   :Cond       [:constituentlookup/ConstituentCode "5-42-24-0-25"]
+;   :DO_mgL     [:constituentlookup/ConstituentCode "WCCA-DO-H2O-mg/L-PROBE-NONE-5-42-38-0-6"]
+;   :DO_Percent [:constituentlookup/ConstituentCode "WCCA-DO-H2O-%-PROBE-NONE-5-42-38-0-13"]
+;   :H2O_Temp   [:constituentlookup/ConstituentCode "WCCA 5-42-100-0-31"]
+;   :H2O_TempDO [:constituentlookup/ConstituentCode "WCCA-TempDO-5-42-100-0-31"]
+;   :pH         [:constituentlookup/ConstituentCode "5-42-78-0-0"]
+;   :Turb       [:constituentlookup/ConstituentCode "5-42-108-0-9"]})
 
-(def param-config-ssi
-  {:Air_Temp {:order 0 :count 1 :name "Air"}
-   :H2O_Temp {:order 1 :count 6 :name "H2Otemp"}
-   :H2O_Cond {:order 2 :count 3 :name "Cond"}
-   :H2O_DO   {:order 3 :count 3 :name "O2"}
-   :H2O_pH   {:order 4 :count 3 :name "pH"}
-   :H2O_Turb {:order 5 :count 3 :name "Tur"}
-   :H2O_PO4  {:order 6 :count 3 :name "PO4"}
-   :H2O_NO3  {:order 6 :count 3 :name "NO3"}
-   :TotalColiform {:order 7 :count 1 :name "TotalColiform"}
-   :EColi {:order 7 :count 1 :name "EColi"}})
+;(def param-config-ssi
+;  {:Air_Temp {:order 0 :count 1 :name "Air"}
+;   :H2O_Temp {:order 1 :count 6 :name "H2Otemp"}
+;   :H2O_Cond {:order 2 :count 3 :name "Cond"}
+;   :H2O_DO   {:order 3 :count 3 :name "O2"}
+;   :H2O_pH   {:order 4 :count 3 :name "pH"}
+;   :H2O_Turb {:order 5 :count 3 :name "Tur"}
+;   :H2O_PO4  {:order 6 :count 3 :name "PO4"}
+;   :H2O_NO3  {:order 6 :count 3 :name "NO3"}
+;   :TotalColiform {:order 7 :count 1 :name "TotalColiform"}
+;   :EColi {:order 7 :count 1 :name "EColi"}})
 
-(def ssi-param->constituent
-  {:H2O_pH   [:constituentlookup/ConstituentCode "5-42-78-0-0"]
-   :H2O_Temp [:constituentlookup/ConstituentCode "5-42-100-0-31"]
-   :H2O_Turb [:constituentlookup/ConstituentCode "5-42-108-0-9"]
-   :H2O_Cond [:constituentlookup/ConstituentCode "5-42-24-0-25"]
-   :H2O_DO   [:constituentlookup/ConstituentCode "5-42-38-0-6"]
-   :H2O_PO4  [:constituentlookup/ConstituentCode "5-22-399-2-6"]
-   :H2O_NO3  [:constituentlookup/ConstituentCode "5-20-69-0-6"]
-   :Air_Temp [:constituentlookup/ConstituentCode "10-42-100-0-31"]
-   :TotalColiform [:constituentlookup/ConstituentCode "5-57-23-2-7"]
-   :EColi    [:constituentlookup/ConstituentCode "5-57-464-0-7"]})
-
-
-(def cols-wcca
-  {
-   "SiteName"            :site-name
-   "SiteID"              :site-id
-   "SiteSamplingEventID" :svid
-   "Date"                :SiteVisitDate
-   "StartTime"           :time
-   "Lat"                 :lat
-   "Long"                :lon
-
-   "WaterDepth_In"       :WaterDepth
-   "DepthUnit"           :UnitWaterDepth
-   "StreamWidth_Ft"      :StreamWidth
-   "WidthUnit"           :UnitStreamWidth
-
-   "Notes"               :Notes
-   "DataEntryNotes"      :DataEntryNotes
-   "DataEntryDateTime"   :DataEntryDate
-   "DataEntryPersonID"   :DataEntryPerson
-   "QC"                  :QACheck
-   "QCDate"              :QADate
-   "QCPersonID"          :QAPerson})
+;(def ssi-param->constituent
+;  {:H2O_pH   [:constituentlookup/ConstituentCode "5-42-78-0-0"]
+;   :H2O_Temp [:constituentlookup/ConstituentCode "5-42-100-0-31"]
+;   :H2O_Turb [:constituentlookup/ConstituentCode "5-42-108-0-9"]
+;   :H2O_Cond [:constituentlookup/ConstituentCode "5-42-24-0-25"]
+;   :H2O_DO   [:constituentlookup/ConstituentCode "5-42-38-0-6"]
+;   :H2O_PO4  [:constituentlookup/ConstituentCode "5-22-399-2-6"]
+;   :H2O_NO3  [:constituentlookup/ConstituentCode "5-20-69-0-6"]
+;   :Air_Temp [:constituentlookup/ConstituentCode "10-42-100-0-31"]
+;   :TotalColiform [:constituentlookup/ConstituentCode "5-57-23-2-7"]
+;   :EColi    [:constituentlookup/ConstituentCode "5-57-464-0-7"]})
 
 
-(def cols-SSI
-  {
-   "Site"              :site-name
-   "SiteID"            :site-id
-   "SiteVisitID"       :svid
-   "Date"              :SiteVisitDate
-   "Time"              :time
+;(def cols-wcca
+;  {
+;   "SiteName"            :site-name
+;   "SiteID"              :site-id
+;   "SiteSamplingEventID" :svid
+;   "Date"                :SiteVisitDate
+;   "StartTime"           :time
+;   "Lat"                 :lat
+;   "Long"                :lon
+;
+;   "WaterDepth_In"       :WaterDepth
+;   "DepthUnit"           :UnitWaterDepth
+;   "StreamWidth_Ft"      :StreamWidth
+;   "WidthUnit"           :UnitStreamWidth
+;
+;   "Notes"               :Notes
+;   "DataEntryNotes"      :DataEntryNotes
+;   "DataEntryDateTime"   :DataEntryDate
+;   "DataEntryPersonID"   :DataEntryPerson
+;   "QC"                  :QACheck
+;   "QCDate"              :QADate
+;   "QCPersonID"          :QAPerson})
 
-   "Water Depth"       :WaterDepth
-   "Depth Unit"        :UnitWaterDepth
-   "Stream Width"      :StreamWidth
-   "Width Unit"        :UnitStreamWidth})
 
-   ;"Field Notes"       :Notes
-   ;"Data Entry Notes"  :DataEntryNotes
-   ;"DataEntryDateTime" :DataEntryDate
-   ;;   "DataEntryPersonID"   :DataEntryPerson
-   ;"QC"                :QACheck
-   ;"QCDate"            :QADate
-   ;"QCPerson"          :QAPerson})
+;(def cols-SSI
+;  {
+;   "Site"              :site-name
+;   "SiteID"            :site-id
+;   "SiteVisitID"       :svid
+;   "Date"              :SiteVisitDate
+;   "Time"              :time
+;
+;   "Water Depth"       :WaterDepth
+;   "Depth Unit"        :UnitWaterDepth
+;   "Stream Width"      :StreamWidth
+;   "Width Unit"        :UnitStreamWidth})
+
+;"Field Notes"       :Notes
+;"Data Entry Notes"  :DataEntryNotes
+;"DataEntryDateTime" :DataEntryDate
+;;   "DataEntryPersonID"   :DataEntryPerson
+;"QC"                :QACheck
+;"QCDate"            :QADate
+;"QCPerson"          :QAPerson})
+
+(def param-configs
+  {"SSI"  {:Air_Temp      {:order 0 :count 1 :name "Air"}
+           :H2O_Temp      {:order 1 :count 6 :name "H2Otemp"}
+           :H2O_Cond      {:order 2 :count 3 :name "Cond"}
+           :H2O_DO        {:order 3 :count 3 :name "O2"}
+           :H2O_pH        {:order 4 :count 3 :name "pH"}
+           :H2O_Turb      {:order 5 :count 3 :name "Tur"}
+           :H2O_PO4       {:order 6 :count 3 :name "PO4"}
+           :H2O_NO3       {:order 6 :count 3 :name "NO3"}
+           :TotalColiform {:order 7 :count 1 :name "TotalColiform"}
+           :EColi         {:order 7 :count 1 :name "EColi"}}
+   "WCCA" {:Air_Temp   {:order 0 :count 1 :name "AirTemp_C"}
+           :Cond       {:order 2 :count 3 :name "Cond_uS"}
+           :DO_mgL     {:order 3 :count 3 :name "DOxy_mgL"}
+           :DO_Percent {:order 3 :count 3 :name "DOxy_Percent"}
+           :H2O_Temp   {:order 1 :count 3 :name "H2OTemp_C"}
+           :H2O_TempDO {:order 1 :count 3 :name "H2OTempDO_C"}
+           :pH         {:order 4 :count 3 :name "pH"}
+           :Turb       {:order 5 :count 3 :name "Turb_NTUs"}}})
+
+(def param->const
+  {"SSI" {:H2O_pH   [:constituentlookup/ConstituentCode "5-42-78-0-0"]
+          :H2O_Temp [:constituentlookup/ConstituentCode "5-42-100-0-31"]
+          :H2O_Turb [:constituentlookup/ConstituentCode "5-42-108-0-9"]
+          :H2O_Cond [:constituentlookup/ConstituentCode "5-42-24-0-25"]
+          :H2O_DO   [:constituentlookup/ConstituentCode "5-42-38-0-6"]
+          :H2O_PO4  [:constituentlookup/ConstituentCode "5-22-399-2-6"]
+          :H2O_NO3  [:constituentlookup/ConstituentCode "5-20-69-0-6"]
+          :Air_Temp [:constituentlookup/ConstituentCode "10-42-100-0-31"]
+          :TotalColiform [:constituentlookup/ConstituentCode "5-57-23-2-7"]
+          :EColi    [:constituentlookup/ConstituentCode "5-57-464-0-7"]}
+   "WCCA" {:Air_Temp   [:constituentlookup/ConstituentCode "10-42-100-0-31"]
+           :Cond       [:constituentlookup/ConstituentCode "5-42-24-0-25"]
+           :DO_mgL     [:constituentlookup/ConstituentCode "5-42-38-0-6"]
+           :DO_Percent [:constituentlookup/ConstituentCode "5-42-38-0-13"]
+           :H2O_Temp   [:constituentlookup/ConstituentCode "5-42-100-0-31"]
+           :H2O_TempDO [:constituentlookup/ConstituentCode "5-42-100-0-31"]
+           :pH         [:constituentlookup/ConstituentCode "5-42-78-0-0"]
+           :Turb       [:constituentlookup/ConstituentCode "5-42-108-0-9"]}})
+
+(def param->devType
+  {"WCCA" {:Air_Temp   [:samplingdevicelookup/SampleDevice "SupcoTemp"]
+           :Cond       [:samplingdevicelookup/SampleDevice "ECTestr 11"]
+           :DO_mgL     [:samplingdevicelookup/SampleDevice "WCCA DO"]
+           :DO_Percent [:samplingdevicelookup/SampleDevice "WCCA DO"]
+           :H2O_Temp   [:samplingdevicelookup/SampleDevice "WCCA Temp"]
+           :H2O_TempDO [:samplingdevicelookup/SampleDevice "WCCA DO"]
+           :pH         [:samplingdevicelookup/SampleDevice "HannaPH"]
+           :Turb       [:samplingdevicelookup/SampleDevice "LaMotteTurb"]}})
+
+
+
+(def col-configs
+  {"SSI"  {
+           "Site"         :site-name
+           "SiteID"       :site-id
+           "SiteVisitID"  :svid
+           "Date"         :SiteVisitDate
+           "Time"         :time
+
+           "Water Depth"  :WaterDepth
+           "Depth Unit"   :UnitWaterDepth
+           "Stream Width" :StreamWidth
+           "Width Unit"   :UnitStreamWidth}
+   "WCCA" {
+           "SiteName"            :site-name
+           "SiteID"              :site-id
+           "SiteSamplingEventID" :svid
+           "Date"                :SiteVisitDate
+           "StartTime"           :time
+           "Lat"                 :lat
+           "Long"                :lon
+
+           "WaterDepth_In"       :WaterDepth
+           "DepthUnit"           :UnitWaterDepth
+           "StreamWidth_Ft"      :StreamWidth
+           "WidthUnit"           :UnitStreamWidth
+
+           "Notes"               :Notes
+           "DataEntryNotes"      :DataEntryNotes
+           "DataEntryDateTime"   :DataEntryDate
+           "DataEntryPersonID"   :DataEntryPerson
+           "QC"                  :QACheck
+           "QCDate"              :QADate
+           "QCPersonID"          :QAPerson}})
 
 (def cols-SSI_BR
   {
@@ -215,20 +301,20 @@
 (def equip-id-suffix "_EquipID")
 
 
-(defn convert-coords [sites]
-  (for [{:keys [lat lon] :as site} sites]
-    (if (and lat lon)
-      (if (and
-            (str/ends-with? lat "N")
-            (str/ends-with? lon "E"))
-        (let [lat    (parse-double (subs lat 0 (str/index-of lat "N")))
-              lon    (parse-double (subs lon 0 (str/index-of lon "E")))
-              result (geo/convert {:lat lat :lon lon} geo/utm10n geo/wgs84)]
-          (merge site result))
-        (let [lat (parse-double lat)
-              lon (parse-double lon)]
-          (merge site {:lat lat :lon lon})))
-      site)))
+;(defn convert-coords [sites]
+;  (for [{:keys [lat lon] :as site} sites]
+;    (if (and lat lon)
+;      (if (and
+;            (str/ends-with? lat "N")
+;            (str/ends-with? lon "E"))
+;        (let [lat    (parse-double (subs lat 0 (str/index-of lat "N")))
+;              lon    (parse-double (subs lon 0 (str/index-of lon "E")))
+;              result (geo/convert {:lat lat :lon lon} geo/utm10n geo/wgs84)]
+;          (merge site result))
+;        (let [lat (parse-double lat)
+;              lon (parse-double lon)]
+;          (merge site {:lat lat :lon lon})))
+;      site)))
 
 (defn convert-site-ids [sites]
   (for [{:keys [site-id] :as site} sites]
@@ -253,25 +339,25 @@
         (assoc c map-key val))
       c)))
 
-(defn read-sites-csv [site-cols filename]
-  (with-open [^java.io.Reader r (clojure.java.io/reader filename)]
-    (let [csv    (parse-csv r)
-          header (first csv)
-          ncols  (count header)
-          hidx   (into {} (for [i (range ncols)]
-                            [(get header i) i]))
-          csv    (vec (rest csv))
-          sites  (for [row csv]
-                   (into {}
-                     (for [i (range ncols)]
-                       (when-let [col-key (get site-cols (get header i))]
-                         (let [col-data (get row i)]
-                           (when (and col-data (not= col-data ""))
-                             [col-key col-data]))))))]
-      (->> sites
-        convert-coords
-        convert-site-ids
-        (convert-bool :is-rm-site?)))))
+;(defn read-sites-csv [site-cols filename]
+;  (with-open [^java.io.Reader r (clojure.java.io/reader filename)]
+;    (let [csv    (parse-csv r)
+;          header (first csv)
+;          ncols  (count header)
+;          hidx   (into {} (for [i (range ncols)]
+;                            [(get header i) i]))
+;          csv    (vec (rest csv))
+;          sites  (for [row csv]
+;                   (into {}
+;                     (for [i (range ncols)]
+;                       (when-let [col-key (get site-cols (get header i))]
+;                         (let [col-data (get row i)]
+;                           (when (and col-data (not= col-data ""))
+;                             [col-key col-data]))))))]
+;      (->> sites
+;        convert-coords
+;        convert-site-ids
+;        (convert-bool :is-rm-site?)))))
 
 
 (defn read-csv [filename col-config param-config]
@@ -412,18 +498,20 @@
 
 
 
-(defn import-field-results [const-table import-token-fm results]
+(defn import-field-results [const-table devType-table import-token-fm results]
   (vec
     (flatten
       (for [[k {:keys [vals]}] results]
-        (let [constituent (get const-table k)]
+        (let [constituent (get const-table k)
+              devType (get devType-table k)]
           (for [i (range (count vals))]
             (let [import-token-fm-n (str import-token-fm "-" (name k) "-" (inc i))]
               {:org.riverdb/import-key       import-token-fm-n
                ;:fieldresult/SampleRowID      import-token-fm
                :fieldresult/Result           (double (get vals i))
                :fieldresult/FieldReplicate   (inc i)
-               :fieldresult/ConstituentRowID constituent})))))))
+               :fieldresult/ConstituentRowID constituent
+               :fieldresult/SamplingDeviceCode devType})))))))
 
 ;(defn import-csv [cx agency project filename]
 ;  (let [data              (read-csv filename)
@@ -461,102 +549,191 @@
 ;
 ;        (vec (concat result sample f-results))))))
 
-(defn import-sites-wcca [cx project filename]
-  (let [sites          (read-sites-csv site-cols-wcca filename)
-        final-site-ids (gen-sites cx project sites)]
-    final-site-ids))
-
-(defn import-sites-ssi [cx project filename]
-  (let [sites          (read-sites-csv site-cols-ssi filename)
-        final-site-ids (gen-sites cx project sites)]
-    final-site-ids))
-
-
-(defn import-csv-wcca-txds [db project filename]
-  (let [data (read-csv filename cols-wcca param-config-wcca)]
-    (for [dat data]
-      (let [{:keys [svid site-id site-name SiteVisitDate Notes time results
-                    StreamWidth UnitStreamWidth WaterDepth UnitWaterDepth
-                    DataEntryDate DataEntryNotes DataEntryPerson QADate QACheck QAPerson]} dat
-            import-token-sv (str project "-sv-" svid)
-            SiteVisitDate   (parse-date SiteVisitDate)
-            DataEntryDate   (parse-date DataEntryDate)
-            DataEntryPerson (parse-long DataEntryPerson)
-            QACheck         (parse-bool QACheck)
-            QADate          (parse-date QADate)
-            QAPerson        (parse-long QAPerson)
-            WaterDepth      (parse-bigdec WaterDepth)
-            StreamWidth     (parse-bigdec StreamWidth)
-            time            time
-            site-id         (parse-long site-id)
-            station-id      (proj-site->station-id db project site-id)
-
-            _               (when-not station-id
-                              (warn "WARNING: missing :sitevisit/StationID for site-name " site-name))
-            import-str      (str "RiverDB.org import from file: " filename)
-            Notes           (if Notes
-                              (str Notes "\n" import-str)
-                              import-str)
-            sv              {:db/id                       import-token-sv
-                             :sitevisit/ProjectID         [:projectslookup/ProjectID project]
-                             :sitevisit/AgencyCode        [:agencylookup/AgencyCode "WCCA"]
-                             :sitevisit/StationID         station-id
-                             :sitevisit/CreationTimestamp (Date.)
-                             :sitevisit/StationFailCode   [:stationfaillookup/StationFailCode 0]
-                             :sitevisit/VisitType         [:sitevisittype/id 1]
-                             :org.riverdb/import-key      import-token-sv
-                             :sitevisit/Notes             Notes}
-            sv              (cond-> sv
-                              time
-                              (assoc :sitevisit/Time time)
-                              SiteVisitDate
-                              (assoc :sitevisit/SiteVisitDate SiteVisitDate)
-
-                              DataEntryNotes
-                              (assoc :sitevisit/DataEntryNotes DataEntryNotes)
-                              DataEntryDate
-                              (assoc :sitevisit/DataEntryDate DataEntryDate)
-                              DataEntryPerson
-                              (assoc :sitevisit/DataEntryPerson DataEntryPerson)
-
-                              QADate
-                              (assoc :sitevisit/QADate QADate)
-                              QACheck
-                              (assoc :sitevisit/QACheck QACheck)
-                              QAPerson
-                              (assoc :sitevisit/QAPerson QAPerson)
-
-                              StreamWidth
-                              (assoc :sitevisit/StreamWidth StreamWidth)
-                              UnitStreamWidth
-                              (assoc :sitevisit/UnitStreamWidth UnitStreamWidth)
-                              WaterDepth
-                              (assoc :sitevisit/WaterDepth WaterDepth)
-                              UnitWaterDepth
-                              (assoc :sitevisit/UnitWaterDepth UnitWaterDepth)
-
-                              (and StreamWidth UnitStreamWidth)
-                              (assoc :sitevisit/WidthMeasured true)
-
-                              (and WaterDepth UnitWaterDepth)
-                              (assoc :sitevisit/DepthMeasured true))
-            import-token-fm (str import-token-sv "-field")
-            sample          [{:sample/SiteVisitID     import-token-sv
-                              :db/id                  import-token-fm
-                              :org.riverdb/import-key import-token-fm
-                              :sample/EventType       [:eventtypelookup/EventType "WaterChem"]
-                              :sample/SampleTypeCode  [:sampletypelookup/SampleTypeCode "FieldMeasure"]
-                              :sample/QCCheck         false
-                              :sample/SampleReplicate 0}]
-            f-results       (import-field-results wcca-param->constituent import-token-fm results)
-            result          [sv]]
-
-        (vec (concat result sample f-results))))))
+;(defn import-sites-wcca [cx project filename]
+;  (let [sites          (read-sites-csv site-cols-wcca filename)
+;        final-site-ids (gen-sites cx project sites)]
+;    final-site-ids))
+;
+;(defn import-sites-ssi [cx project filename]
+;  (let [sites          (read-sites-csv site-cols-ssi filename)
+;        final-site-ids (gen-sites cx project sites)]
+;    final-site-ids))
 
 
-(defn import-csv-ssi-txds [db project filename]
-  (debug "import-csv-ssi-txds")
-  (let [data (read-csv filename cols-SSI param-config-ssi)]
+;(defn import-csv-wcca-txds [db project filename]
+;  (let [data (read-csv filename cols-wcca param-config-wcca)]
+;    (for [dat data]
+;      (let [{:keys [svid site-id site-name SiteVisitDate Notes time results
+;                    StreamWidth UnitStreamWidth WaterDepth UnitWaterDepth
+;                    DataEntryDate DataEntryNotes DataEntryPerson QADate QACheck QAPerson]} dat
+;            import-token-sv (str project "-sv-" svid)
+;            SiteVisitDate   (parse-date SiteVisitDate)
+;            DataEntryDate   (parse-date DataEntryDate)
+;            DataEntryPerson (parse-long DataEntryPerson)
+;            QACheck         (parse-bool QACheck)
+;            QADate          (parse-date QADate)
+;            QAPerson        (parse-long QAPerson)
+;            WaterDepth      (parse-bigdec WaterDepth)
+;            StreamWidth     (parse-bigdec StreamWidth)
+;            time            time
+;            site-id         (parse-long site-id)
+;            station-id      (proj-site->station-id db project site-id)
+;
+;            _               (when-not station-id
+;                              (warn "WARNING: missing :sitevisit/StationID for site-name " site-name))
+;            import-str      (str "RiverDB.org import from file: " filename)
+;            Notes           (if Notes
+;                              (str Notes "\n" import-str)
+;                              import-str)
+;            sv              {:db/id                       import-token-sv
+;                             :sitevisit/ProjectID         [:projectslookup/ProjectID project]
+;                             :sitevisit/AgencyCode        [:agencylookup/AgencyCode "WCCA"]
+;                             :sitevisit/StationID         station-id
+;                             :sitevisit/CreationTimestamp (Date.)
+;                             :sitevisit/StationFailCode   [:stationfaillookup/StationFailCode 0]
+;                             :sitevisit/VisitType         [:sitevisittype/id 1]
+;                             :org.riverdb/import-key      import-token-sv
+;                             :sitevisit/Notes             Notes}
+;            sv              (cond-> sv
+;                              time
+;                              (assoc :sitevisit/Time time)
+;                              SiteVisitDate
+;                              (assoc :sitevisit/SiteVisitDate SiteVisitDate)
+;
+;                              DataEntryNotes
+;                              (assoc :sitevisit/DataEntryNotes DataEntryNotes)
+;                              DataEntryDate
+;                              (assoc :sitevisit/DataEntryDate DataEntryDate)
+;                              DataEntryPerson
+;                              (assoc :sitevisit/DataEntryPerson DataEntryPerson)
+;
+;                              QADate
+;                              (assoc :sitevisit/QADate QADate)
+;                              QACheck
+;                              (assoc :sitevisit/QACheck QACheck)
+;                              QAPerson
+;                              (assoc :sitevisit/QAPerson QAPerson)
+;
+;                              StreamWidth
+;                              (assoc :sitevisit/StreamWidth StreamWidth)
+;                              UnitStreamWidth
+;                              (assoc :sitevisit/UnitStreamWidth UnitStreamWidth)
+;                              WaterDepth
+;                              (assoc :sitevisit/WaterDepth WaterDepth)
+;                              UnitWaterDepth
+;                              (assoc :sitevisit/UnitWaterDepth UnitWaterDepth)
+;
+;                              (and StreamWidth UnitStreamWidth)
+;                              (assoc :sitevisit/WidthMeasured true)
+;
+;                              (and WaterDepth UnitWaterDepth)
+;                              (assoc :sitevisit/DepthMeasured true))
+;            import-token-fm (str import-token-sv "-field")
+;            sample          [{:sample/SiteVisitID     import-token-sv
+;                              :db/id                  import-token-fm
+;                              :org.riverdb/import-key import-token-fm
+;                              :sample/EventType       [:eventtypelookup/EventType "WaterChem"]
+;                              :sample/SampleTypeCode  [:sampletypelookup/SampleTypeCode "FieldMeasure"]
+;                              :sample/QCCheck         false
+;                              :sample/SampleReplicate 0}]
+;            f-results       (import-field-results wcca-param->constituent import-token-fm results)
+;            result          [sv]]
+;
+;        (vec (concat result sample f-results))))))
+;
+;
+;(defn import-csv-ssi-txds [db project filename]
+;  (debug "import-csv-ssi-txds")
+;  (let [data (read-csv filename cols-SSI param-config-ssi)]
+;    (vec
+;      ;; remove any that have no station
+;      (filter #(:sitevisit/StationID (first %))
+;        (for [dat data]
+;          (let [{:keys [svid site-id site-name SiteVisitDate Notes time results
+;                        StreamWidth UnitStreamWidth WaterDepth UnitWaterDepth
+;                        DataEntryDate DataEntryNotes DataEntryPerson QADate QACheck QAPerson]} dat
+;                import-token-sv (str project "-" svid)
+;                SiteVisitDate   (parse-date SiteVisitDate)
+;
+;                DataEntryDate   (parse-date DataEntryDate)
+;                DataEntryPerson (parse-long DataEntryPerson)
+;                QACheck         (parse-bool QACheck)
+;                QADate          (parse-date QADate)
+;                QAPerson        (parse-long QAPerson)
+;
+;                WaterDepth      (parse-bigdec WaterDepth)
+;                StreamWidth     (parse-bigdec StreamWidth)
+;                time            time
+;                site-id-id      (when site-id (proj-site->station-id db project site-id))
+;                site-id-name    (when site-name (proj-site-name->station-id db project site-name))
+;                site-id         (or site-id-id site-id-name)
+;                _               (when-not site-id
+;                                  (warn "WARNING: missing :sitevisit/StationID for site-name " site-name))
+;                import-str      (str "RiverDB.org import from file: " filename)
+;                Notes           (if Notes
+;                                  (str Notes " \n " import-str)
+;                                  import-str)
+;                sv              {:sitevisit/ProjectID         [:projectslookup/ProjectID project]
+;                                 :sitevisit/AgencyCode        [:agencylookup/AgencyCode "SSI"]
+;                                 :sitevisit/StationID         site-id
+;                                 :sitevisit/QACheck           true
+;                                 :sitevisit/CreationTimestamp (Date.)
+;                                 :sitevisit/StationFailCode   [:stationfaillookup/StationFailCode 0]
+;                                 :sitevisit/VisitType         [:sitevisittype/id 1]
+;                                 :org.riverdb/import-key      import-token-sv}
+;                sv              (cond-> sv
+;                                  time
+;                                  (assoc :sitevisit/Time time)
+;                                  SiteVisitDate
+;                                  (assoc :sitevisit/SiteVisitDate SiteVisitDate)
+;
+;                                  Notes
+;                                  (assoc :sitevisit/Notes             Notes)
+;
+;                                  DataEntryNotes
+;                                  (assoc :sitevisit/DataEntryNotes DataEntryNotes)
+;                                  DataEntryDate
+;                                  (assoc :sitevisit/DataEntryDate DataEntryDate)
+;                                  DataEntryPerson
+;                                  (assoc :sitevisit/DataEntryPerson DataEntryPerson)
+;
+;                                  QADate
+;                                  (assoc :sitevisit/QADate QADate)
+;                                  QACheck
+;                                  (assoc :sitevisit/QACheck QACheck)
+;                                  QAPerson
+;                                  (assoc :sitevisit/QAPerson QAPerson)
+;
+;                                  StreamWidth
+;                                  (assoc :sitevisit/StreamWidth StreamWidth)
+;                                  UnitStreamWidth
+;                                  (assoc :sitevisit/UnitStreamWidth UnitStreamWidth)
+;                                  WaterDepth
+;                                  (assoc :sitevisit/WaterDepth WaterDepth)
+;                                  UnitWaterDepth
+;                                  (assoc :sitevisit/UnitWaterDepth UnitWaterDepth)
+;
+;                                  (and StreamWidth UnitStreamWidth)
+;                                  (assoc :sitevisit/WidthMeasured true)
+;
+;                                  (and WaterDepth UnitWaterDepth)
+;                                  (assoc :sitevisit/DepthMeasured true))
+;                import-token-fm (str import-token-sv "-field")
+;                f-results       (import-field-results ssi-param->constituent import-token-fm results)
+;                sample          [{:org.riverdb/import-key import-token-fm
+;                                  :sample/EventType       [:eventtypelookup/EventType "WaterChem"]
+;                                  :sample/SampleTypeCode  [:sampletypelookup/SampleTypeCode "FieldMeasure"]
+;                                  :sample/QCCheck         true
+;                                  :sample/SampleReplicate 0
+;                                  :sample/FieldResults f-results}]
+;
+;                result          [(assoc sv :sitevisit/Samples sample)]]
+;            result))))))
+
+
+(defn import-csv-txds [db agency project filename]
+  (debug "import-csv-txds")
+  (let [data (read-csv filename (get col-configs agency) (get param-configs agency))]
     (vec
       ;; remove any that have no station
       (filter #(:sitevisit/StationID (first %))
@@ -586,7 +763,7 @@
                                   (str Notes " \n " import-str)
                                   import-str)
                 sv              {:sitevisit/ProjectID         [:projectslookup/ProjectID project]
-                                 :sitevisit/AgencyCode        [:agencylookup/AgencyCode "SSI"]
+                                 :sitevisit/AgencyCode        [:agencylookup/AgencyCode agency]
                                  :sitevisit/StationID         site-id
                                  :sitevisit/QACheck           true
                                  :sitevisit/CreationTimestamp (Date.)
@@ -631,7 +808,7 @@
                                   (and WaterDepth UnitWaterDepth)
                                   (assoc :sitevisit/DepthMeasured true))
                 import-token-fm (str import-token-sv "-field")
-                f-results       (import-field-results ssi-param->constituent import-token-fm results)
+                f-results       (import-field-results (get param->const agency) (get param->devType agency) import-token-fm results)
                 sample          [{:org.riverdb/import-key import-token-fm
                                   :sample/EventType       [:eventtypelookup/EventType "WaterChem"]
                                   :sample/SampleTypeCode  [:sampletypelookup/SampleTypeCode "FieldMeasure"]
@@ -644,47 +821,66 @@
 
 
 (comment
-  (first (import-csv-ssi-txds (db) "SSI_1" "import-resources/SSI-2019.csv"))
-  (first (import-csv-ssi-txds (db) "SSI_BR" "import-resources/SSI_BR-2019.csv")))
-
-(defn import-csv-wcca [cx project filename]
-  (println "importing " project filename)
-  (doseq [txd (import-csv-wcca-txds (d/db cx) project filename)]
-    (let [tx @(d/transact cx txd)]
-      (print ".")
-      (flush)))
-  (println "\ndone"))
+  (first (import-csv-txds (db) "SSI" "SSI_1" "import-resources/SSI-2019.csv"))
+  (first (import-csv-txds (db) "SSI" "SSI_BR" "import-resources/SSI_BR-2019.csv"))
+  (first (import-csv-txds (db) "WCCA" "WCCA_1" "import-resources/WCCA-2019.csv"))
+  ;; server:
+  (first (import-csv-txds (db) "WCCA" "WCCA_1" "resources/WCCA-2019.csv")))
 
 
 
-(defn import-csv-ssi [cx project filename]
-  (println "importing " project filename)
-  (doseq [txd (import-csv-ssi-txds (d/db cx) project filename)]
+;(defn import-csv-wcca [cx project filename]
+;  (println "importing " project filename)
+;  (doseq [txd (import-csv-wcca-txds (d/db cx) project filename)]
+;    (let [tx @(d/transact cx txd)]
+;      (print ".")
+;      (flush)))
+;  (println "\ndone"))
+
+
+
+;(defn import-csv-ssi [cx project filename]
+;  (println "importing " project filename)
+;  (doseq [txd (import-csv-ssi-txds (d/db cx) project filename)]
+;    (let [tx @(d/transact cx txd)]
+;      (print ".")
+;      (flush)))
+;  (println "\ndone"))
+
+(defn import-csv [cx agency project filename]
+  (println "importing " agency project filename)
+  (doseq [txd (import-csv-txds (d/db cx) agency project filename)]
     (let [tx @(d/transact cx txd)]
       (print ".")
       (flush)))
   (println "\ndone"))
 
 (comment
-  (import-csv-ssi (cx) "SSI_1" "import-resources/SSI-2019.csv")
-  (import-csv-ssi (cx) "SSI_BR" "import-resources/SSI_BR-2019.csv"))
+  (import-csv-txds (db) "WCCA" "WCCA_1" "import-resources/WCCA-2019.csv")
+  (import-csv (cx) "WCCA" "WCCA_1" "import-resources/WCCA-2019.csv")
+  ;; server
+  (import-csv (cx) "WCCA" "WCCA_1" "resources/WCCA-2019.csv"))
 
-(comment
-  (def data (import-csv (cx) "SSI" "SSI_1" "resources/migrations/SSI-2016.csv"))
-  (def wcca (import-csv (cx) "WCCA" "WCCA_1" "resources/migrations/WCCA-2016.csv"))
-  (import-sites-wcca "WCCA" "WCCA_1" "resources/import/WCCA-Sites-V13.csv")
-  (read-csv "resources/import/WCCA-2017.csv")
-  (import-csv-wcca "WCCA_1" "resources/import/WCCA-2016.csv")
-  (d/with (db) (nth (import-csv-wcca "WCCA_1" "resources/import/WCCA-2017.csv") 4))
+;(comment
+;  (import-csv-ssi (cx) "SSI_1" "import-resources/SSI-2019.csv")
+;  (import-csv-ssi (cx) "SSI_BR" "import-resources/SSI_BR-2019.csv"))
 
-  (import-csv-ssi "SSI_1" "resources/import/SSI-2017.csv")
-
-  ;; count sitevisits since a date
-  (count (d/q '[:find [(pull ?e [*]) ...]
-                :where
-                [(> ?dt (java.util.Date. (java.util.Date/parse "2018/01/01")))]
-                [?e :sitevisit/ProjectID [:projectslookup/ProjectID "SSI_1"]]
-                [?e :sitevisit/SiteVisitDate ?dt]] (db))))
+;(comment
+;  (def data (import-csv (cx) "SSI" "SSI_1" "resources/migrations/SSI-2016.csv"))
+;  (def wcca (import-csv (cx) "WCCA" "WCCA_1" "resources/migrations/WCCA-2016.csv"))
+;  (import-sites-wcca "WCCA" "WCCA_1" "resources/import/WCCA-Sites-V13.csv")
+;  (read-csv "resources/import/WCCA-2017.csv")
+;  (import-csv-wcca "WCCA_1" "resources/import/WCCA-2016.csv")
+;  (d/with (db) (nth (import-csv-wcca "WCCA_1" "resources/import/WCCA-2017.csv") 4))
+;
+;  (import-csv-ssi "SSI_1" "resources/import/SSI-2017.csv")
+;
+;  ;; count sitevisits since a date
+;  (count (d/q '[:find [(pull ?e [*]) ...]
+;                :where
+;                [(> ?dt (java.util.Date. (java.util.Date/parse "2018/01/01")))]
+;                [?e :sitevisit/ProjectID [:projectslookup/ProjectID "SSI_1"]]
+;                [?e :sitevisit/SiteVisitDate ?dt]] (db))))
 
 
 

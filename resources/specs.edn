@@ -535,6 +535,7 @@
   :entity/prKeys
   [:samplingdevicelookup/Active
    :samplingdevicelookup/SampleDevice
+   :samplingdevicelookup/SamplingDeviceCode
    :samplingdevicelookup/DeviceMax
    :samplingdevicelookup/DeviceMin],
   :entity/nameKey :samplingdevicelookup/SampleDevice,
