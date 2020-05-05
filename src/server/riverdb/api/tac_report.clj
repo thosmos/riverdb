@@ -412,8 +412,11 @@
       (/ (reduce #(+ %1 (square (- %2 mn))) 0 a)
         (dec (count a))))))
 
-(defn percent-prec [avg stddev]
+(defn percent-rds [avg stddev]
   (* (/ stddev avg) 100))
+
+(defn percent-dev [val avg]
+  (/ (Math/abs (- val avg)) avg))
 
 ;; if it's nil, make it 0
 (defn inc! [val]
@@ -495,20 +498,20 @@
    :elide-extra?    true
    :params          {:H2O_Temp {:precision  {:unit 1.0}
                                 :exceedance {:high 20.0}}
-                     :H2O_Cond {:precision {:unit 10.0}}
-                     :H2O_DO   {:precision  {:percent 10.0}
+                     :H2O_Cond {:precision {:range 10.0}}
+                     :H2O_DO   {:precision  {:percent 5.0}
                                 :exceedance {:low 7.0}}
-                     :H2O_pH   {:precision  {:unit 0.4}
+                     :H2O_pH   {:precision  {:unit 0.2}
                                 :exceedance {:low  6.5
                                              :high 8.5}}
-                     :H2O_Turb {:precision {:percent   10.0
-                                            :unit      0.6
+                     :H2O_Turb {:precision {:percent   5.0
+                                            :unit      0.3
                                             :threshold 10.0}}
-                     :H2O_PO4  {:precision {:percent   20.0
-                                            :unit      0.06
+                     :H2O_PO4  {:precision {:percent   10.0
+                                            :unit      0.03
                                             :threshold 0.1}}
-                     :H2O_NO3  {:precision {:percent   20.0
-                                            :unit      0.06
+                     :H2O_NO3  {:precision {:percent   10.0
+                                            :unit      0.03
                                             :threshold 0.1}}}})
 
 
@@ -528,43 +531,86 @@
    :H2O_PO4      {:order 7 :count 3 :name "PO4" :optional true}
    :H2O_Velocity {:elide? true}})
 
-
-
 (def param-config-ssi
-  {:Air_Temp {:order 0
-              :count 1
-              :name  "Air Temp"}
-   :H2O_Temp {:order      1
-              :count      6
-              :name       "Water Temp"
-              :precision  {:unit 1.0}
-              :exceedance {:high 20.0}}
-   :H2O_Cond {:order     2
-              :count     3
-              :name      "µS Conductivity"
-              :precision {:unit 10.0}}
-   :H2O_DO   {:order      3
-              :count      3
-              :name       "Dissolved Oxygen"
-              :precision  {:percent 10.0}
-              :exceedance {:low 7.0}}
-   :H2O_pH   {:order      4 :count 3 :name "pH"
-              :precision  {:unit 0.4}
-              :exceedance {:low  6.5
-                           :high 8.5}}
-   :H2O_Turb {:order     5 :count 3 :name "Turbidity"
-              :precision {:percent   10.0
-                          :unit      0.6
-                          :threshold 10.0}}
-   :H2O_NO3  {:order     6 :count 3 :name "NO3"
-              :precision {:percent   20.0
-                          :unit      0.06
-                          :threshold 0.1}}
-   :H2O_PO4  {:order     7 :count 3 :name "PO4"
-              :precision {:percent   20.0
-                          :unit      0.06
-                          :threshold 0.1}}})
+  {:Air_Temp     {:order 0 :count 1 :name "Air_Temp"}
+   :H2O_Temp     {:order 1 :count 6 :name "H2O_Temp"}
+   :H2O_Cond     {:order 2 :count 3 :name "Cond"}
+   :H2O_DO       {:order 3 :count 3 :name "DO"}
+   :H2O_pH       {:order 4 :count 3 :name "pH"}
+   :H2O_Turb     {:order 5 :count 3 :name "Turb"}
+   :H2O_NO3      {:order 6 :count 3 :name "NO3" :optional true}
+   :H2O_PO4      {:order 7 :count 3 :name "PO4" :optional true}
+   :H2O_Velocity {:elide? true}})
 
+;(def param-config-ssi
+;  {:Air_Temp {:order 0
+;              :count 1
+;              :name  "Air Temp"}
+;   :H2O_Temp {:order      1
+;              :count      6
+;              :name       "Water Temp"
+;              :precision  {:unit 1.0}
+;              :exceedance {:high 20.0}}
+;   :H2O_Cond {:order     2
+;              :count     3
+;              :name      "µS Conductivity"
+;              :precision {:unit 10.0}}
+;   :H2O_DO   {:order      3
+;              :count      3
+;              :name       "Dissolved Oxygen"
+;              :precision  {:percent 10.0}
+;              :exceedance {:low 7.0}}
+;   :H2O_pH   {:order      4 :count 3 :name "pH"
+;              :precision  {:unit 0.4}
+;              :exceedance {:low  6.5
+;                           :high 8.5}}
+;   :H2O_Turb {:order     5 :count 3 :name "Turbidity"
+;              :precision {:percent   10.0
+;                          :unit      0.6
+;                          :threshold 10.0}}
+;   :H2O_NO3  {:order     6 :count 3 :name "NO3"
+;              :precision {:percent   20.0
+;                          :unit      0.06
+;                          :threshold 0.1}}
+;   :H2O_PO4  {:order     7 :count 3 :name "PO4"
+;              :precision {:percent   20.0
+;                          :unit      0.06
+;                          :threshold 0.1}}})
+
+(defn calc [vals]
+  (let [mn (mean vals)
+        _min (apply min vals)
+        _max (apply max vals)
+        stddev (std-dev vals)
+        rng (- _max _min)
+        rsd (percent-rds mn stddev)]
+
+    (println (format "Values: %.1f, %.1f, %.1f \nMean: %.1f \nMin: %.1f \nMax: %.1f \nRange: %.1f \nStdDev: %.2f \nRSD: %.2f "
+               (get vals 0) (get vals 1) (get vals 2) mn _min _max rng stddev rsd))
+    {:vals vals
+     :range rng
+     :mean mn
+     :stddev stddev
+     :max _max
+     :min _min
+     :rsd rsd}))
+
+(defn calc2 [vals]
+  (let [mn (mean vals)
+        _min (apply min vals)
+        _max (apply max vals)
+        stddev (std-dev vals)
+        rng (- _max _min)
+        rsd (percent-rds mn stddev)]
+    (println (format "Values: %.2f, %.2f, %.2f \nMean: %.2f \nMin: %.2f \nMax: %.2f \nRange: %.2f \nStdDev: %.3f \nRSD: %.3f "
+               (get vals 0) (get vals 1) (get vals 2) mn _min _max rng stddev rsd))
+    {:vals vals
+     :mean mn
+     :stddev stddev
+     :range rng
+     :max _max
+     :min _min
+     :rsd rsd}))
 
 
 
@@ -609,14 +655,23 @@
                   range        (round2 4 (- mx mn))
                   stddev       (if (> range 0.0) (std-dev vals) 0.0)
                   mean         (mean vals)
-                  prec-percent (if (> range 0.0) (percent-prec mean stddev) 0.0)
-                  prec-unit    range
+
+                  ;prec-percent (if (> range 0.0) (percent-rds mean stddev) 0.0)
+                  ;prec-unit    range
+                  prec-percent (if (> range 0.0)
+                                 (max (percent-dev mx mean) (percent-dev mn mean))
+                                 0.0)
+
+                  prec-unit    (if (> range 0.0)
+                                 (max (- mean mn) (- mx mean))
+                                 0.0)
 
                   ;; calculate precision thresholds
                   req-percent  (get-in qapp [:params k :precision :percent])
                   req-unit     (get-in qapp [:params k :precision :unit])
+                  req-range     (get-in qapp [:params k :precision :range])
 
-                  threshold    (if (and req-percent req-unit)
+                  threshold    (when (and req-percent req-unit)
                                  (or
                                    (get-in qapp [:params k :precision :threshold])
                                    (* (/ 100.0 req-percent) req-unit)))
@@ -635,8 +690,12 @@
                                          ;(println "PRECISION unit " k threshold prec-unit req-unit)
                                          true)
                                        false))
-                                   (if req-percent
+                                   (cond
+                                     req-range
+                                     (> range req-range)
+                                     req-percent
                                      (> prec-percent req-percent)
+                                     req-unit
                                      (> prec-unit req-unit))))
 
                   ;;; calculate quality exceedance
@@ -979,7 +1038,7 @@
 ;  (for [[p-nm p] z-params]
 ;    ))
 
-(defn report-stats [report]
+(defn report-stats [{:keys [param-config] :as report}]
   (let [count-svs                 (get report :count-sitevisits 0)
         noresults                 (get report :count-no-results 0)
         results                   (get report :count-results 0)
@@ -1001,7 +1060,6 @@
         percent                   (if (> count-svs 0)
                                     (round2 2 (* (/ results count-svs) 100))
                                     0)
-
         report                    (reduce-kv
                                     (fn [r k m]
                                       (let [order        (get-in param-config [k :order] 0)
@@ -1010,15 +1068,6 @@
                                           (assoc-in [:z-params k :display-order] order)
                                           (assoc-in [:z-params k :sample-count] sample-count))))
                                     report (:z-params report))]
-
-    ;order          (get-in param-config [k :order] 0)
-    ;sample-count   (get-in param-config [k :count] 3)
-    ;(assoc-in [:z-params k :display-order] order)
-    ;(assoc-in [:z-params k :sample-count] sample-count)
-
-
-    ;count-sv-valid       (or (:count-sitevisits-valid report) 0)
-    ;percent-sv-valid     (round2 2 (* 100 (/ count-sv-valid count-svs)))
 
     (-> report
       (assoc :percent-complete percent)
@@ -1069,16 +1118,18 @@
         _          (println "report reducer")
         ;param-keys (reduce #(apply conj %1 (map first (get-in %2 [:fieldresults]))) #{} sitevisits)
         report     (report-reducer db sitevisits)
-        _          (println "REPORT: "
-                     (select-keys report
-                       [:count-sitevisits :count-params-valid :count-params-exceedance]))
-        report     (report-stats report)
         report     (-> report
+                     (assoc :agency agency)
                      (assoc :report-year year)
                      (assoc :qapp-requirements qapp-requirements)
-                     (assoc :param-config param-config)
-                     (assoc :project (get-project-name db project))
-                     (assoc :agency agency))
+                     (assoc :param-config (if (= agency "SSI")
+                                            param-config-ssi
+                                            param-config))
+                     (assoc :project (get-project-name db project)))
+        ;_          (println "REPORT: "
+        ;             (select-keys report
+        ;               [:count-sitevisits :count-params-valid :count-params-exceedance]))
+        report     (report-stats report)
         _          (log/info "TAC REPORT COMPLETE")]
     report))
 

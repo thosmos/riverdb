@@ -67,16 +67,21 @@
                           prec   (:precision qm)
                           thresh (:threshold prec)
                           unit   (:unit prec)
-                          perc   (:percent prec)]
+                          perc   (:percent prec)
+                          range  (:range prec)]
                       (dom/tr {:key qk-nm}
                         (dom/td
                           (str qk-nm))
                         (dom/td
                           (if thresh
-                            (str "± " perc "% above " thresh ", " "± " unit " units below " thresh)
-                            (if perc
-                              (str "± " perc "%")
-                              (str "± " unit " units")))))))))))
+                            (str "± " perc " % avg above " thresh ", " " ± " unit " units avg below " thresh)
+                            (cond
+                              range
+                              (str "R <= " range)
+                              perc
+                              (str "± " perc " % avg")
+                              unit
+                              (str "± " unit " avg")))))))))))
 
 
           (when (seq no-results-rs)
@@ -170,7 +175,7 @@
                             (dom/th "Min")
                             (dom/th "Mean")
                             (dom/th "StdDev")
-                            (dom/th "Prec")
+                            (dom/th "RDS")
                             (dom/th "Range")
                             (dom/th "Samples")
                             (dom/th "Imprecise?")
@@ -212,7 +217,7 @@
                             (dom/th "Min")
                             (dom/th "Mean")
                             (dom/th "StdDev")
-                            (dom/th "Prec")
+                            (dom/th "RDS")
                             (dom/th "Range")
                             (dom/th "Samples")
                             (dom/th "Device")
