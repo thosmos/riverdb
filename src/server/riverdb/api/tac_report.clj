@@ -355,6 +355,7 @@
          q        (remap-query q)]
      ;; this query only returns field results due to missing :db/id on sample
      ;; we can modiy this to handle labresults too, or do it somewhere else
+     (debug "QUERY" q)
 
      (d/query q))))
 
@@ -496,7 +497,7 @@
   {:include-elided? false
    :min-samples     3
    :elide-extra?    true
-   :params          {:H2O_Temp {:precision  {:unit 1.0}
+   :params          {:H2O_Temp {:precision  {:unit 0.5}
                                 :exceedance {:high 20.0}}
                      :H2O_Cond {:precision {:range 10.0}}
                      :H2O_DO   {:precision  {:percent 5.0}
@@ -1279,6 +1280,15 @@
 
 
 (defn get-sitevisit-summaries [db opts]
+  ;(debug "get-sitevisit-summaries opts: " opts)
+  (let [sitevisits (get-sitevisits2 db opts)
+        sitevisits (filter-empty-fieldresults sitevisits)
+        sitevisits (create-sitevisit-summaries2 sitevisits)
+        sitevisits (util/sort-maps-by sitevisits [:date :site])]
+    sitevisits))
+
+
+(defn get-sitevisit-summary [db {:keys [stationCode date] :as opts}]
   ;(debug "get-sitevisit-summaries opts: " opts)
   (let [sitevisits (get-sitevisits2 db opts)
         sitevisits (filter-empty-fieldresults sitevisits)

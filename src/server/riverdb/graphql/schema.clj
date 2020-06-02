@@ -462,18 +462,20 @@
                                                                  :description "summary info about a field result"}}}
 
 
-                   :agencydetail       {:fields {:AgencyCode     {:type 'String}
-                                                 :AgencyDescr    {:type 'String}
-                                                 :Email          {:type 'String}
-                                                 :WebAddress     {:type 'String}
-                                                 :Telephone      {:type 'String}
-                                                 :PrimaryContact {:type 'String}
-                                                 :Active         {:type 'Boolean}}}
+                   :agency_detail       {:fields {:AgencyCode     {:type 'String}
+                                                  :AgencyDescr    {:type 'String}
+                                                  :Email          {:type 'String}
+                                                  :WebAddress     {:type 'String}
+                                                  :Telephone      {:type 'String}
+                                                  :PrimaryContact {:type 'String}
+                                                  :Active         {:type 'Boolean}}}
 
+                   ;:project_detail     {:fields {:ProjectID       {:type 'Int}
+                   ;                              :AgencyCode      {:type 'String}}}
 
                    :stationdetail      {:fields {:id              {:type 'ID}
                                                  :StationID       {:type 'Int}
-                                                 :Agency          {:type    :agencydetail
+                                                 :Agency          {:type    :agency_detail
                                                                    :resolve :resolve-agency-ref}
                                                  :Description     {:type 'String}
                                                  :Active          {:type 'Boolean}
@@ -489,6 +491,34 @@
                                                  :County          {:type 'String}
                                                  :LocalWatershed  {:type 'String}
                                                  :StationCode     {:type 'String}}}
+
+                   :safe_data   {:fields {:date            {:type 'String}
+                                          :value           {:type 'String}
+                                          :isHigh          {:type 'Boolean}}}
+
+                   :safetoswim  {:fields {:id              {:type 'ID}
+                                          :StationID       {:type 'Int}
+                                          :Agency          {:type    :agency_detail
+                                                            :resolve :resolve-agency-ref}
+                                          :Description     {:type 'String}
+                                          :Active          {:type 'Boolean}
+                                          :StationName     {:type 'String}
+                                          :LocalWaterbody  {:type 'String}
+                                          :ForkTribGroup   {:type 'String}
+                                          :RiverFork       {:type 'String}
+                                          :NHDWaterbody    {:type 'String}
+                                          :HydrologicUnit  {:type 'String}
+                                          :StreamSubsystem {:type 'String}
+                                          :TargetLat       {:type 'Float}
+                                          :TargetLong      {:type 'Float}
+                                          :County          {:type 'String}
+                                          :LocalWatershed  {:type 'String}
+                                          :StationCode     {:type 'String}
+                                          :latest          {:type :safe_data}
+                                          :data            {:type '(list :safe_data)}}}
+
+
+
                    :role               {:fields {:name {:type 'String}
                                                  :uuid {:type 'ID}
                                                  :type {:type 'String}
@@ -554,6 +584,18 @@
                                   :offset {:type    'Int
                                            :default 0}}}
 
+                   :safetoswim
+                   {:type        '(list :safetoswim)
+                    :resolve     :resolve-safetoswim
+                    :description "safetoswim details"
+                    :args        {:agency {:type 'String}
+                                  :active {:type 'Boolean}
+                                  :constituent {:type 'String}
+                                  :limit  {:type    'Int
+                                           :default 10}
+                                  :offset {:type    'Int
+                                           :default 0}}}
+
                    ;:line_snap
                    ;{:type        :line_snap
                    ; :resolve     :resolve-line-snap
@@ -593,7 +635,6 @@
                     :resolve     :resolve-set-password
                     :description "Change the password of the current user"
                     :args        {:password {:type 'String}}}}})
-
 
 
 

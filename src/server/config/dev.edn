@@ -1,5 +1,5 @@
 {;; Legal Origins for API request.
- :legal-origins #{"riverdb.org" "gql.riverdb.org" "admin.riverdb.org" "localhost"}
+ :legal-origins #{"riverdb.org" "gql.riverdb.org" "admin.riverdb.org" "localhost"  "192.168.1.103"}
 
  :taoensso.timbre/logging-config {:level :debug}
 

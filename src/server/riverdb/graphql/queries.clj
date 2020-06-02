@@ -14,7 +14,9 @@
             [riverdb.station]
             [riverdb.model.user :as user]
             [riverdb.api.tac-report :as tac-report]
-            [thosmos.util :as tu]))
+            [thosmos.util :as tu])
+  (:import [java.util Date]
+           [java.text SimpleDateFormat]))
 
 
 (defn resolve-hello
@@ -71,7 +73,7 @@
         svs        (if (or limit offset)
                      (limit-fn limit offset svs)
                      svs)
-        formatter  (java.text.SimpleDateFormat. "yyyy-MM-dd")
+        formatter  (SimpleDateFormat. "yyyy-MM-dd")
 
         svs        (for [sv svs]
                      (-> sv
@@ -80,7 +82,7 @@
                        (tu/walk-modify-k-vals :id str)
                        (update :date #(.format formatter %))
                        (add-resultsv fields)))]
-    ;(debug "SITEVISITS first:" (first svs))
+    (debug "SITEVISITS first:" (first svs))
     svs))
 
 
@@ -92,10 +94,14 @@
         ;_ (pprint selection)
         selections (vec (:selections selection))
         ;_ (pprint selections)
-        fields     (vec (map :field selections))
+        ;fields     (vec (remove
+        ;                  #(clojure.string/starts-with? (name %) "__")
+        ;                  (map :field selections)))
+        fields     (map :field selections)
         ;tk         (get selection :field)
 
         id-field?  (some #{:id} fields)
+
 
         query      (vec (for [field fields]
                           (if
@@ -112,6 +118,95 @@
                      results)]
 
     results))
+
+
+(defn resolve-safetoswim [context args value]
+  (debug "RESOLVE! safetoswim stations" args)
+  (let [selection   (:com.walmartlabs.lacinia/selection context)
+        selections  (vec (:selections selection))
+        fields      (vec (map :field selections))
+
+        ;fields     (vec (remove
+        ;                  #(clojure.string/starts-with? (name %) "__")
+        ;                  (map :field selections)))
+
+        id-field?   (some #{:id} fields)
+        get-latest? (some #{:latest} fields)
+        get-data?   (some #{:data} fields)
+
+        fields      (remove #(#{:id :latest :data} %) fields)
+
+        query       (into [:db/id]
+                      (for [field fields]
+                        [(keyword "stationlookup" (name field)) :as field]))
+        _           (debug "FIELDS" fields args)
+        args        (if (:constituent args)
+                      args
+                      (assoc args :constituent "5-56-23-20-7"))
+        stations    (riverdb.station/get-stations (db) query args)
+        _           (debug "RESULT COUNT" (count stations))
+
+        stations    (if id-field?
+                      (for [r stations]
+                        (-> r
+                          (assoc :id (str (:db/id r)))))
+                      stations)
+
+        eids        (map :db/id stations)]
+
+    ;; TODO for each station, we want latest lab result for the given constituent
+    (if-not (or get-data? get-latest?)
+      ;; if we're not getting the data, then just return the stations
+      stations
+
+      (let [;; get the dates and results for the sites
+            data   (d/q '[:find ?stationid ?svdt ?rslt
+                          :in $ ?constCode [?stationid ...]
+                          :where
+                          [?cnst :constituentlookup/ConstituentCode ?constCode]
+                          [?frs :labresult/ConstituentRowID ?cnst]
+                          [?frs :labresult/Result ?rslt]
+                          [?sa :sample/LabResults ?frs]
+                          [?sv :sitevisit/Samples ?sa]
+                          [?sv :sitevisit/StationID ?stationid]
+                          [?sv :sitevisit/SiteVisitDate ?svdt]]
+                     (db) (:constituent args) eids)
+
+            ;; make a map on station-id for easy lookup
+            ;_           (debug "LATEST" data)
+            formatter  (SimpleDateFormat. "yyyy-MM-dd")
+
+            data-m (reduce
+                     (fn [out [stationid ^Date svdate rslt]]
+                       (update-in out [stationid] (fnil conj [])
+                         {:date   (.format formatter svdate)
+                          :value  (str rslt)
+                          :isHigh (> rslt 1000)}))
+                     {} data)
+
+            results ;; for each station, return either all the data or just the latest
+                   (reduce
+                     (fn [out station]
+                       (let [data   (->> (get station :db/id)
+                                      (get data-m))
+                             latest (->> data
+                                      (sort-by :date)
+                                      (last))]
+                         (cond-> out
+                           get-latest?
+                           (conj (assoc station :latest latest))
+                           get-data?
+                           (conj (assoc station :data data)))))
+                     [] stations)]
+        (debug "first result" (first results))
+        results))))
+
+
+
+
+
+
+
 
 
 

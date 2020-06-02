@@ -2016,7 +2016,8 @@
   [#:attr{:name "Constituent",
           :key :sample/ConstituentRef,
           :cardinality :one,
-          :type :ref}
+          :type :ref
+          :ref #:entity{:ns :entity.ns/constituentlookup}}
    #:attr{:name "DepthSampleCollection",
           :key :sample/DepthSampleCollection,
           :position 7,

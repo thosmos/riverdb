@@ -27,8 +27,7 @@
             [ring.util.response :as ring-resp]
             [riverdb.auth :as auth]
             [riverdb.model.user :as user]
-            [riverdb.graphql.mutations :as m]
-            [riverdb.graphql.queries :as q]
+            [riverdb.graphql.resolvers :refer [resolvers]]
             [riverdb.graphql.schema :as sch]
             [riverdb.server-components.config]
             [riverdb.server-components.crux-service]
@@ -44,32 +43,7 @@
   (util/attach-resolvers
     ;(sch/load-all-schemas)
     schemas
-    {:resolve-hello            q/resolve-hello
-     :resolve-sitevisit        q/resolve-sitevisits
-     :resolve-rimdb            q/resolve-rimdb
-     :resolve-rimdb-fk         q/resolve-rimdb-fk
-     ;:resolve-rimdb-rk         q/resolve-rimdb-rk
-     :resolve-spec-query       q/resolve-spec
-     :resolve-spec-fk          q/resolve-rimdb-fk
-     ;:resolve-spec-rk          q/resolve-rimdb-rk
-     :resolve-stationdetail    q/resolve-stations
-     :resolve-agency-ref       q/resolve-agency-ref
-     :resolve-specs            q/resolve-specs
-     :resolve-db-specs         q/resolve-db-specs
-
-     :resolve-auth             m/resolve-auth
-     :resolve-unauth           m/resolve-unauth
-     :resolve-changeit         m/resolve-changeit
-     :resolve-change-user-name m/resolve-change-user-name
-     :resolve-set-password     m/resolve-set-password
-
-     :resolve-entity-update    m/resolve-entity-update
-     :resolve-entity-create    m/resolve-entity-create
-     :resolve-entity-delete    m/resolve-entity-delete
-     :resolve-list-query       q/resolve-list-query
-     :resolve-list-meta        q/resolve-list-meta
-
-     :resolve-current-user     q/resolve-current-user}))
+    (resolvers)))
 
 (defn compile-schemas [schemas]
   (debug "COMPILE SCHEMAS")
@@ -77,7 +51,7 @@
   (try
     (schema/compile schemas)
     (catch Exception ex
-      (debug (ex-data ex)))))
+      (debug "COMPILE ERROR" ex))))
 
 
 (defn process-schemas []
@@ -324,10 +298,11 @@
         s-map     (lacinia/service-map #(process-schemas) options)]
     ;s-map     (http/dev-interceptors s-map)]
     (merge s-map
-      {:io.pedestal.http/router :linear-search
+      {;;::http/router :linear-search
+       ::http/host "0.0.0.0"
        ;; all origins are allowed in dev mode
        ;::http/allowed-origins {:creds true :allowed-origins (constantly true)}
-       ::http/allowed-origins   {:allowed-origins (constantly true)} ;:creds true :allowed-origins "*"}
+       ::http/allowed-origins   (constantly true) ;{:allowed-origins (constantly true)} ;:creds true :allowed-origins "*"}
        ;; Content Security Policy (CSP) is mostly turned off in dev mode
        ::http/secure-headers    {:content-security-policy-settings {:object-src "*"
                                                                     :script-src "'unsafe-inline' 'unsafe-eval' *"}}})))

@@ -64,30 +64,43 @@
           [?e ?attr ?value]]
      (db) attr value)))
 
+(defn rpull
+  ([eid]
+   (d/pull (db) '[*] eid))
+  ([eid query]
+   (d/pull (db) query eid)))
+
 (defn find-lab-parameters []
-  (d/q '[:find ?param ?param2 ?matrix ?method
+  (d/q '[:find ?param ?param2 ?matrix ?method ?unit ?code
          :where
          [?fr :labresult/ConstituentRowID ?e]
+         [?e :constituentlookup/ConstituentCode ?code]
          [?e :constituentlookup/AnalyteCode ?ana]
          [?e :constituentlookup/MatrixCode ?mat]
          [?e :constituentlookup/MethodCode ?mthd]
+         [?e :constituentlookup/UnitCode ?unt]
          [?ana :analytelookup/AnalyteShort ?param]
          [?ana :analytelookup/AnalyteName ?param2]
          [?mat :matrixlookup/MatrixShort ?matrix]
-         [?mthd :methodlookup/MethodName ?method]]
+         [?mthd :methodlookup/MethodName ?method]
+         [?unt :unitlookup/Unit ?unit]]
     (db)))
 
 (defn find-field-parameters []
-  (d/q '[:find ?param ?param2 ?matrix ?method
+  (d/q '[:find ?param ?param2 ?matrix ?method ?unit ?code
          :where
          [?fr :fieldresult/ConstituentRowID ?e]
+         [?e :constituentlookup/ConstituentCode ?code]
          [?e :constituentlookup/AnalyteCode ?ana]
          [?e :constituentlookup/MatrixCode ?mat]
          [?e :constituentlookup/MethodCode ?mthd]
+         [?e :constituentlookup/UnitCode ?unt]
+
          [?ana :analytelookup/AnalyteShort ?param]
          [?ana :analytelookup/AnalyteName ?param2]
          [?mat :matrixlookup/MatrixShort ?matrix]
-         [?mthd :methodlookup/MethodName ?method]]
+         [?mthd :methodlookup/MethodName ?method]
+         [?unt :unitlookup/Unit ?unit]]
     (db)))
 
 (defn find-project-stations [project]
