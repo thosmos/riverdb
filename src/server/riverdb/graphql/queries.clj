@@ -139,12 +139,12 @@
         query       (into [:db/id]
                       (for [field fields]
                         [(keyword "stationlookup" (name field)) :as field]))
-        _           (debug "FIELDS" fields args)
-        args        (if (:constituent args)
-                      args
-                      (assoc args :constituent "5-56-23-20-7"))
+        ;_           (debug "FIELDS" fields args)
+        ;args        (if (:constituent args)
+        ;              args
+        ;              (assoc args :constituent "5-56-23-20-7"))
         stations    (riverdb.station/get-stations (db) query args)
-        _           (debug "RESULT COUNT" (count stations))
+        ;_           (debug "RESULT COUNT" (count stations))
 
         stations    (if id-field?
                       (for [r stations]
@@ -160,45 +160,60 @@
       stations
 
       (let [;; get the dates and results for the sites
-            data   (d/q '[:find ?stationid ?svdt ?rslt
-                          :in $ ?constCode [?stationid ...]
-                          :where
-                          [?cnst :constituentlookup/ConstituentCode ?constCode]
-                          [?frs :labresult/ConstituentRowID ?cnst]
-                          [?frs :labresult/Result ?rslt]
-                          [?sa :sample/LabResults ?frs]
-                          [?sv :sitevisit/Samples ?sa]
-                          [?sv :sitevisit/StationID ?stationid]
-                          [?sv :sitevisit/SiteVisitDate ?svdt]]
-                     (db) (:constituent args) eids)
+            const-coliform "5-56-23-20-7"
+            const-ecoli    "5-57-464-0-7"
+            const-entero   "5-9000-9002-0-7"
+            consts         [const-coliform const-ecoli const-entero]
+            data           (d/q '[:find ?stationid ?svdt ?rslt ?rqual
+                                  :in $ [?stationid ...] 
+                                  :where
+                                  (or
+                                    ;; coliform
+                                    [?cnst :constituentlookup/ConstituentCode "5-56-23-20-7"]
+                                    ;; ecoli
+                                    [?cnst :constituentlookup/ConstituentCode "5-57-464-0-7"]
+                                    ;; enterococcus
+                                    [?cnst :constituentlookup/ConstituentCode "5-9000-9002-0-7"])
+                                  [?frs :labresult/ConstituentRowID ?cnst]
+                                  [?frs :labresult/Result ?rslt]
+                                  [?frs :labresult/ResQualCode ?rq]
+                                  [?rq :resquallookup/ResQualCode ?rqual]
+                                  [?sa :sample/LabResults ?frs]
+                                  [?sv :sitevisit/Samples ?sa]
+                                  [?sv :sitevisit/StationID ?stationid]
+                                  [?sv :sitevisit/SiteVisitDate ?svdt]]
+                             (db) (:constituent args) eids)
 
             ;; make a map on station-id for easy lookup
             ;_           (debug "LATEST" data)
-            formatter  (SimpleDateFormat. "yyyy-MM-dd")
+            formatter      (SimpleDateFormat. "yyyy-MM-dd")
 
-            data-m (reduce
-                     (fn [out [stationid ^Date svdate rslt]]
-                       (update-in out [stationid] (fnil conj [])
-                         {:date   (.format formatter svdate)
-                          :value  (str rslt)
-                          :isHigh (> rslt 1000)}))
-                     {} data)
+            data-m         (reduce
+                             (fn [out [stationid ^Date svdate rslt rqual]]
+                               (let [isHigh (> rslt 1000)
+                                     result {:date   (.format formatter svdate)
+                                             :value  (str rslt)
+                                             :qual   rqual
+                                             :isHigh isHigh}]
+                                 (update-in out [stationid] (fnil conj [])
+                                   result)))
+                             {} data)
 
             results ;; for each station, return either all the data or just the latest
-                   (reduce
-                     (fn [out station]
-                       (let [data   (->> (get station :db/id)
-                                      (get data-m))
-                             latest (->> data
-                                      (sort-by :date)
-                                      (last))]
-                         (cond-> out
-                           get-latest?
-                           (conj (assoc station :latest latest))
-                           get-data?
-                           (conj (assoc station :data data)))))
-                     [] stations)]
-        (debug "first result" (first results))
+                           (reduce
+                             (fn [out station]
+                               (let [data   (->> (get station :db/id)
+                                              (get data-m))
+                                     latest (->> data
+                                              (sort-by :date)
+                                              (last))]
+                                 (cond-> out
+                                   get-latest?
+                                   (conj (assoc station :latest latest))
+                                   get-data?
+                                   (conj (assoc station :data data)))))
+                             [] stations)]
+        ;(debug "first result" (first results))
         results))))
 
 
@@ -216,7 +231,7 @@
         fk-field-val (get value fk)
         fields       (vec (for [field (-> selection :selections)]
                             [(keyword "agencylookup" (name (:field field))) :as (:field field)]))]
-    (debug "AGENCY-REF" fk-field-val fields)
+    ;(debug "AGENCY-REF" fk-field-val fields)
     (d/q '[:find (pull ?e q) .
            :in $ ?e q]
       (db) (:db/id fk-field-val) fields)))

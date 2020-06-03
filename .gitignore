@@ -7,7 +7,6 @@ pom.xml.asc
 *.class
 
 # Leiningen
-classes/
 lib/
 native/
 checkouts/
@@ -50,3 +49,5 @@ import-resources
 /deploy/
 #resources/public/admin/js/main/main.js
 resources/public/admin/js/main/manifest.edn
+classes/*
+

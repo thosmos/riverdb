@@ -53,7 +53,7 @@
   (fn [request]
     (if (= uri (:uri request))
       (do
-        (debug "WRAP API" (:transit-params request))
+        ;(debug "WRAP API" (:transit-params request))
         (handle-api-request
           (:transit-params request)
           (fn [tx] (parser {:ring/request request} tx))))
@@ -64,7 +64,7 @@
 ;; in a js var for use by the client.
 ;; ================================================================================
 (defn index [csrf-token]
-  (debug "GENERATE ADMIN CLIENT HTML" csrf-token)
+  ;(debug "GENERATE ADMIN CLIENT HTML" csrf-token)
   (html5
     [:html {:lang "en"}
      [:head {:lang "en"}

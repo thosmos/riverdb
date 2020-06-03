@@ -7,7 +7,7 @@
 
 (defn get-stations [db query args]
   (try
-    (let [_      (debug "GET-STATIONS" args query)
+    (let [_      (debug "GET-STATIONS" args) ;query)
 
           {:keys [agency project active constituent]} args
 
@@ -68,7 +68,7 @@
                    (->
                      (update-in [:query :where] conj '[?e :stationlookup/StationName])))
           ;q      (remap-query q)
-          _      (debug "Stations QUERY" q)
+          ;_      (debug "Stations QUERY" q)
           rez    (d/query q)
           ;_      (debug "FIRST RESULT" (first rez))
 

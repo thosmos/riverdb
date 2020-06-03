@@ -140,7 +140,7 @@
                                     ;rks (:rev-keys table)
                                     spec-ns (:entity/ns spec)
                                     nm      (name spec-ns)
-                                    _       (debug "OBJECT" nm)
+                                    ;_       (debug "OBJECT" nm)
                                     k       (keyword nm)
                                     pks     (:entity/pks spec)
                                     attrs   (:entity/attrs spec)
