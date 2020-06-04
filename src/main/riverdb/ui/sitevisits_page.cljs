@@ -50,7 +50,7 @@
     [riverdb.ui.util :as rutil :refer [walk-ident-refs* walk-ident-refs make-tempid make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save set-editing set-value set-value! set-refs! set-ref! set-ref set-refs get-ref-set-val lookup-db-ident filter-param-typecode]]
     [riverdb.util :refer [paginate nest-by]]
     [com.rpl.specter :as sp :refer [ALL LAST]]
-    [tick.alpha.api :as t]
+    ;[tick.alpha.api :as t]
     [theta.log :as log :refer [debug info]]
     [thosmos.util :as tu]
     [com.fulcrologic.fulcro.data-fetch :as df]
@@ -1276,7 +1276,7 @@
                   id)
         edit-fn #(onEdit props)]
     (tr {:key id :style {:cursor "pointer"} :onClick edit-fn} ;:onMouseOver #(println "HOVER" id)}
-      (td {:key 1} (str (t/date SiteVisitDate)))
+      (td {:key 1}) (str SiteVisitDate) ;(str (t/date SiteVisitDate)))
       (td {:key 2} siteID)
       (td {:key 3} site)
       (td {:key 4} type)

@@ -1,42 +1,35 @@
 (ns riverdb.server
   (:gen-class) ; for -main method in uberjar
-  (:require [clojure-csv.core :as csv :refer [write-csv parse-csv]]
-            [clojure.edn :as edn]
-            [clojure.java.io :as io]
-            [clojure.tools.logging :as log :refer [debug info warn error]]
-            [com.rpl.specter :refer :all]
+  (:require [clojure-csv.core :refer [write-csv]]
+            [clojure.tools.logging :refer [debug]]
             [com.walmartlabs.lacinia.pedestal :as lacinia]
             [com.walmartlabs.lacinia.schema :as schema]
             [com.walmartlabs.lacinia.util :as util]
-            [clojure.string :as str :refer [join]]
+            [clojure.string :as str]
             [clojure.pprint :refer [pprint]]
             [datomic.api :as d]
             [dotenv]
-            [hiccup.core :refer [html]]
+            ;[hiccup.core :refer [html]]
             [hiccup.page :refer [html5 include-js include-css]]
             [io.pedestal.http :as http]
             [io.pedestal.http.body-params :as body-params]
-            [io.pedestal.http.route :as route]
             [io.pedestal.interceptor :as interceptor]
-            [io.pedestal.interceptor.helpers :as helpers]
             [mount.core :as mount :refer [defstate]]
-            [ring.middleware.cookies :refer [cookies-response cookies-request]]
-            [ring.middleware.content-type :refer [wrap-content-type]]
-            [ring.middleware.not-modified :refer [wrap-not-modified]]
-            [ring.middleware.resource :refer [wrap-resource]]
+            [ring.middleware.cookies :refer [ cookies-request]] ;cookies-response
+            ;[ring.middleware.content-type :refer [wrap-content-type]]
+            ;[ring.middleware.not-modified :refer [wrap-not-modified]]
+            ;[ring.middleware.resource :refer [wrap-resource]]
             [ring.util.response :as ring-resp]
             [riverdb.auth :as auth]
             [riverdb.model.user :as user]
             [riverdb.graphql.resolvers :refer [resolvers]]
             [riverdb.graphql.schema :as sch]
             [riverdb.server-components.config]
-            [riverdb.server-components.crux-service]
+            ;[riverdb.server-components.crux-service]
             [riverdb.server-components.middleware :refer [middleware]]
-            [riverdb.state :as st :refer [db cx start-dbs]]
-            [thosmos.util :as tu]
-            [ring.util.response :as ring-response]))
+            [riverdb.state :refer [start-dbs]]))
 
-(set! *warn-on-reflection* 1)
+;(set! *warn-on-reflection* 1)
 
 (defn attach-resolvers [schemas]
   (debug "ATTACH RESOLVERS")
@@ -237,10 +230,10 @@
                   :body    (generate-html)}]
     (assoc ctx :response response)))
 
-(defn admin-interceptor []
-  (io.pedestal.interceptor/interceptor
-    {:name  ::admin-ui
-     :enter (fn [ctx] (admin-fn ctx))}))
+;(defn admin-interceptor []
+;  (io.pedestal.interceptor/interceptor
+;    {:name  ::admin-ui
+;     :enter (fn [ctx] (admin-fn ctx))}))
 
 (def common-interceptors [(body-params/body-params) http/html-body])
 
@@ -299,7 +292,7 @@
     ;s-map     (http/dev-interceptors s-map)]
     (merge s-map
       {;;::http/router :linear-search
-       ::http/host "0.0.0.0"
+       ;;::http/host "0.0.0.0"
        ;; all origins are allowed in dev mode
        ;::http/allowed-origins {:creds true :allowed-origins (constantly true)}
        ::http/allowed-origins   (constantly true) ;{:allowed-origins (constantly true)} ;:creds true :allowed-origins "*"}

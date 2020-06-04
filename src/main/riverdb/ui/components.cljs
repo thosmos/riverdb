@@ -7,9 +7,9 @@
     [com.fulcrologic.fulcro.components :as comp]
     [com.fulcrologic.fulcro.algorithms.react-interop :as interop]
     [com.fulcrologic.fulcro.mutations :as fm]
-    [goog.object :as gobj]
-    [tick.alpha.api :as t]
-    [tick.timezone]
+    ;[goog.object :as gobj]
+    ;[tick.alpha.api :as t]
+    ;[tick.timezone]
     [theta.log :refer [debug]]
     ["react-datepicker/dist" :default DatePicker]
     ["js-joda/dist/js-joda" :as js-joda :refer [DateTimeFormatter, LocalDateTime, LocalDate]]
@@ -33,10 +33,8 @@
   (apply f Draggable args))
 
 
-(debug "HEY from js-joda" (.. LocalDate (parse "2012-12-24") (atStartOfDay) (plusMonths 2) (format (.ofPattern DateTimeFormatter "M/d/yyyy"))))
-;(debug "JS Date from js-joda" (.. LocalDate (js/Date) (atStartOfDay) (plusMonths 2) (format (.ofPattern DateTimeFormatter "M/d/yyyy"))))
-
-(debug "HEY from TICK" (t/time) (t/inst (t/offset-date-time "1918-11-11T11:00:00+01:00")) (-> (t/time "11:00") (t/on "1918-11-11") (t/in "Europe/Paris")))
+;(debug "HEY from js-joda" (.. LocalDate (parse "2012-12-24") (atStartOfDay) (plusMonths 2) (format (.ofPattern DateTimeFormatter "M/d/yyyy"))))
+;(debug "HEY from TICK" (t/time) (t/inst (t/offset-date-time "1918-11-11T11:00:00+01:00")) (-> (t/time "11:00") (t/on "1918-11-11") (t/in "Europe/Paris")))
 
 ;d.format(DateTimeFormatter.ofPattern('M/d/yyyy')) // 4/28/2018
 ;d.format(DateTimeFormatter.ofPattern('HH:mm')) // 12:34

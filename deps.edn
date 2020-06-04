@@ -1,4 +1,4 @@
-{:paths ["src/main" "resources"],
+{:paths ["src/main" "resources" "classes"],
  :aliases
         {:test       {:extra-paths ["src/test"]
                       :extra-deps  {org.clojure/test.check {:mvn/version "RELEASE"}}}
@@ -12,8 +12,8 @@
          :clj-tests  {:extra-paths ["src/test"]
                       :main-opts   ["-m" "kaocha.runner"]
                       :extra-deps  {lambdaisland/kaocha {:mvn/version "0.0-529"}}}
-         :dev        {:extra-paths ["src/dev" "classes"]
-                      :extra-deps  {expound                      {:mvn/version "0.7.2"}
+         :dev        {:extra-paths ["src/dev"]
+                      :extra-deps  {expound                      {:mvn/version "0.8.4"}
                                     org.clojure/tools.namespace  {:mvn/version "1.0.0"}
                                     org.clojure/tools.deps.alpha {:mvn/version "0.8.666"}
                                     vlaaad/reveal                {:mvn/version "0.1.0-ea1"}}}
@@ -28,14 +28,14 @@
                       :jvm-opts   ["-XX:-OmitStackTraceInFastThrow" "-Dguardrails.enabled=true"]}
 
          :cljsbuild  {:extra-deps {org.clojure/clojurescript {:mvn/version "1.10.597"}
-                                   thheller/shadow-cljs      {:mvn/version "2.8.83"}
+                                   thheller/shadow-cljs      {:mvn/version "2.9.10"}
                                    thheller/shadow-cljsjs    {:mvn/version "0.0.21"}
                                    clj-commons/pushy         {:mvn/version "0.3.10"}}}
 
          :cljs-dev   {:extra-paths ["src/test" "src/workspaces"]
                       :extra-deps  {fulcrologic/fulcro-spec      {:mvn/version "3.1.4"}
-                                    binaryage/devtools           {:mvn/version "0.9.10"}
-                                    com.github.awkay/workspaces  {:mvn/version "1.0.0-RC2"}
+                                    binaryage/devtools           {:mvn/version "1.0.2"}
+                                    com.github.awkay/workspaces  {:mvn/version "1.0.0-RC4"}
                                     org.clojure/tools.deps.alpha {:mvn/version "0.8.666"}}}
 
          :rad        {:extra-paths ["src/rad"]
@@ -44,18 +44,19 @@
                                    {:local/root "/Users/thomas/Develop/cljs/fulcro/fulcro-rad-datomic"}}}
 
          :server     {:extra-paths ["src/server"]
-                      :extra-deps  {com.datomic/datomic-free         {:mvn/version "0.9.5697" :exclusions [org.slf4j/slf4j-nop]}
+                      :extra-deps  {
                                     vvvvalvalval/datomock            {:mvn/version "0.2.2"}
                                     buddy/buddy-hashers              {:mvn/version "1.4.0"}
                                     buddy/buddy-sign                 {:mvn/version "3.1.0"}
                                     clj-mailgun                      {:mvn/version "0.2.0"}
                                     clojure-csv                      {:mvn/version "2.0.2"}
+                                    com.datomic/datomic-free         {:mvn/version "0.9.5697" :exclusions [org.slf4j/slf4j-nop org.slf4j/jul-to-slf4j org.slf4j/log4j-over-slf4j org.slf4j/jcl-over-slf4j]}
                                     ;com.datomic/datomic-pro          {:mvn/version "0.9.6014" :exclusions [org.slf4j/slf4j-nop org.slf4j/jul-to-slf4j org.slf4j/log4j-over-slf4j org.slf4j/jcl-over-slf4j]}
                                     ;mysql/mysql-connector-java       {:mvn/version "8.0.18"}
                                     com.walmartlabs/lacinia-pedestal {:mvn/version "0.12.0" :exclusions [clojure-future-spec org.clojure/spec.alpha org.clojure/tools.reader]}
-                                    datomic-schema                   {:mvn/version "1.3.0"}
-                                    io.pedestal/pedestal.jetty       {:mvn/version "0.5.7"}
-                                    io.pedestal/pedestal.service     {:mvn/version "0.5.7" :exclusions [org.slf4j/slf4j-api]}
+                                    datomic-schema                   {:mvn/version "1.3.1"}
+                                    io.pedestal/pedestal.jetty       {:mvn/version "0.5.8"}
+                                    io.pedestal/pedestal.service     {:mvn/version "0.5.8" :exclusions [org.slf4j/slf4j-api org.slf4j/slf4j-nop]}
                                     org.clojure/core.async           {:mvn/version "0.7.559"}
                                     org.clojure/core.rrb-vector      {:mvn/version "0.1.1"}
                                     thosmos/domain-spec              {:mvn/version "0.1.2" :exclusions [com.datomic/datomic-free]}
@@ -68,12 +69,12 @@
                                     hiccup                           {:mvn/version "1.0.5"}
                                     clj-time/clj-time                {:mvn/version "0.15.2"}
                                     clojure.java-time                {:mvn/version "0.3.2"}}}
-         :import     {:extra-paths ["src/import"]
-                      :extra-deps  {;; geotools
-                                    org.geotools/gt-shapefile {:mvn/version "22.2"}
-                                    org.geotools/gt-epsg-hsql {:mvn/version "22.2"}
-                                    org.geotools/gt-main      {:mvn/version "22.2"}
-                                    com.vividsolutions/jts    {:mvn/version "1.13"}}}
+         ;:import     {:extra-paths ["src/import"]
+         ;             :extra-deps  {;; geotools
+         ;                           org.geotools/gt-shapefile {:mvn/version "22.2"}
+         ;                           org.geotools/gt-epsg-hsql {:mvn/version "22.2"}
+         ;                           org.geotools/gt-main      {:mvn/version "22.2"}
+         ;                           com.vividsolutions/jts    {:mvn/version "1.13"}}}
 
 
 
@@ -85,7 +86,7 @@
          thosmos/util                        {:mvn/version "0.2.1"}
 
          ;; time
-         tick                                {:mvn/version "0.4.21-alpha"}
+         ;tick                                {:mvn/version "0.4.25-alpha"}
 
          ;; Plain data Schemas for Clojure/Script
          ;metosin/malli                       {:mvn/version "0.0.1-SNAPSHOT"}
@@ -105,17 +106,17 @@
          ;; fulcro
          com.fulcrologic/fulcro              {:mvn/version "3.2.9"}
 
+         garden                              {:mvn/version "1.3.10"}
          com.fulcrologic/fulcro-garden-css   {:mvn/version "3.0.7" :exclusions [garden]}
          com.fulcrologic/semantic-ui-wrapper {:mvn/version "1.0.1"}
-         garden                              {:mvn/version "1.3.10"}
          com.taoensso/timbre                 {:mvn/version "4.10.0"}
-         com.taoensso/tufte                  {:mvn/version "2.1.0"}
-         com.wsscode/pathom                  {:mvn/version "2.2.31"}}
+         ;com.taoensso/tufte                  {:mvn/version "2.1.0"}
+         com.wsscode/pathom                  {:mvn/version "2.2.31"}}}
 
  ;;com.influxdb/influxdb-client-java   {:mvn/version "1.3.0"}}
 
 
- :mvn/repos
-        {"boundlessgeo" {:url "https://repo.boundlessgeo.com/main/"}
-         "geotoolkit"   {:url "https://maven.geotoolkit.org"}
-         "osgeo"        {:url "https://download.osgeo.org/webdav/geotools"}}}
+ ;:mvn/repos
+ ;       {"boundlessgeo" {:url "https://repo.boundlessgeo.com/main/"}
+ ;        "geotoolkit"   {:url "https://maven.geotoolkit.org"}
+ ;        "osgeo"        {:url "https://download.osgeo.org/webdav/geotools"}}}

@@ -1,7 +1,7 @@
 (ns riverdb.state
   (:require
     [datomic.api :as d]
-    [datomock.core :as mock]
+    ;[datomock.core :as mock]
     [theta.log :refer [debug]]
     dotenv))
 
@@ -37,8 +37,8 @@
        (let [cx (d/connect uri)
              cx (if mock-db?
                   (do
-                    (debug "MOCKING Datomic CX")
-                    (mock/fork-conn cx))
+                    (debug "UNIMPLEMENTED MOCKING Datomic CX"))
+                    ;(mock/fork-conn cx))
                   cx)]
         (swap! st assoc k cx))))))
 
