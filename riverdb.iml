@@ -3,6 +3,7 @@
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
     <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/classes" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/resources" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/dev" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/import" isTestSource="false" />
@@ -167,7 +168,7 @@
     <orderEntry type="library" name="Deps: ring/ring-headers:0.3.0" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/google-closure-library-third-party:0.0-20191016-6ae1f72f" level="project" />
     <orderEntry type="library" name="Deps: org.apache.maven.resolver/maven-resolver-api:1.4.1" level="project" />
-    <orderEntry type="library" name="Deps: com.fulcrologic/fulcro:3.1.18-SNAPSHOT" level="project" />
+    <orderEntry type="library" name="Deps: com.fulcrologic/fulcro:3.1.18" level="project" />
     <orderEntry type="library" name="Deps: hiccup:1.0.5" level="project" />
     <orderEntry type="library" name="Deps: javax.annotation/jsr250-api:1.0" level="project" />
     <orderEntry type="library" name="Deps: riddley:0.1.12" level="project" />

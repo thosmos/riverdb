@@ -2,6 +2,7 @@
   (:require
     [datomic.api :as d]
     [datomock.core :as mock]
+    [theta.log :refer [debug]]
     dotenv))
 
 ;(def uri (or (dotenv/env :DATOMIC_URI) "datomic:free://localhost:4334/test-db"))
@@ -35,7 +36,9 @@
        (d/create-database uri)
        (let [cx (d/connect uri)
              cx (if mock-db?
-                  (mock/fork-conn cx)
+                  (do
+                    (debug "MOCKING Datomic CX")
+                    (mock/fork-conn cx))
                   cx)]
         (swap! st assoc k cx))))))
 
