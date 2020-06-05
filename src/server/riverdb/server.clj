@@ -27,7 +27,8 @@
             [riverdb.server-components.config]
             ;[riverdb.server-components.crux-service]
             [riverdb.server-components.middleware :refer [middleware]]
-            [riverdb.state :refer [start-dbs]]))
+            [riverdb.state :refer [start-dbs]]
+            [theta.util]))
 
 ;(set! *warn-on-reflection* 1)
 
@@ -288,7 +289,10 @@
         routes    (add-admin-routes routes)
         routes    (conj routes ["/hello" :get (conj common-interceptors `hello-page)])
         options   (assoc options :routes routes)
-        s-map     (lacinia/service-map #(process-schemas) options)]
+        s-map     (lacinia/service-map #(process-schemas) options)
+        s-map     (if (not= (theta.util/app-env) "prod")
+                    (assoc s-map ::http/host "0.0.0.0")
+                    s-map)]
     ;s-map     (http/dev-interceptors s-map)]
     (merge s-map
       {;;::http/router :linear-search
