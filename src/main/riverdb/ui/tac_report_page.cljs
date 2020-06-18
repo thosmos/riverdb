@@ -38,9 +38,9 @@
         (println "RENDER TAC_REPORT" agency)
         (dom/div {:key "tac-report"}
           (dom/div :.ui.segment
-            (dom/h2 (str agency " " project " TAC Report " (if report-year
-                                                             (str "for " report-year)
-                                                             "for All Years")))
+            (dom/h2 (str agency " " project " QC Report " (if report-year
+                                                            (str "for " report-year)
+                                                            "for All Years")))
             (dom/h3 "Site Visit Completeness")
             (dom/table :.ui.collapsing.very.compact.table
               (dom/tbody
@@ -258,7 +258,7 @@
                    [df/marker-table ::tac]]
    :initial-state {:tac-report-data nil
                    :project-years   {}}
-   :route-segment ["tac-report"]}
+   :route-segment ["qc-report"]}
 
   (let [{:projectslookup/keys [ProjectID Name]} current-project
         AgencyCode (:agencylookup/AgencyCode current-agency)
@@ -270,14 +270,14 @@
           (ui-project-years project-years)
           (when (and ProjectID current-year)
             (dom/button {:onClick #(let []
-                                     (println "LOADING TAC REPORT" AgencyCode ProjectID current-year)
+                                     (println "LOADING QC REPORT" AgencyCode ProjectID current-year)
                                      (f/load this :tac-report-data nil {:params               {:agency  AgencyCode
                                                                                                :project ProjectID
                                                                                                :year    current-year}
                                                                         :post-mutation-params {:order :asc}
                                                                         :post-mutation        `rm/process-tac-report
                                                                         :marker               ::tac}))}
-              (str "Generate TAC Report for " AgencyCode " " current-year)))))
+              (str "Generate QC Report for " AgencyCode " " current-year)))))
 
       (if marker
         (ui-loader {:active true})

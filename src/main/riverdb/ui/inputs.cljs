@@ -19,12 +19,12 @@
   (defn just-floaties
     "Returns `s` with all non-digits other than - and . stripped."
     [s]
-    (debug "just-floaties" (pr-str s))
+    ;(debug "just-floaties" (pr-str s))
     (str/join
       (filter digits+ (seq s)))))
 
 (defn model->str [model]
-  (debug "model->str" (pr-str model))
+  ;(debug "model->str" (pr-str model))
   (str model))
 
 ;

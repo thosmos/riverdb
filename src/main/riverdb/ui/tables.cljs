@@ -27,7 +27,6 @@
     [riverdb.api.mutations :as rm]
     [riverdb.util :refer [sort-maps-by with-index]]
     [riverdb.ui.components :as c :refer [ui-datepicker]]
-    [riverdb.ui.lookup]
     [riverdb.ui.session :refer [Session]]
     [riverdb.ui.project-years :refer [ProjectYears ui-project-years]]
     [riverdb.util :refer [paginate]]

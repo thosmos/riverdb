@@ -30,7 +30,7 @@
     ["shortid" :as shorty :refer [generate]]
     [thosmos.util :as tu]
     [clojure.string :as str]
-    [riverdb.ui.lookup :as look]))
+    [riverdb.lookup :as look]))
 
 (defn shortid []
   (str "t" (shorty)))
@@ -54,7 +54,7 @@
     (assoc-in state-map ident new-props)))
 
 (defn walk-ident-refs
-  "walks the props map looking {:db/ident :ident-keyword} and adding :db/id to maps.  returns an updated props map."
+  "walks the props map looking for {:db/ident :ident-keyword} and adding :db/id to maps.  returns an updated props map."
   [state-or-ident-map props]
   (let [f         (fn [[k v]]
                     (if (and (map? v) (keyword? (:db/ident v)))

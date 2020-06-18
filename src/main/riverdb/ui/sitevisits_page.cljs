@@ -14,6 +14,7 @@
                                                 tbody th tr td form label input select
                                                 option span]]
     [com.fulcrologic.fulcro.mutations :as fm]
+    [com.fulcrologic.fulcro.networking.file-upload :as file-upload]
     [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
     [com.fulcrologic.fulcro.ui-state-machines :as uism :refer [defstatemachine]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-dropdown :refer [ui-form-dropdown]]
@@ -32,6 +33,12 @@
     [com.fulcrologic.semantic-ui.collections.table.ui-table-body :refer [ui-table-body]]
     [com.fulcrologic.semantic-ui.modules.popup.ui-popup :refer [ui-popup]]
     [com.fulcrologic.semantic-ui.addons.confirm.ui-confirm :refer [ui-confirm]]
+    [com.fulcrologic.semantic-ui.modules.modal.ui-modal :refer [ui-modal]]
+    [com.fulcrologic.semantic-ui.modules.modal.ui-modal-header :refer [ui-modal-header]]
+    [com.fulcrologic.semantic-ui.modules.modal.ui-modal-content :refer [ui-modal-content]]
+    [com.fulcrologic.semantic-ui.modules.modal.ui-modal-actions :refer [ui-modal-actions]]
+    [com.fulcrologic.semantic-ui.modules.modal.ui-modal-description :refer [ui-modal-description]]
+
     [riverdb.application :refer [SPA]]
     [riverdb.api.mutations :as rm]
     [riverdb.util :refer [sort-maps-by with-index]]
@@ -39,7 +46,6 @@
     [riverdb.ui.components :refer [ui-datepicker]]
     [riverdb.ui.forms :refer [SampleTypeCodeForm]]
     [riverdb.ui.globals :refer [Globals]]
-    [riverdb.ui.lookup]
     [riverdb.ui.lookup-options :refer [preload-options ui-theta-options ThetaOptions]]
     [riverdb.ui.lookups :as looks]
     [riverdb.ui.parameter :refer [Parameter]]
@@ -47,6 +53,7 @@
     [riverdb.ui.routes :as routes]
     [riverdb.ui.session :refer [Session]]
     [riverdb.ui.inputs :refer [ui-float-input]]
+    [riverdb.ui.upload :refer [ui-upload-modal]]
     [riverdb.ui.util :as rutil :refer [walk-ident-refs* walk-ident-refs make-tempid make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save set-editing set-value set-value! set-refs! set-ref! set-ref set-refs get-ref-set-val lookup-db-ident filter-param-typecode]]
     [riverdb.util :refer [paginate nest-by]]
     [com.rpl.specter :as sp :refer [ALL LAST]]
@@ -55,7 +62,9 @@
     [thosmos.util :as tu]
     [com.fulcrologic.fulcro.data-fetch :as df]
     [riverdb.roles :as roles]
-    [edn-query-language.core :as eql]))
+    [edn-query-language.core :as eql]
+    [tick.core :as t]
+    [testdouble.cljs.csv :as csv]))
 
 (declare SVRouter)
 
@@ -79,7 +88,6 @@
    :query [:db/id
            :constituentlookup/Name
            fs/form-config-join]})
-
 
 
 (defsc FieldResultForm [this {:keys [] :as props}]
@@ -350,7 +358,7 @@
 (defn rui-fieldres [samp-ident i p-const rs-map fr-map devType devID]
   (let [fr  (get rs-map i)
         val (:fieldresult/Result fr)]
-    (debug "RENDER rui-fieldres" i (pr-str val))
+    ;(debug "RENDER rui-fieldres" i (pr-str val))
     (ui-float-input {:type     "text"
                      :value    val
                      :style    {:width "60px" :paddingLeft 7 :paddingRight 7}
@@ -434,6 +442,12 @@
                             (> rnge precRange)
                             (< mean precThreshold))
                           (> rnge precRange)))
+        low (when low (.-rep low))
+        high (when high (.-rep high))
+
+        qualExc       (or
+                        (and high (> mean high))
+                        (and low (< mean low)))
 
         ;_             (debug "prec" prec "rnge" rnge "precRange" precRange "typeRange" (type precRange)
         ;                "typeRSD" (type precRSD) "typeThresh" (type precThreshold) "range exceedance?" (> rnge precRange))
@@ -448,7 +462,7 @@
                           (> rsd precRSD)))
         time          (or time (:fieldresult/ResultTime (first results)))
         unit          (get-in p-const [:constituentlookup/UnitCode :unitlookup/Unit])]
-    (debug "RENDER FieldMeasureParamForm" p-name "rs-map" rs-map) ; "devType" devType "devID" devID "p-const" p-const "fieldresults" fieldresults)
+    (debug "RENDER FieldMeasureParamForm" p-name "rs-map" rs-map "props" props) ; "devType" devType "devID" devID "p-const" p-const "fieldresults" fieldresults)
 
     (tr {:key id}
       (td {:key "name"} p-name)
@@ -457,7 +471,7 @@
                             (merge deviceTypeLookup
                               {:riverdb.entity/ns :entity.ns/samplingdevicelookup
                                :value             devType
-                               :opts              {:load false
+                               :opts              {:load  false
                                                    :style {:paddingLeft 5 :paddingRight 5}}})
                             {:changeMutation `set-all
                              :changeParams   {:dbids    (mapv :db/id results)
@@ -494,17 +508,17 @@
                                                  (comp/transact! this `[(set-all {:dbids ~(mapv :db/id results)
                                                                                   :k     :fieldresult/ResultTime
                                                                                   :v     ~value})]))}))
-      (td {:key "reps"} (or (str (count rslts)) ""))
+      (td {:key "reps" :style {:color (if (< (count rslts) replicates) "red" "black")}} (or (str (count rslts)) ""))
       (ui-popup
         {:open    false
          :trigger (td {:key "range" :style {:color (if rangeExc "red" "black")}} (or (str rnge) ""))}
         "Range exceedance")
-      (td {:key "mean"} (or (str mean) ""))
-      (td {:key "stddev"} (or (str stddev) ""))
-      (ui-popup
-        {:open    false
-         :trigger (td {:key "rsd" :style {:color (if rsdExc "red" "black")}} (or (str rsd) ""))}
-        "RSD exceedance"))))
+      (td {:key "mean" :style {:color (if qualExc "red" "black")}} (or (str mean) ""))
+      (td {:key "stddev"} (or (str stddev) "")))))
+      ;(ui-popup
+      ;  {:open    false
+      ;   :trigger (td {:key "rsd" :style {:color (if rsdExc "red" "black")}} (or (str rsd) ""))}
+      ;  "RSD exceedance"))))
 
 (def ui-fieldmeasure-param-form (comp/factory FieldMeasureParamForm {:keyfn :db/id}))
 
@@ -544,8 +558,8 @@
             (th {:key "reps"} "# Tests")
             (th {:key "range"} "Range")
             (th {:key "mean"} "Mean")
-            (th {:key "stddev"} "Std Dev")
-            (th {:key "rds"} "% RSD")))
+            (th {:key "stddev"} "Std Dev")))
+            ;(th {:key "rds"} "Prec")))
         (tbody {:key 2}
           (vec
             (for [fm-param fieldmeasure-params]
@@ -837,7 +851,8 @@
    :initLocalState (fn [this props]
                      {:onChange #(debug "ON CHANGE SAMPLE" %)})
 
-   :form-fields    #{:riverdb.entity/ns :sitevisit/uuid
+   :form-fields    #{:riverdb.entity/ns
+                     :sitevisit/uuid
                      :sitevisit/AgencyCode :sitevisit/ProjectID :sitevisit/Notes
                      :sitevisit/StationID :sitevisit/DataEntryDate :sitevisit/SiteVisitDate :sitevisit/Time
                      :sitevisit/Visitors :sitevisit/VisitType :sitevisit/StationFailCode
@@ -1054,15 +1069,15 @@
 
 
           (div {:style {:marginTop 10}}
-            (ui-confirm {:open      (comp/get-state this :confirm-delete)
-                         :onConfirm #(do
-                                       (comp/set-state! this {:confirm-delete false})
-                                       (comp/transact! this `[(rm/save-entity ~{:ident this-ident
-                                                                                :delete true
-                                                                                :post-mutation `sv-deleted
-                                                                                :post-params {}})]))
-                         :onCancel #(comp/set-state! this {:confirm-delete false})
-                         :content "Are you sure?"
+            (ui-confirm {:open          (comp/get-state this :confirm-delete)
+                         :onConfirm     #(do
+                                           (comp/set-state! this {:confirm-delete false})
+                                           (comp/transact! this `[(rm/save-entity ~{:ident         this-ident
+                                                                                    :delete        true
+                                                                                    :post-mutation `sv-deleted
+                                                                                    :post-params   {}})]))
+                         :onCancel      #(comp/set-state! this {:confirm-delete false})
+                         :content       "Are you sure?"
                          :confirmButton (dom/button :.ui.negative.button {} "Delete")})
 
             (dom/button :.ui.negative.button
@@ -1240,7 +1255,7 @@
                         :.ui.table {:margin-top ".3em"}]]}
   (let [parameters (get-in current-project [:projectslookup/Parameters])
         parameters (vec (riverdb.util/sort-maps-by parameters [:parameter/order]))
-        marker (get props [df/marker-table ::sv])]
+        marker     (get props [df/marker-table ::sv])]
     (debug "RENDER SiteVisitsEditor")
     (div {}
       (if marker
@@ -1276,7 +1291,7 @@
                   id)
         edit-fn #(onEdit props)]
     (tr {:key id :style {:cursor "pointer"} :onClick edit-fn} ;:onMouseOver #(println "HOVER" id)}
-      (td {:key 1}) (str SiteVisitDate) ;(str (t/date SiteVisitDate)))
+      (td {:key 1} (str (t/date (t/instant SiteVisitDate)))) ;(str (t/date SiteVisitDate)))
       (td {:key 2} siteID)
       (td {:key 3} site)
       (td {:key 4} type)
@@ -1357,7 +1372,7 @@
   "This tracks current-project, current-year, filter, limit, sort, and site"
   [this {:keys                 [sitevisits project-years]
          :riverdb.ui.root/keys [current-agency current-project current-year current-project-sites]
-         :ui/keys              [site sortField sortOrder limit offset list-meta] :as props}]
+         :ui/keys              [site sortField sortOrder limit offset list-meta show-upload] :as props}]
   {:ident              (fn [] [:component/id :sitevisit-list])
    :query              [{:sitevisits (comp/get-query SiteVisitSummary)}
                         {:project-years (comp/get-query ProjectYears)}
@@ -1372,17 +1387,19 @@
                         :ui/sortField
                         :ui/sortOrder
                         :ui/site
-                        :ui/list-meta]
+                        :ui/list-meta
+                        :ui/show-upload]
    :route-segment      ["list"]
-   :initial-state      {:sitevisits    []
+   :initial-state      {:sitevisits     []
                         ;:sites         []
-                        :project-years {}
-                        :ui/list-meta  nil
-                        :ui/limit      15
-                        :ui/offset     0
-                        :ui/sortField  :sitevisit/SiteVisitDate
-                        :ui/sortOrder  :asc
-                        :ui/site       nil}
+                        :project-years  {}
+                        :ui/list-meta   nil
+                        :ui/limit       15
+                        :ui/offset      0
+                        :ui/sortField   :sitevisit/SiteVisitDate
+                        :ui/sortOrder   :asc
+                        :ui/site        nil
+                        :ui/show-upload false}
    :componentDidUpdate (fn [this prev-props prev-state]
                          (let [{:ui/keys              [limit offset sortField sortOrder site] :as props
                                 :riverdb.ui.root/keys [current-project current-year]} (comp/props this)
@@ -1436,6 +1453,12 @@
 
         onEdit                 (fn [sv]
                                  (routes/route-to! (str "/sitevisit/edit/" (or (:db/id sv) "new"))))
+        onUpload               (fn []
+                                 (log/debug "onUpload")
+                                 (fm/set-value! this :ui/show-upload true))
+        onCloseUpload          (fn []
+                                 (log/debug "onCloseUpload")
+                                 (fm/set-value! this :ui/show-upload false))
 
 
         handleSort             (fn [field]
@@ -1456,10 +1479,11 @@
                                       :classes [(when (= sortField sort-field)
                                                   (str "ui sorted " (if (= sortOrder :desc) "descending" "ascending")))]} label))
 
-        marker (get props [df/marker-table ::svs])]
+        marker                 (get props [df/marker-table ::svs])]
 
     (debug "RENDER SiteVisitList" "sites" sites)
     (div {}
+      (ui-upload-modal (comp/computed {:ui/show-upload show-upload} {:onClose onCloseUpload}))
       (div :#sv-list-menu.ui.menu {:key "title"}
         ;(div :.item {:style {}} "Site Visits")
         (div :.item (ui-project-years project-years))
@@ -1482,6 +1506,7 @@
                     (for [{:keys [db/id stationlookup/StationName stationlookup/StationID]} sites]
                       (option {:value id :key id} (str StationID ": " StationName)))))))))
         (div :.item.float.right
+          (button {:key "upload" :onClick onUpload} "Upload")
           (button {:key "create" :onClick #(onEdit nil)} "New Site Visit")))
 
       (if marker

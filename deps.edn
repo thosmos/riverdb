@@ -27,10 +27,11 @@
          :guardrail  {:extra-deps {com.fulcrologic/guardrails {:mvn/version "0.0.10"}}
                       :jvm-opts   ["-XX:-OmitStackTraceInFastThrow" "-Dguardrails.enabled=true"]}
 
-         :cljsbuild  {:extra-deps {org.clojure/clojurescript {:mvn/version "1.10.758"}
-                                   thheller/shadow-cljs      {:mvn/version "2.9.10"}
-                                   thheller/shadow-cljsjs    {:mvn/version "0.0.21"}
-                                   clj-commons/pushy         {:mvn/version "0.3.10"}}}
+         :cljsbuild  {:extra-deps {org.clojure/clojurescript    {:mvn/version "1.10.758"}
+                                   thheller/shadow-cljs         {:mvn/version "2.9.10"}
+                                   thheller/shadow-cljsjs       {:mvn/version "0.0.21"}
+                                   clj-commons/pushy            {:mvn/version "0.3.10"}
+                                   testdouble/clojurescript.csv {:mvn/version "0.4.5"}}}
 
          :cljs-dev   {:extra-paths ["src/test" "src/workspaces"]
                       :extra-deps  {fulcrologic/fulcro-spec      {:mvn/version "3.1.4"}
@@ -50,8 +51,8 @@
                                     buddy/buddy-sign                 {:mvn/version "3.1.0"}
                                     clj-mailgun                      {:mvn/version "0.2.0"}
                                     clojure-csv                      {:mvn/version "2.0.2"}
-                                    com.datomic/datomic-free         {:mvn/version "0.9.5697" :exclusions [org.slf4j/slf4j-nop org.slf4j/jul-to-slf4j org.slf4j/log4j-over-slf4j org.slf4j/jcl-over-slf4j]}
-                                    ;com.datomic/datomic-pro          {:mvn/version "0.9.6014" :exclusions [org.slf4j/slf4j-nop org.slf4j/jul-to-slf4j org.slf4j/log4j-over-slf4j org.slf4j/jcl-over-slf4j]}
+                                    ;com.datomic/datomic-free         {:mvn/version "0.9.5697" :exclusions [org.slf4j/slf4j-nop org.slf4j/jul-to-slf4j org.slf4j/log4j-over-slf4j org.slf4j/jcl-over-slf4j]}
+                                    com.datomic/datomic-pro          {:mvn/version "1.0.6165" :exclusions [org.slf4j/slf4j-nop org.slf4j/jul-to-slf4j org.slf4j/log4j-over-slf4j org.slf4j/jcl-over-slf4j]}
                                     ;mysql/mysql-connector-java       {:mvn/version "8.0.18"}
                                     com.walmartlabs/lacinia-pedestal {:mvn/version "0.12.0" :exclusions [clojure-future-spec org.clojure/spec.alpha org.clojure/tools.reader]}
                                     datomic-schema                   {:mvn/version "1.3.1"}
@@ -79,7 +80,7 @@
 
 
          :repl       {:jvm-opts ["-server" "-Dclojure.server.repl={:port,5555,:accept,clojure.core.server/repl}"]}}
-         ;["-Xms512m" "-Xmx512m" "-server" "-Dclojure.server.repl={:port,5555,:accept,clojure.core.server/repl}"]}},
+ ;["-Xms512m" "-Xmx512m" "-server" "-Dclojure.server.repl={:port,5555,:accept,clojure.core.server/repl}"]}},
  :deps
         {org.clojure/clojure                 {:mvn/version "1.10.1"}
 
@@ -105,7 +106,7 @@
          com.rpl/specter                     {:mvn/version "1.1.3"}
 
          ;; fulcro
-         com.fulcrologic/fulcro              {:mvn/version "3.2.9"}
+         com.fulcrologic/fulcro              {:mvn/version "3.2.10"}
 
          garden                              {:mvn/version "1.3.10"}
          com.fulcrologic/fulcro-garden-css   {:mvn/version "3.0.7" :exclusions [garden]}
@@ -117,5 +118,5 @@
  ;;com.influxdb/influxdb-client-java   {:mvn/version "1.3.0"}}
 
  :mvn/repos
-        {"osgeo-release"        {:url "https://repo.osgeo.org/repository/release/"}
+        {"osgeo-release"      {:url "https://repo.osgeo.org/repository/release/"}
          "geoserver-releases" {:url "https://repo.osgeo.org/repository/Geoserver-releases/"}}}

@@ -28,6 +28,8 @@
   (app/mount! SPA root/Root "app"))
 
 (defn ^:export init []
+  (log/test-logs)
+
   (log/info "Application starting.")
   (cssi/upsert-css "componentcss" {:component root/Root})
   ;(inspect/app-started! SPA)

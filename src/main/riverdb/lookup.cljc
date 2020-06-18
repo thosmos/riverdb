@@ -1,5 +1,5 @@
-(ns riverdb.ui.lookup
-  #?(:cljs (:require-macros [riverdb.ui.lookup]))
+(ns riverdb.lookup
+  #?(:cljs (:require-macros [riverdb.lookup]))
   (:require
     [com.fulcrologic.fulcro.components :as om :refer [defsc transact!]]
     [com.fulcrologic.fulcro.data-fetch :as f]

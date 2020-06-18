@@ -4,22 +4,21 @@
     [cljs.spec.alpha :as s]
     [cljs.tools.reader.edn :as edn]
     [cognitect.transit :as transit]
-    [com.fulcrologic.fulcro.application :as app]
+
+    [com.fulcrologic.fulcro.algorithms.merge :as merge]
+    [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
+    [com.fulcrologic.fulcro.algorithms.form-state :as fs]
+    [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
     [com.fulcrologic.fulcro.data-fetch :as df]
     [com.fulcrologic.fulcro.dom :as dom :refer [div ul li p h3 button label span table tr th td thead tbody]]
     [com.fulcrologic.fulcro.dom.html-entities :as ent]
     [com.fulcrologic.fulcro.dom.events :as evt]
-    [com.fulcrologic.fulcro.application :as fapp]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
+    [com.fulcrologic.fulcro.mutations :as fm :refer [defmutation]]
     [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
     [com.fulcrologic.fulcro.ui-state-machines :as uism :refer [defstatemachine]]
-    [com.fulcrologic.fulcro.mutations :as fm :refer [defmutation]]
-    [com.fulcrologic.fulcro.algorithms.merge :as merge]
-    [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
-    ;[com.fulcrologic.rad.rendering.semantic-ui.decimal-field :refer [ui-decimal-input]]
-    ;[com.fulcrologic.rad.type-support.decimal :as dec :refer [numeric]]
     [com.fulcrologic.fulcro-css.css :as css]
-    [com.fulcrologic.fulcro.algorithms.form-state :as fs]
+
     [com.fulcrologic.semantic-ui.elements.loader.ui-loader :refer [ui-loader]]
     [com.fulcrologic.semantic-ui.modules.dimmer.ui-dimmer :refer [ui-dimmer]]
     [com.fulcrologic.semantic-ui.elements.input.ui-input :refer [ui-input]]
@@ -30,47 +29,47 @@
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal-header :refer [ui-modal-header]]
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal-content :refer [ui-modal-content]]
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal-actions :refer [ui-modal-actions]]
-    [com.fulcrologic.semantic-ui.modules.modal.ui-modal-description :refer [ui-modal-description]]
 
+    [com.fulcrologic.semantic-ui.modules.modal.ui-modal-description :refer [ui-modal-description]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-checkbox :refer [ui-form-checkbox]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-radio :refer [ui-form-radio]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-field :refer [ui-form-field]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-input :refer [ui-form-input]]
-    [com.fulcrologic.semantic-ui.modules.checkbox.ui-checkbox :refer [ui-checkbox]]
 
+    [com.fulcrologic.semantic-ui.modules.checkbox.ui-checkbox :refer [ui-checkbox]]
     [com.fulcrologic.semantic-ui.collections.table.ui-table :refer [ui-table]]
     [com.fulcrologic.semantic-ui.collections.table.ui-table-header :refer [ui-table-header]]
     [com.fulcrologic.semantic-ui.collections.table.ui-table-body :refer [ui-table-body]]
     [com.fulcrologic.semantic-ui.collections.table.ui-table-header-cell :refer [ui-table-header-cell]]
     [com.fulcrologic.semantic-ui.collections.table.ui-table-cell :refer [ui-table-cell]]
-    [com.fulcrologic.semantic-ui.collections.table.ui-table-row :refer [ui-table-row]]
 
+    [com.fulcrologic.semantic-ui.collections.table.ui-table-row :refer [ui-table-row]]
     [com.fulcrologic.semantic-ui.modules.tab.ui-tab :refer [ui-tab]]
     [com.fulcrologic.semantic-ui.modules.tab.ui-tab-pane :refer [ui-tab-pane]]
     [com.fulcrologic.semantic-ui.elements.icon.ui-icon :refer [ui-icon]]
     [com.fulcrologic.semantic-ui.modules.popup.ui-popup :refer [ui-popup]]
+
     [goog.object :as gobj]
-    [riverdb.application :refer [SPA]]
-    [riverdb.roles :as roles]
     [riverdb.api.mutations :as rm :refer [TxResult ui-tx-result]]
+    [riverdb.application :refer [SPA]]
+    [riverdb.lookup :refer [specs-map]]
+    [riverdb.roles :as roles]
     [riverdb.ui.agency :refer [Agency]]
     [riverdb.ui.components :refer [ui-drag-drop-context ui-droppable ui-draggable ui-autosizer]]
     [riverdb.ui.dataviz-page :refer [DataVizPage]]
     [riverdb.ui.forms :refer [SampleTypeCodeForm]]
-    [riverdb.ui.lookup :refer [specs-map]]
     [riverdb.ui.lookup-options :refer [ui-theta-options preload-options]]
     [riverdb.ui.lookups :as looks]
     [riverdb.ui.routes]
     [riverdb.ui.sitevisits-page :refer [SiteVisitsPage]]
     [riverdb.ui.session :refer [ui-session Session]]
     [riverdb.ui.tac-report-page :refer [TacReportPage]]
-    [riverdb.ui.util :as ui-util :refer
+    [riverdb.ui.util :refer
      [make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save
       set-editing set-value set-value! set-refs! set-ref! set-ref set-refs get-ref-val
       get-ref-set-val lookup-db-ident db-ident->db-ref filter-param-typecode]]
     [riverdb.util :refer [nest-by]]
     [theta.log :as log :refer [debug]]
-    [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
     [thosmos.util :as tu]))
 
 
@@ -154,8 +153,17 @@
                      :style     {:width 80}}))
 
         (div :.field
-          (ui-popup {:trigger (label {} "% RSD" info-icon)}
-            "% Relative Standard Deviation = (StdDev / Mean) * 100")
+          (ui-popup {:trigger (label {} "± Mean" info-icon)}
+            "")
+
+          (ui-input {:className "ui small input"
+                     :value     range
+                     :onChange  (save-fn :range)
+                     :style     {:width 80}}))
+
+        (div :.field
+          (ui-popup {:trigger (label {} "± % Mean" info-icon)}
+            "mean ± __ %")
 
           (ui-input {:className "ui small input"
                      :value     rsd
@@ -164,7 +172,7 @@
 
         (div :.field
           (ui-popup {:trigger (label {} "Threshold" info-icon)}
-            "If set, Range is used when sample mean is below threshold; % RSD is used when sample mean is above Threshold")
+            "If set, '± Mean' is used when sample mean is below threshold; '± % Mean' is used when sample mean is above Threshold")
 
           (ui-input {:className "ui small input"
                      :value     threshold
@@ -430,9 +438,9 @@
                       (get-in param-specs [:parameter/replicatesElide :attr/doc])))))
               (ui-precision this :parameter/precisionCode)
 
-              (div :.field {}
-                (label {} "Chart Lines")
-                (div {} "coming soon ..."))
+              #_(div :.field {}
+                  (label {} "Chart Lines")
+                  (div {} "coming soon ..."))
               (when saving
                 "SAVING")
               (ui-cancel-save this props dirty?
@@ -589,12 +597,14 @@
                        :ui/ready
                        :ui/editing
                        fs/form-config-join
+                       :projectslookup/uuid
                        :projectslookup/ProjectID
                        :projectslookup/Name
                        :projectslookup/Active
                        :projectslookup/Public
                        :projectslookup/QAPPVersion
                        :projectslookup/qappURL
+                       ;{:projectslookup/AgencyRef (comp/get-query Agency)}
                        :projectslookup/AgencyRef
                        :projectslookup/Description
                        {:stationlookup/_Project (comp/get-query looks/stationlookup-sum)}
@@ -608,13 +618,19 @@
                         :projectslookup/Public
                         :projectslookup/QAPPVersion
                         :projectslookup/qappURL
-                        :projectslookup/Parameters}
+                        :projectslookup/Parameters
+                        :projectslookup/AgencyRef
+                        :projectslookup/uuid
+                        :riverdb.entity/ns}
 
-   :initial-state     (fn [params]
+   :initial-state     (fn [{:keys [agencyRef]}]
                         (fs/add-form-config
                           ProjectForm
-                          {:riverdb.entity/ns         :entity.ns/projectslookup
+                          {:db/id                     (tempid/tempid)
+                           :riverdb.entity/ns         :entity.ns/projectslookup
+                           :projectslookup/uuid       (tempid/uuid)
                            :projectslookup/Parameters []
+                           :projectslookup/AgencyRef  agencyRef
                            :ui/ready                  true
                            :ui/editing                false}))
 
@@ -637,7 +653,7 @@
                                               :diff        dirty-fields
                                               :success-msg "Project saved"})]))]
 
-    (debug "RENDER ProjectForm" id Parameters)
+    (debug "RENDER ProjectForm" id Parameters props)
     (if editing
       (ui-modal {:open editing :dimmer "inverted"}
         (ui-modal-header {:content (str "Edit Project: " Name)})
@@ -677,8 +693,20 @@
                                         :on-save    on-save})
 
                 (ui-param-list-fn this {:type       :sampletypelookup.SampleTypeCode/Grab
-                                        :label      "Labs"
+                                        :label      "Lab Results"
                                         :params     lab-params
+                                        :proj-ident this-ident
+                                        :on-save    on-save})
+
+                (ui-param-list-fn this {:type       :sampletypelookup.SampleTypeCode/Grab
+                                        :label      "Bacteria"
+                                        :params     fm-params
+                                        :proj-ident this-ident
+                                        :on-save    on-save})
+
+                (ui-param-list-fn this {:type       :sampletypelookup.SampleTypeCode/Logger
+                                        :label      "Logger"
+                                        :params     fm-params
                                         :proj-ident this-ident
                                         :on-save    on-save})]})
 
@@ -757,7 +785,12 @@
                           (when agency
                             (load-projs this projs))))}
 
-  (let [marker (get props [df/marker-table ::projs])]
+  (let [marker    (get props [df/marker-table ::projs])
+        ;agencyRef (riverdb.ui.util/thing->ident (:riverdb.ui.root/current-agency props))
+        agencyRef (select-keys (:riverdb.ui.root/current-agency props) [:db/id])
+        onNew     (fn []
+                    (let [pj (comp/get-initial-state ProjectForm {:agencyRef agencyRef})]
+                      (debug "NEW PROJECT" pj)))]
     (if ready
       (div :.ui.segment
         (ui-header {:key "title"} "Projects")
@@ -766,7 +799,8 @@
           [(doall
              (for [pj projects]
                (let [{:keys [db/id ui/hidden] :projectslookup/keys [Name ProjectID Active Public]} pj]
-                 (ui-project-form pj))))]))
+                 (ui-project-form pj))))])
+        (dom/button :.ui.button {:onClick onNew} "New"))
       #_(ui-loader {:active true}))))
 
 (def ui-projects (comp/factory Projects))

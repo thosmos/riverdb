@@ -1,6 +1,7 @@
 (ns riverdb.application
   (:require [com.fulcrologic.fulcro.application :as app]
             [com.fulcrologic.fulcro.data-fetch :as df]
+            [com.fulcrologic.fulcro.networking.file-upload :as file-upload]
             [com.fulcrologic.fulcro.networking.http-remote :as net]
             [com.fulcrologic.fulcro.rendering.keyframe-render2 :as kf2]
             [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
@@ -13,7 +14,8 @@
   ;; The CSRF token is embedded via server_components/html.clj
   (->
     (net/wrap-csrf-token (or js/fulcro_network_csrf_token "TOKEN-NOT-IN-HTML!"))
-    (net/wrap-fulcro-request)))
+    (net/wrap-fulcro-request)
+    (file-upload/wrap-file-upload)))
 
 (defn contains-error?
   "Check to see if the response contains Pathom error indicators."

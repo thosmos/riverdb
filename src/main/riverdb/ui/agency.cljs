@@ -11,6 +11,8 @@
 (defsc Agency [this props]
   {:ident [:org.riverdb.db.agencylookup/gid :db/id]
    :query [:db/id
+           :riverdb.entity/ns
+           :agencylookup/Active
            :agencylookup/AgencyCode
            :agencylookup/Name
            :agencylookup/NameShort

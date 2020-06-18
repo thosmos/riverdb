@@ -18,7 +18,7 @@
     [riverdb.application :refer [SPA]]
     [riverdb.api.mutations :as rm]
     [riverdb.util :refer [sort-maps-by with-index]]
-    [riverdb.ui.lookup :as look]
+    [riverdb.lookup :as look]
     [riverdb.ui.util :refer [get-ref-val get-ref-set-val]]
     [theta.log :as log :refer [debug info]]
     [thosmos.util :refer [merge-tree]]))

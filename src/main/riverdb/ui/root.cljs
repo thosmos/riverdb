@@ -36,6 +36,7 @@
     [riverdb.ui.projects :refer [Projects ui-projects]]
     [riverdb.ui.tac-report-page :refer [TacReportPage]]
     [riverdb.ui.theta :refer [ThetaRoot]]
+    [riverdb.ui.upload :refer [UploadPage]]
     [riverdb.ui.user]
     ;[riverdb.ui :refer [PersonForm PersonList]]
     [theta.log :as log :refer [debug]]
@@ -237,15 +238,18 @@
           (div {}
             (dom/ul
               ;; More nav links here
-              (dom/li (dom/a {:href "/tac-report"} "TAC Report"))
-              (dom/li (dom/a {:href "/dataviz"} "Data Viz")))))))))
+              (dom/li (dom/a {:href "/qc-report"} "QC Report"))
+              (dom/li (dom/a {:href "/dataviz"} "Summary Table"))
+              (dom/li (dom/a {:href "/projects"} "Edit Projects"))
+              (dom/li (dom/a {:href "/sitevisit/list"} "Site Visits"))
+              (dom/li (dom/a {:href "/upload"} "Bulk Import Data")))))))))
 
 
 
 
 (dr/defrouter TopRouter [this props]
   {:router-targets        [Main Signup SignupSuccess ThetaRoot Projects TacReportPage
-                           DataVizPage SiteVisitsPage]
+                           DataVizPage SiteVisitsPage UploadPage]
    :shouldComponentUpdate (fn [_ _ _] true)})
 (def ui-top-router (comp/factory TopRouter))
 
@@ -302,18 +306,20 @@
         (dom/a :.item {:classes [(when (= :main current-tab) "active")]
                        :href    "/"} "RiverDB Admin")
         (when (and ready logged-in?)
-          [(dom/a :.item {:key  "tac" :classes [(when (= :tac-report current-tab) "active")]
-                          :href "/tac-report"} "TAC Report")
-           (dom/a :.item {:key  "dataviz" :classes [(when (= :dataviz current-tab) "active")]
-                          :href "/dataviz"} "Summary Table")])
-        (when (and ready logged-in?)
           [(when rdb-admin?
              (dom/a :.item {:key  "theta" :classes [(when (= :theta current-tab) "active")]
                             :href "/theta/index"} "Tables"))
            (dom/a :.item {:key  "projects" :classes [(when (= :projects current-tab) "active")]
                           :href "/projects"} "Edit Projects")
            (dom/a :.item {:key  "sitevisit" :classes [(when (= :sitevisit current-tab) "active")]
-                          :href "/sitevisit/list"} "Site Visits")])
+                          :href "/sitevisit/list"} "Site Visits")
+           (dom/a :.item {:key  "upload" :classes [(when (= :upload current-tab) "active")]
+                          :href "/upload"} "Import Data")])
+        (when (and ready logged-in?)
+          [(dom/a :.item {:key  "qc" :classes [(when (= :qc-report current-tab) "active")]
+                          :href "/qc-report"} "QC Report")
+           (dom/a :.item {:key  "dataviz" :classes [(when (= :dataviz current-tab) "active")]
+                          :href "/dataviz"} "Summary Table")])
         (div :.right.menu
           ;(div :.item (ui-activity {}))
           (ui-agency-menu agency-menu)

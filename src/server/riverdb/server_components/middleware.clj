@@ -6,6 +6,7 @@
     [riverdb.server-components.pathom :refer [parser]]
 
     [mount.core :refer [defstate]]
+    [com.fulcrologic.fulcro.networking.file-upload :as file-upload]
     [com.fulcrologic.fulcro.server.api-middleware :refer [handle-api-request
                                                           wrap-transit-params
                                                           wrap-transit-response]]
@@ -174,6 +175,7 @@
     ;(debug "STARTING MIDDLEWARE" config)
     (-> not-found-handler
       (wrap-api "/api")
+      (file-upload/wrap-mutation-file-uploads {})
       wrap-transit-params
       ;(wrap-transit-response {:opts {:transform t/write-meta}})
       wrap-transit-response

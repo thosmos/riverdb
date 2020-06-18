@@ -35,7 +35,7 @@
     [riverdb.application :refer [SPA]]
     [riverdb.roles :as roles]
     [riverdb.api.mutations :as rm]
-    [riverdb.ui.lookup :as look :refer [get-refNameKey get-refNameKeys]]
+    [riverdb.lookup :as look :refer [get-refNameKey get-refNameKeys]]
     [riverdb.ui.lookups :as looks]
     [riverdb.ui.lookup-options :refer [ThetaOptions ui-theta-options]]
     [riverdb.ui.dataviz-page :refer [DataVizPage]]

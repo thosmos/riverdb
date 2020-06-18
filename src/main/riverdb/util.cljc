@@ -83,6 +83,8 @@
 (defn readTempid [form]
   (com.fulcrologic.fulcro.algorithms.tempid/tempid (first form)))
 
+
+
 ;(defn history-view
 ;  "Return a function that will display transaction history with
 ;  pagination."
