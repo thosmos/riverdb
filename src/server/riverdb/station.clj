@@ -52,8 +52,8 @@
                    (->
                      (update-in [:query :where]
                        #(apply conj % '[[?sv :sitevisit/StationID ?e]
-                                        [?sv :sitevisit/SiteVisitDate ?svdt]
-                                        [(> ?svdt #inst "2019")]
+                                        ;[?sv :sitevisit/SiteVisitDate ?svdt]
+                                        ;[(> ?svdt #inst "2019")]
                                         [?sv :sitevisit/Samples ?sa]
                                         [?sa :sample/ConstituentRef ?cnst]
                                         [?cnst :constituentlookup/ConstituentCode ?cnstcode]]))

@@ -14,7 +14,8 @@
             [riverdb.station]
             [riverdb.model.user :as user]
             [riverdb.api.tac-report :as tac-report]
-            [thosmos.util :as tu])
+            [thosmos.util :as tu]
+            [tick.core :as t])
   (:import [java.util Date]
            [java.text SimpleDateFormat]))
 
@@ -119,102 +120,150 @@
 
     results))
 
+(defn calc-geom-avg [values]
+  ;; NOTE example: ({:date 2003-05-03, :value 38.8, :isHigh false} {:date 2003-06-07, :value 2.0, :isHigh false})
+  ;(debug "calc-geom-avg values" values)
+  (loop [vals values result []]
+    (let [v         (first vals)
+          ;_ (debug "v" v)
+          v-rest    (rest vals)
+          v-date    (t/date (t/instant (:date v)))
+          dt-6weeks (t/- v-date (t/new-period 6 :weeks))
+          vs        (reduce
+                      (fn [out next]
+                        (if (t/>= (t/date (t/instant (:date next))) dt-6weeks)
+                          (conj out next)
+                          out))
+                      [] v-rest)
+          avg       (when (not-empty vs)
+                      (->> (conj vs v)
+                        (map :value)
+                        (apply *)
+                        Math/sqrt
+                        (tu/round2 1)))
+          ;_         (debug "date:" v-date "dt-6wks:" dt-6weeks "value:" (:value v) (type (:value v)) "vs:" vs "avg:" avg)
+          res       (cond-> v
+                      avg
+                      (assoc :avg avg)
+                      (and avg (or
+                                 (> avg 100)
+                                 (> (:value v) 320)))
+                      (assoc :isHigh true))
+          result    (conj result res)]
+      (if (seq v-rest)
+        (recur v-rest result)
+        result))))
+
+
 
 (defn resolve-safetoswim [context args value]
   (debug "RESOLVE! safetoswim stations" args)
-  (let [selection   (:com.walmartlabs.lacinia/selection context)
-        selections  (vec (:selections selection))
-        fields      (vec (map :field selections))
+  (try
+    (let [selection   (:com.walmartlabs.lacinia/selection context)
+          selections  (vec (:selections selection))
+          fields      (vec (map :field selections))
 
-        ;fields     (vec (remove
-        ;                  #(clojure.string/starts-with? (name %) "__")
-        ;                  (map :field selections)))
+          ;fields     (vec (remove
+          ;                  #(clojure.string/starts-with? (name %) "__")
+          ;                  (map :field selections)))
 
-        id-field?   (some #{:id} fields)
-        get-latest? (some #{:latest} fields)
-        get-data?   (some #{:data} fields)
+          id-field?   (some #{:id} fields)
+          get-latest? (some #{:latest} fields)
+          get-data?   (some #{:values} fields)
 
-        fields      (remove #(#{:id :latest :data} %) fields)
+          fields      (remove #(#{:id :latest :values} %) fields)
 
-        query       (into [:db/id]
-                      (for [field fields]
-                        [(keyword "stationlookup" (name field)) :as field]))
-        ;_           (debug "FIELDS" fields args)
-        ;args        (if (:constituent args)
-        ;              args
-        ;              (assoc args :constituent "5-56-23-20-7"))
-        stations    (riverdb.station/get-stations (db) query args)
-        ;_           (debug "RESULT COUNT" (count stations))
+          query       (into [:db/id]
+                        (for [field fields]
+                          [(keyword "stationlookup" (name field)) :as field]))
+          ;_           (debug "FIELDS" fields args)
+          const-ecoli "5-57-464-0-7"
+          args        (if (:constituent args)
+                        args
+                        (assoc args :constituent const-ecoli))
+          stations    (riverdb.station/get-stations (db) query args)
+          ;_           (debug "RESULT COUNT" (count stations))
 
-        stations    (if id-field?
-                      (for [r stations]
-                        (-> r
-                          (assoc :id (str (:db/id r)))))
-                      stations)
+          stations    (if id-field?
+                        (for [r stations]
+                          (-> r
+                            (assoc :id (str (:db/id r)))))
+                        stations)
 
-        eids        (map :db/id stations)]
+          eids        (map :db/id stations)]
+      (debug "EIDS" eids "ARGS" args)
 
-    ;; TODO for each station, we want latest lab result for the given constituent
-    (if-not (or get-data? get-latest?)
-      ;; if we're not getting the data, then just return the stations
-      stations
+      ;; TODO for each station, we want latest lab result for the given constituent
+      (if-not (or get-data? get-latest?)
+        ;; if we're not getting the data, then just return the stations
+        stations
 
-      (let [;; get the dates and results for the sites
-            const-coliform "5-56-23-20-7"
-            const-ecoli    "5-57-464-0-7"
-            const-entero   "5-9000-9002-0-7"
-            consts         [const-coliform const-ecoli const-entero]
-            data           (d/q '[:find ?stationid ?svdt ?rslt ?rqual
-                                  :in $ [?stationid ...] 
-                                  :where
-                                  (or
-                                    ;; coliform
-                                    [?cnst :constituentlookup/ConstituentCode "5-56-23-20-7"]
-                                    ;; ecoli
-                                    [?cnst :constituentlookup/ConstituentCode "5-57-464-0-7"]
-                                    ;; enterococcus
-                                    [?cnst :constituentlookup/ConstituentCode "5-9000-9002-0-7"])
-                                  [?frs :labresult/ConstituentRowID ?cnst]
-                                  [?frs :labresult/Result ?rslt]
-                                  [?frs :labresult/ResQualCode ?rq]
-                                  [?rq :resquallookup/ResQualCode ?rqual]
-                                  [?sa :sample/LabResults ?frs]
-                                  [?sv :sitevisit/Samples ?sa]
-                                  [?sv :sitevisit/StationID ?stationid]
-                                  [?sv :sitevisit/SiteVisitDate ?svdt]]
-                             (db) (:constituent args) eids)
+        (let [;; get the dates and results for the sites
+              const-coliform "5-56-23-20-7"
+              const-ecoli    "5-57-464-0-7"
+              const-entero   "5-9000-9002-0-7"
+              consts         [const-coliform const-ecoli const-entero]
+              data           (d/q '[:find ?stationid ?svdt ?rslt
+                                    :in $ ?const-code [?stationid ...]
+                                    :where
+                                    ;(or
+                                    ;  ;; coliform
+                                    ;  [?cnst :constituentlookup/ConstituentCode "5-56-23-20-7"]
+                                    ;  ;; ecoli
+                                    ;  [?cnst :constituentlookup/ConstituentCode "5-57-464-0-7"]
+                                    ;  ;; enterococcus
+                                    ;  [?cnst :constituentlookup/ConstituentCode "5-9000-9002-0-7"])
+                                    [?cnst :constituentlookup/ConstituentCode ?const-code]
+                                    [?frs :labresult/ConstituentRowID ?cnst]
+                                    [?frs :labresult/Result ?rslt]
+                                    ;[?frs :labresult/ResQualCode ?rq]
+                                    ;[?rq :resquallookup/ResQualCode ?rqual]
+                                    [?sa :sample/LabResults ?frs]
+                                    [?sv :sitevisit/Samples ?sa]
+                                    [?sv :sitevisit/StationID ?stationid]
+                                    [?sv :sitevisit/SiteVisitDate ?svdt]]
+                               (db) const-ecoli eids)
 
-            ;; make a map on station-id for easy lookup
-            ;_           (debug "LATEST" data)
-            formatter      (SimpleDateFormat. "yyyy-MM-dd")
+              ;; make a map on station-id for easy lookup
+              ;_           (debug "LATEST" data)
+              ;formatter      (SimpleDateFormat. "yyyy-MM-dd")
 
-            data-m         (reduce
-                             (fn [out [stationid ^Date svdate rslt rqual]]
-                               (let [isHigh (> rslt 1000)
-                                     result {:date   (.format formatter svdate)
-                                             :value  (str rslt)
-                                             :qual   rqual
-                                             :isHigh isHigh}]
-                                 (update-in out [stationid] (fnil conj [])
-                                   result)))
-                             {} data)
+              data-m         (reduce
+                               (fn [out [stationid ^Date svdate rslt]]
+                                 (let [result {:date  (.getTime svdate) ; (.format formatter svdate)
+                                               :value rslt}]
+                                       ;result (if (not= rqual "")
+                                       ;         (assoc result :qual rqual)
+                                       ;         result)]
+                                   (update-in out [stationid] (fnil conj [])
+                                     result)))
+                               {} data)
 
-            results ;; for each station, return either all the data or just the latest
-                           (reduce
-                             (fn [out station]
-                               (let [data   (->> (get station :db/id)
-                                              (get data-m))
-                                     latest (->> data
-                                              (sort-by :date)
-                                              (last))]
-                                 (cond-> out
-                                   get-latest?
-                                   (conj (assoc station :latest latest))
-                                   get-data?
-                                   (conj (assoc station :data data)))))
-                             [] stations)]
-        ;(debug "first result" (first results))
-        results))))
+              results ;; for each station, return either all the data or just the latest
+                             (reduce
+                               (fn [out station]
+                                 (let [values  (->>
+                                                 (get station :db/id)
+                                                 (get data-m)
+                                                 (sort-by :date #(compare %2 %1)))
+                                       values  (when (seq values)
+                                                 (calc-geom-avg values))
+                                       latest  (when (seq values)
+                                                 (first values))
+                                       station (cond-> station
+                                                 get-latest?
+                                                 (assoc :latest latest)
+                                                 get-data?
+                                                 (assoc :values values))]
+                                   (if (seq values)
+                                     (conj out station)
+                                     out)))
+                               [] stations)]
+          ;(debug "first result" (first results))
+          results)))
+    (catch Exception ex
+      (debug "SAFE To SWIM ERROR" ex)
+      {:error (.toString ex)})))
 
 
 

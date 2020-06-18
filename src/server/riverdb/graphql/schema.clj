@@ -493,8 +493,9 @@
                                                  :StationCode     {:type 'String}}}
 
                    :safe_data   {:fields {:date            {:type 'String}
-                                          :value           {:type 'String}
-                                          :isHigh          {:type 'Boolean}}}
+                                          :value           {:type 'Float}
+                                          :qual            {:type 'String}
+                                          :avg             {:type 'Float}}}
 
                    :safetoswim  {:fields {:id              {:type 'ID}
                                           :StationID       {:type 'Int}
@@ -515,7 +516,7 @@
                                           :LocalWatershed  {:type 'String}
                                           :StationCode     {:type 'String}
                                           :latest          {:type :safe_data}
-                                          :data            {:type '(list :safe_data)}}}
+                                          :values          {:type '(list :safe_data)}}}
 
 
 
