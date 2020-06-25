@@ -386,7 +386,7 @@
                       [(> ?e 1000)]
                       [?e :db/ident ?id]]
                  (db) ident)]
-    (debug "DB-IDENT QUERY" ident result)
+    ;(debug "DB-IDENT QUERY" ident result)
     result))
 
 (defresolver meta-entities [env _]

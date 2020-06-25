@@ -20,7 +20,7 @@
     [clojure.string :as str]
     [clojure.java.io :as io]
     [riverdb.api.tac-report :as tac]
-    [riverdb.state :refer [db]]))
+    [riverdb.state :refer [db state]]))
 
 
 (def ^:private not-found-handler
@@ -130,6 +130,7 @@
 (defn wrap-html-routes [ring-handler]
   (fn [{:keys [uri params path-info anti-forgery-token] :as req}]
     ;(debug "HTML ROUTES HANDLER" uri path-info params (keys req))
+    (debug "HTML ROUTES HANDLER :admin-disabled?" (:admin-disabled state))
     (cond
 
       (#{"/sitevisits.csv"} uri)
@@ -138,7 +139,7 @@
 
       (#{"/" "/index.html"} uri)
       (->
-        (if (:admin-disabled config)
+        (if (:admin-disabled state)
           (resp/response (disabled))
           (resp/response (index anti-forgery-token)))
         (resp/content-type "text/html"))
