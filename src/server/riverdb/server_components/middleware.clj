@@ -1,6 +1,7 @@
 (ns riverdb.server-components.middleware
   (:require
-    [clojure.tools.logging :as log :refer [debug info warn error]]
+    ;[clojure.tools.logging :as log :refer [debug info warn error]]
+    [theta.log :as log]
     [cognitect.transit :as t]
     [riverdb.server-components.config :refer [config]]
     [riverdb.server-components.pathom :refer [parser]]
@@ -54,7 +55,7 @@
   (fn [request]
     (if (= uri (:uri request))
       (do
-        ;(debug "WRAP API" (:transit-params request))
+        ;(log/debug "WRAP API" (:transit-params request))
         (handle-api-request
           (:transit-params request)
           (fn [tx] (parser {:ring/request request} tx))))
@@ -65,7 +66,7 @@
 ;; in a js var for use by the client.
 ;; ================================================================================
 (defn index [csrf-token]
-  ;(debug "GENERATE ADMIN CLIENT HTML" csrf-token)
+  ;(log/debug "GENERATE ADMIN CLIENT HTML" csrf-token)
   (html5
     [:html {:lang "en"}
      [:head {:lang "en"}
@@ -85,7 +86,7 @@
       [:script {:src "/admin/js/main/main.js"}]]]))
 
 (defn disabled []
-  (debug "GENERATE ADMIN DISABLED HTML")
+  (log/debug "GENERATE ADMIN DISABLED HTML")
   (html5
     [:html {:lang "en"}
      [:head {:lang "en"}
@@ -120,7 +121,7 @@
   [{:keys [params] :as req}]
   (let [db (db)
         agency (:agency params)]
-    (debug "RENDER CSV" req)
+    (log/debug "RENDER CSV" req)
     (-> (resp/response
           (ring-io/piped-input-stream
             #(tac/csv-all-years (io/make-writer % {}) db agency))))))
@@ -129,8 +130,7 @@
 
 (defn wrap-html-routes [ring-handler]
   (fn [{:keys [uri params path-info anti-forgery-token] :as req}]
-    ;(debug "HTML ROUTES HANDLER" uri path-info params (keys req))
-    (debug "HTML ROUTES HANDLER :admin-disabled?" (:admin-disabled state))
+    ;(log/debug "HTML ROUTES HANDLER" uri path-info params (keys req))
     (cond
 
       (#{"/sitevisits.csv"} uri)
@@ -139,7 +139,7 @@
 
       (#{"/" "/index.html"} uri)
       (->
-        (if (:admin-disabled state)
+        (if (:admin-disabled @state)
           (resp/response (disabled))
           (resp/response (index anti-forgery-token)))
         (resp/content-type "text/html"))
@@ -173,7 +173,7 @@
   :start
   (let [defaults-config (:ring.middleware/defaults-config config)
         legal-origins   (get config :legal-origins #{"localhost"})]
-    ;(debug "STARTING MIDDLEWARE" config)
+    ;(log/debug "STARTING MIDDLEWARE" config)
     (-> not-found-handler
       (wrap-api "/api")
       (file-upload/wrap-mutation-file-uploads {})

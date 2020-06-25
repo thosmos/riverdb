@@ -16,7 +16,7 @@
     ;[riverdb.server-components.auto-resolvers :refer [automatic-resolvers]]
     ;[riverdb.server-components.datomic :refer [datomic-connections]]
     [riverdb.state :refer [db cx]]
-    [theta.log :refer [debug]]))
+    [theta.log :as log]))
 
 (pc/defresolver index-explorer [env _]
   {::pc/input  #{:com.wsscode.pathom.viz.index-explorer/id}
@@ -49,7 +49,7 @@
            {}))))})
 
 (defn log-requests [{:keys [env tx] :as req}]
-  (debug "Pathom transaction:" (pr-str tx))
+  ;(log/debug "Pathom transaction:" (pr-str tx))
   req)
 
 (defn build-parser []

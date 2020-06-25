@@ -2,7 +2,7 @@
   (:require
     [datomic.api :as d]
     ;[datomock.core :as mock]
-    [theta.log :refer [debug]]
+    [theta.log :as log]
     dotenv))
 
 ;(def uri (or (dotenv/env :DATOMIC_URI) "datomic:free://localhost:4334/test-db"))
@@ -14,7 +14,8 @@
 
 (def uris {:base (or (dotenv/env :DATOMIC_URI) default-uri)
            :model (or (dotenv/env :DATOMIC_MODEL_URI) (dotenv/env :DATOMIC_URI) default-uri)
-           :users (or (dotenv/env :DATOMIC_USERS_URI) (dotenv/env :DATOMIC_URI) default-uri)})
+           :users (or (dotenv/env :DATOMIC_USERS_URI) (dotenv/env :DATOMIC_URI) default-uri)
+           :admin-disabled (or (dotenv/env :ADMIN_DISABLED) false)})
 
 (defonce state (atom {}))
 
@@ -37,7 +38,7 @@
        (let [cx (d/connect uri)
              cx (if mock-db?
                   (do
-                    (debug "UNIMPLEMENTED MOCKING Datomic CX"))
+                    (log/debug "UNIMPLEMENTED MOCKING Datomic CX"))
                     ;(mock/fork-conn cx))
                   cx)]
         (swap! st assoc k cx))))))
