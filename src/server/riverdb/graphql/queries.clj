@@ -1270,7 +1270,7 @@
 
 (defn resolve-spec [spec-ns]
   (debug "RESOLVE SPEC" spec-ns)
-  (resolve-rimdb spec-ns :query-single))
+  (resolve-rimdb2 spec-ns :query-single))
 
 
 (defn resolve-connection [context args value]
