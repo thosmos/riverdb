@@ -12,6 +12,7 @@
             [riverdb.graphql.schema :as schema :refer [table-specs-ds spec-spec-keys spec-specs-ds]]
             [riverdb.state :as st :refer [db cx]]
             [riverdb.station]
+            [riverdb.model.logger :refer [get-loggers get-logger-samples]]
             [riverdb.model.user :as user]
             [riverdb.api.tac-report :as tac-report]
             [thosmos.util :as tu]
@@ -34,8 +35,8 @@
 
 
 (def key-change
-  {:db/id        :id,
-   :fieldresults :results})
+ {:db/id        :id,
+  :fieldresults :results})
 
 (defn add-resultsv [sv fields]
   (let [field? (contains? (set fields) :resultsv)
@@ -43,6 +44,52 @@
                  (assoc sv :resultsv (vec (for [[_ rslt] (:results sv)] rslt)))
                  sv)]
     sv))
+
+(defn parse-sels [sels]
+  (vec
+    (for [sel sels]
+      (let [leaf? (:leaf? sel)
+            nskw  (get-in sel [:field-definition :qualified-name])]
+        (if leaf?
+          nskw
+          {nskw (parse-sels (:selections sel))})))))
+
+(defn walk-ids [form]
+  (clojure.walk/prewalk
+    (fn [form]
+      (if (and (keyword? form) (= (name form) "id"))
+        :db/id
+        form))
+    form))
+
+(defn walk-rename-keys [form key-map]
+  (clojure.walk/prewalk
+    (fn [form]
+      (if (map? form)
+        (clojure.set/rename-keys form key-map)
+        form))
+    form))
+
+(defn walk-rename-ns [form ns-map]
+  (clojure.walk/prewalk
+    (fn [form]
+      (if (keyword? form)
+        (if-let [new-ns (get ns-map (namespace form))]
+          (keyword new-ns (name form))
+          form)
+        form))
+    form))
+
+(defn walk-response [map]
+  (clojure.walk/postwalk
+    (fn [form]
+      (if (map? form)
+        (reduce-kv
+          (fn [acc k v]
+            (assoc acc (keyword (name k)) (if (= k :db/id) (str v) v)))
+          {} form)
+        form))
+    map))
 
 (defn resolve-sitevisits [context args value]
   (let [_          (debug "RESOLVE DATOMIC SITEVISITS" args)
@@ -232,9 +279,9 @@
                                (fn [out [stationid ^Date svdate rslt]]
                                  (let [result {:date  (.getTime svdate) ; (.format formatter svdate)
                                                :value rslt}]
-                                       ;result (if (not= rqual "")
-                                       ;         (assoc result :qual rqual)
-                                       ;         result)]
+                                   ;result (if (not= rqual "")
+                                   ;         (assoc result :qual rqual)
+                                   ;         result)]
                                    (update-in out [stationid] (fnil conj [])
                                      result)))
                                {} data)
@@ -267,10 +314,96 @@
 
 
 
+(defn resolve-loggers [context args value]
+  (log/debug "RESOLVE LOGGERS" args)
 
+  (comment
+    ;; query
+    :loggers
+    {:type        '(list :logger)
+     :resolve     :resolve-loggers
+     :description "loggers"
+     :args        {:projectRef {:type 'ID}
+                   :stationRef {:type 'ID}
+                   :parameterRef {:type 'ID}}}
 
+    ;; result object
+    :logger {:fields {:id            {:type 'ID}
+                      :name          {:type 'String}
+                      :projectRef    {:type :projectslookup}
+                      :parameterRef  {:type :parameter}
+                      :deviceTypeRef {:type :samplingdevicelookup}
+                      :stationRef    {:type :stationlookup}}})
+  ;:samples       {:type '(list :logger_sample)
+  ;                :args {:before {:type 'Int}
+  ;                       :after {:type 'Int}}}}})
 
+  (try
+    (let [selection  (:com.walmartlabs.lacinia/selection context)
+          selections (vec (:selections selection))
+          pull-q     (parse-sels selections)
+          pull-q     (walk-ids pull-q)
 
+          _ (debug "LOGGERS PULL-Q" pull-q)
+
+          args       (into {} (mapv (fn [[k v]] identity [k (Long/parseLong v)]) args))
+
+          rez        (get-loggers (db) pull-q args)
+
+          rez (walk-response rez)]
+
+      rez)
+
+    (catch Exception ex
+      (debug "LOGGERS ERROR" ex)
+      {:error (.toString ex)})))
+
+(defn resolve-logsamples [context {:keys [loggerRef before after] :as args} value]
+  (log/debug "RESOLVE LOGSAMPLES" args)
+
+  (comment
+    ;; query
+    :logsamples
+    {:type    '(list :logsample)
+     :resolve :resolve-logsamples
+     :args    {:loggerRef {:type 'ID}
+               :before    {:type 'Int}
+               :after     {:type 'Int}}}
+
+    ;; result object
+    :logsample {:fields {:id     {:type 'ID}
+                         :result {:type 'Float}
+                         :inst   {:type 'Int}}})
+
+  (try
+    (let [selection   (:com.walmartlabs.lacinia/selection context)
+          selections  (vec (:selections selection))
+          pull-q      (parse-sels selections)
+          pull-q      (walk-ids pull-q)
+          fields      (vec (map :field selections))
+          id-field?   (some #{:id} fields)
+          inst-field? (some #{:inst} fields)
+          args        (into {} (mapv (fn [[k v]] identity [k (Long/parseLong v)]) args))
+          args        (cond-> args
+                        loggerRef
+                        (assoc :loggerRef (Long/parseLong loggerRef))
+                        before
+                        (assoc :before (Date. ^Long (* 1000 before)))
+                        after
+                        (assoc :after (Date. ^Long (* 1000 after))))
+
+          rez         (get-logger-samples (db) pull-q args)
+          rez         (walk-response rez)
+          ;; if we have results with :inst, then convert to secs
+          rez         (if (and inst-field? (seq rez))
+                        (map #(assoc % :inst (int (/ (.getTime (:inst %)) 1000))) rez)
+                        rez)]
+
+      (log/debug "FIRST LOGSAMPLES" (first rez))
+      rez)
+    (catch Exception ex
+      (debug "LOGSAMPLES ERROR" ex)
+      {:error (.toString ex)})))
 
 
 
@@ -344,21 +477,359 @@
 ;                      field-as)))))]))
 
 
-(defn walk-response [map]
-  (clojure.walk/postwalk
-    (fn [form]
-      (if (map? form)
-        (reduce-kv
-          (fn [acc k v]
-            (assoc acc (keyword (name k)) (if (= k :db/id) (str v) v)))
-          {} form)
-        form))
-    map))
 
-(defn resolve-rimdb
+
+
+
+;(defn resolve-rimdb
+;  ([spec-ns]
+;   ;(debug "RESOLVE RIMDB DEFAULT" spec-ns)
+;   (resolve-rimdb spec-ns :query-single))
+;  ([spec-ns query-type]
+;   (fn [context args value]
+;     (if (and (= query-type :query-single) (not (:id args)))
+;       (do
+;         (debug "requested a single result with no ID arg?  Returning NIL")
+;         nil)
+;       (try
+;         (let [selection       (:com.walmartlabs.lacinia/selection context)
+;               ;_               (pprint selection)
+;               selections      (vec (:selections selection))
+;               ;_ (pprint selections)
+;               pull-q          (parse-selections selections)
+;               _               (pprint pull-q)
+;
+;               fields          (map :field selections)
+;               tk              (get selection :field)
+;
+;               table           (name tk)
+;               table           (if (str/starts-with? table "all")
+;                                 (subs table 3 (dec (count table)))
+;                                 table)
+;
+;               meta?           (str/starts-with? table "_all")
+;
+;               table           (if meta?
+;                                 (subs table 4 (- (count table) 5))
+;                                 table)
+;
+;               _               (debug "RESOLVE" (if meta? "META" "TABLE") (or query-type "NIL") spec-ns "table:" table "args:" args "fields:" fields)
+;
+;               fields          (vec (->> fields
+;                                      (map name)
+;                                      (remove #(or (= % "id") (str/starts-with? % "rk_") (str/starts-with? % "__") (= % "count")))))
+;
+;               is-spec-spec?   (some? (spec-spec-keys spec-ns))
+;
+;               _               (when is-spec-spec?
+;                                 (debug "It's a SPEC!"))
+;
+;
+;               ;_           (debug "RIVERDB RESOLVER tk: " tk ", ARGS: " args ", FIELDS: " fields)
+;
+;
+;
+;               spec-entity     (if is-spec-spec?
+;                                 (do
+;                                   ;(debug "Retrieving spec from the spec-specs DB")
+;                                   (ds/pull @spec-specs-ds '[*] [:entity/ns spec-ns]))
+;                                 (do
+;                                   ;(debug "Retrieving spec from the table-specs DB")
+;                                   (ds/pull @table-specs-ds '[*] [:entity/ns spec-ns])))
+;
+;               ;_               (debug "spec-entity: " spec-entity)
+;
+;               spec-attrs      (:entity/attrs spec-entity)
+;               ;_               (debug "spec-attrs" spec-attrs)
+;
+;               ;spec-attrs-gql  (get-spec-attrs-gql spec-attrs)
+;               ;_               (when (seq spec-attrs-gql)
+;               ;                  (debug "spec-attrs-gql" spec-attrs-gql))
+;
+;               sortField       (:sortField args)
+;               sortOrder       (:sortOrder args)
+;
+;               doSort?         (and sortField sortOrder)
+;               splitSort       (when sortField
+;                                 (str/split sortField #"\."))
+;               nestedSort?     (when splitSort
+;                                 (> (count splitSort) 1))
+;               parentSortField (when nestedSort?
+;                                 (first splitSort))
+;               sortFieldNSKW   (when doSort?
+;                                 (if nestedSort?
+;                                   (nskw table parentSortField)
+;                                   (nskw table sortField)))
+;               childSortField  (when nestedSort?
+;                                 (second splitSort))
+;               nestedSortAttr  (when nestedSort?
+;                                 (get-spec-attr-by-name parentSortField spec-attrs))
+;
+;               nestedSortTable (when (and nestedSortAttr (= (:attr/type nestedSortAttr) :ref))
+;                                 (ds/q '[:find ?name .
+;                                         :in $ ?e
+;                                         :where [?e :entity/name ?name]]
+;                                   @table-specs-ds (:db/id (:attr/ref nestedSortAttr))))
+;
+;               childSortNSKW   (when nestedSort?
+;                                 (nskw nestedSortTable childSortField))
+;
+;               recursive-q     (fn [table fields spec-attrs]
+;                                 (vec
+;                                   (concat
+;                                     [:db/id]
+;                                     (for [field fields]
+;                                       (let [field-as   (nskw table field)
+;                                             ;; get the field's attr spec
+;                                             field-attr (get-spec-attr-by-key field-as spec-attrs)
+;                                             ;; is it a :ref type?
+;                                             is-ref?    (= :ref (:attr/type field-attr))
+;                                             ;; if it's a :ref, then we need to recurse
+;                                             hmm        (ds/pull @table-specs-ds '[*] [:entity/ns spec-ns])]
+;                                         (cond
+;                                           (and nestedSort? (= field-as sortFieldNSKW))
+;                                           {field-as [:db/id childSortNSKW]}
+;                                           :else
+;                                           field-as))))))
+;               query           (vec
+;                                 (concat
+;                                   [:db/id]
+;                                   (for [field fields]
+;                                     (let [field-as (nskw table field)]
+;                                       ;(let [field-as [(nskw table field) :as (keyword field)]]
+;                                       (if (and nestedSort? (= field parentSortField))
+;                                         {field-as [:db/id childSortNSKW]}
+;                                         field-as)))))
+;
+;               ;sortData        (when nestedSort?
+;               ;                  {:parent sortFieldNSKW
+;               ;                   :child  childSortNSKW})
+;               ;sels            (parse-selections 0 sortData selections)
+;               ;_               (debug "SELS: " sels)
+;
+;
+;               ;rename-map  (into {}
+;               ;              (for [field fields]
+;               ;                [(nskw table field) (keyword field)]))
+;
+;               q               {:find  ['[(pull ?e qu) ...]]
+;                                :in    '[$ qu]
+;                                :where []
+;                                :args  [(db) query]}
+;
+;               id-arg          (get args :id)
+;
+;               limit           (or
+;                                 (get args :limit)
+;                                 (get args :perPage))
+;
+;               page            (get args :page)
+;               offset          (or
+;                                 (get args :offset)
+;                                 (when page
+;                                   (* page limit)))
+;
+;
+;
+;               filter          (:filter args)
+;
+;               ids             (when filter
+;                                 (:ids filter))
+;
+;               ;_              (debug "IDS 1" ids)
+;               ids             (when (seq ids)
+;                                 (vec (for [id ids]
+;                                        (read-string id))))
+;               ;_              (debug "IDS 2" ids)
+;
+;
+;               ;;; add filters
+;               fn-add-filters  (fn [q table filter]
+;                                 (if (seq filter)
+;                                   (reduce-kv
+;                                     (fn [q filt-k filt-v]
+;                                       (let [filt-s (symbol (str "?" (name filt-k)))]
+;                                         (-> q
+;                                           (update :in conj filt-s)
+;                                           (update :where conj ['?e (nskw table filt-k) filt-s])
+;                                           (update :args conj filt-v))))
+;                                     q filter)
+;                                   q))
+;
+;               ;;; if there are more filters, add 'em
+;               filter          (apply dissoc filter [:ids :id :q])
+;               _               (debug "FILTERS" filter)
+;               q               (fn-add-filters q table filter)
+;
+;               ;;; if there are more args, add 'em
+;               args            (apply dissoc args
+;                                 [:id :offset :limit :filter :page
+;                                  :perPage :sortField :sortOrder])
+;               _               (debug "ARGS" args)
+;               q               (fn-add-filters q table args)
+;
+;               first-nsk       (if is-spec-spec?
+;                                 (get-identity-key spec-specs-ds spec-ns)
+;                                 (get-identity-key table-specs-ds spec-ns))
+;
+;               q               (cond-> q
+;
+;                                 (seq ids)
+;                                 (->
+;                                   (update :in conj '[?e ...])
+;                                   (update :args conj ids))
+;
+;                                 ;;; if this is a single, only return the entity
+;                                 id-arg
+;                                 (->
+;                                   (update :in conj '?e)
+;                                   (update :args conj (Long/parseLong id-arg)))
+;
+;                                 ;; last one, in case there are no conditions, get all records
+;                                 (empty? (:where q))
+;                                 (->
+;                                   (update :where conj ['?e first-nsk]))
+;
+;                                 ;;; FIXME optimize the main query by running without the pull first, saving metadata and then running pull on the list of EIDs
+;                                 meta?
+;                                 (->
+;                                   (assoc :find ['[?e ...]])))
+;
+;               q               (remap-query q)
+;               _               (debug "Datomic query: " q)
+;
+;
+;
+;
+;               query-ds        (when is-spec-spec?
+;                                 (vec
+;                                   (concat
+;                                     [:db/id]
+;                                     (for [field fields]
+;                                       (nskw table field)))))
+;               _               (when query-ds
+;                                 (debug "DS query" query-ds))
+;
+;               q-map           (:query q)
+;               ds-find         (when is-spec-spec?
+;                                 (let [ds-find [:find (first (:find q-map))]
+;                                       ds-in   (:in q-map)
+;                                       ds-find (apply conj ds-find :in ds-in)
+;                                       ds-find (apply conj ds-find :where (:where q-map))]
+;                                   ds-find))
+;
+;               ds-args         (when is-spec-spec?
+;                                 (->> (drop 2 (:args q))
+;                                   (cons query-ds)
+;                                   (cons @table-specs-ds)))
+;
+;               ;_ (debug "DS" ds-find ds-args)
+;               ds-results      (when is-spec-spec?
+;                                 (try
+;                                   (apply (partial ds/q ds-find) ds-args)
+;                                   (catch Exception ex (debug "DS failed" (.getMessage ex)))))
+;               ;_             (debug "DS RESULTS" ds-results)
+;
+;
+;               d-results       (if (and is-spec-spec? (seq ds-results))
+;                                 ds-results
+;                                 (try
+;                                   (d/query q)
+;                                   (catch Exception ex
+;                                     (do
+;                                       (warn "RiverDB Resolver query failed" (.getMessage ex))
+;                                       (debug "Failed Query" q)))))
+;
+;
+;
+;               _               (debug "QUERY FINISHED")
+;
+;               ;d-results   (try
+;               ;              (d/query q)
+;               ;              (catch Exception ex (warn "RiverDB Resolver query failed" (.getMessage ex))))
+;
+;               _               (debug (count d-results) "RESULTS\n\n" (take 3 d-results) "\n\n")
+;
+;               compare-fn      (cond
+;                                 (= sortOrder "ASC")
+;                                 #(compare %1 %2)
+;                                 (= sortOrder "DESC")
+;                                 #(compare %2 %1))
+;
+;
+;
+;               ;; for example :entity.ns/samplingdevice has a DeviceType ref to :entity.ns/samplingdevicelookup and we want
+;               ;; to know about that for sorting on a referenced entity's name field, etc
+;               ;ref-keys        ()
+;
+;               ;nestedKey-fn    (fn [m]
+;               ;                  (get-in m [(keyword parentSortField) (keyword childSortField)]))
+;
+;               d-results       (if doSort?
+;                                 (let [sort-fn (if nestedSort?
+;                                                 #(get-in % [sortFieldNSKW childSortNSKW])
+;                                                 sortFieldNSKW)]
+;                                   (sort-by sort-fn compare-fn d-results))
+;                                 d-results)
+;
+;               _               (when doSort?
+;                                 (debug "SORTED RESULTS" (take 5 d-results)))
+;
+;               d-results       (cond
+;                                 meta?
+;                                 {:count (count (or ids d-results))}
+;
+;                                 (or limit offset)
+;                                 (do
+;                                   (debug "STARTING LIMIT")
+;                                   (let [res (limit-fn limit offset d-results)]
+;                                     (debug "DONE LIMITING")
+;                                     res))
+;
+;                                 ;; return exact list that was requested
+;                                 (seq ids)
+;                                 (do
+;                                   (debug "Returning Exact Results for IDS" ids)
+;                                   (let [id-map (into {} (for [res d-results]
+;                                                           [(:db/id res) res]))
+;                                         _      (debug "ID-MAP keys" (keys id-map))]
+;                                     (vec
+;                                       (for [id ids]
+;                                         (get id-map id)))))
+;
+;                                 id-arg
+;                                 (first d-results)
+;
+;                                 :else
+;                                 d-results)
+;
+;               _               (debug "Pre-walk D-Results" (if (map? d-results) d-results (take 1 d-results)))
+;               ;;; remove namespaces
+;               d-results       (walk-response d-results)]
+;
+;
+;           (debug "FINAL RESULTS" (if (map? d-results) d-results (take 5 d-results)))
+;
+;           ;d-results   (if id-field?
+;           ;              (for [r d-results]
+;           ;                (assoc r :id (:db/id r)))
+;           ;              d-results)
+;
+;           ;_             (debug "Datomic first result: " (first d-results))]
+;
+;           ;[{:id "17592186045425",
+;           ;        :CommonID "\u000bA",
+;           ;        :SamplingDeviceID 128,
+;           ;        :DeviceType {:db/id 17592186046954}}])
+;           d-results)
+;
+;         (catch Exception ex (do (debug "FAILED QUERY" (.getStackTrace ex)) [])))))))
+
+
+(defn resolve-rimdb2
   ([spec-ns]
-   ;(debug "RESOLVE RIMDB DEFAULT")
-   (resolve-rimdb spec-ns :query-single))
+   ;(debug "RESOLVE RIMDB DEFAULT" spec-ns)
+   (resolve-rimdb2 spec-ns :query-single))
   ([spec-ns query-type]
    (fn [context args value]
      (if (and (= query-type :query-single) (not (:id args)))
@@ -367,9 +838,15 @@
          nil)
        (try
          (let [selection       (:com.walmartlabs.lacinia/selection context)
-               ;_ (pprint selection)
+               ;_               (pprint selection)
                selections      (vec (:selections selection))
                ;_ (pprint selections)
+
+               pull-q          (parse-sels selections)
+               pull-q          (walk-ids pull-q)
+
+               _               (pprint pull-q)
+
                fields          (map :field selections)
                tk              (get selection :field)
 
@@ -384,38 +861,21 @@
                                  (subs table 4 (- (count table) 5))
                                  table)
 
-               _               (debug "RESOLVE" (if meta? "META" "TABLE") (or query-type "NIL") spec-ns "table:" table "args:" args "fields:" fields)
+               _               (debug "RESOLVE v2!" (if meta? "META" "TABLE") (or query-type "NIL") spec-ns "table:" table "args:" args "fields:" fields)
 
                fields          (vec (->> fields
                                       (map name)
                                       (remove #(or (= % "id") (str/starts-with? % "rk_") (str/starts-with? % "__") (= % "count")))))
 
-               is-spec-spec?   (some? (spec-spec-keys spec-ns))
 
-               _               (when is-spec-spec?
-                                 (debug "It's a SPEC!"))
-
-
-               ;_           (debug "RIVERDB RESOLVER tk: " tk ", ARGS: " args ", FIELDS: " fields)
-
-
-
-               spec-entity     (if is-spec-spec?
-                                 (do
-                                   ;(debug "Retrieving spec from the spec-specs DB")
-                                   (ds/pull @spec-specs-ds '[*] [:entity/ns spec-ns]))
-                                 (do
-                                   ;(debug "Retrieving spec from the table-specs DB")
-                                   (ds/pull @table-specs-ds '[*] [:entity/ns spec-ns])))
+               spec-entity     (do
+                                 (ds/pull @table-specs-ds '[*] [:entity/ns spec-ns]))
 
                ;_               (debug "spec-entity: " spec-entity)
 
                spec-attrs      (:entity/attrs spec-entity)
                ;_               (debug "spec-attrs" spec-attrs)
 
-               ;spec-attrs-gql  (get-spec-attrs-gql spec-attrs)
-               ;_               (when (seq spec-attrs-gql)
-               ;                  (debug "spec-attrs-gql" spec-attrs-gql))
 
                sortField       (:sortField args)
                sortOrder       (:sortOrder args)
@@ -445,6 +905,23 @@
                childSortNSKW   (when nestedSort?
                                  (nskw nestedSortTable childSortField))
 
+               recursive-q     (fn [table fields spec-attrs]
+                                 (vec
+                                   (concat
+                                     [:db/id]
+                                     (for [field fields]
+                                       (let [field-as   (nskw table field)
+                                             ;; get the field's attr spec
+                                             field-attr (get-spec-attr-by-key field-as spec-attrs)
+                                             ;; is it a :ref type?
+                                             is-ref?    (= :ref (:attr/type field-attr))
+                                             ;; if it's a :ref, then we need to recurse
+                                             hmm        (ds/pull @table-specs-ds '[*] [:entity/ns spec-ns])]
+                                         (cond
+                                           (and nestedSort? (= field-as sortFieldNSKW))
+                                           {field-as [:db/id childSortNSKW]}
+                                           :else
+                                           field-as))))))
                query           (vec
                                  (concat
                                    [:db/id]
@@ -469,7 +946,7 @@
                q               {:find  ['[(pull ?e qu) ...]]
                                 :in    '[$ qu]
                                 :where []
-                                :args  [(db) query]}
+                                :args  [(db) pull-q]}
 
                id-arg          (get args :id)
 
@@ -522,9 +999,7 @@
                _               (debug "ARGS" args)
                q               (fn-add-filters q table args)
 
-               first-nsk       (if is-spec-spec?
-                                 (get-identity-key spec-specs-ds spec-ns)
-                                 (get-identity-key table-specs-ds spec-ns))
+               first-nsk       (get-identity-key table-specs-ds spec-ns)
 
                q               (cond-> q
 
@@ -552,48 +1027,12 @@
                q               (remap-query q)
                _               (debug "Datomic query: " q)
 
-
-
-
-               query-ds        (when is-spec-spec?
-                                 (vec
-                                   (concat
-                                     [:db/id]
-                                     (for [field fields]
-                                       (nskw table field)))))
-               _               (when query-ds
-                                 (debug "DS query" query-ds))
-
-               q-map           (:query q)
-               ds-find         (when is-spec-spec?
-                                 (let [ds-find [:find (first (:find q-map))]
-                                       ds-in   (:in q-map)
-                                       ds-find (apply conj ds-find :in ds-in)
-                                       ds-find (apply conj ds-find :where (:where q-map))]
-                                   ds-find))
-
-               ds-args         (when is-spec-spec?
-                                 (->> (drop 2 (:args q))
-                                   (cons query-ds)
-                                   (cons @table-specs-ds)))
-
-               ;_ (debug "DS" ds-find ds-args)
-               ds-results      (when is-spec-spec?
-                                 (try
-                                   (apply (partial ds/q ds-find) ds-args)
-                                   (catch Exception ex (debug "DS failed" (.getMessage ex)))))
-               ;_             (debug "DS RESULTS" ds-results)
-
-
-               d-results       (if (and is-spec-spec? (seq ds-results))
-                                 ds-results
-                                 (try
-                                   (d/query q)
-                                   (catch Exception ex
-                                     (do
-                                       (warn "RiverDB Resolver query failed" (.getMessage ex))
-                                       (debug "Failed Query" q)))))
-
+               d-results       (try
+                                 (d/query q)
+                                 (catch Exception ex
+                                   (do
+                                     (warn "RiverDB Resolver query failed" (.getMessage ex))
+                                     (debug "Failed Query" q))))
 
 
                _               (debug "QUERY FINISHED")
@@ -874,9 +1313,9 @@
 (defn resolve-list-query [ent]
   (fn [ctx args value]
     ;(debug "LIST QUERY" ent args)
-    ((resolve-rimdb ent :query-list) ctx args value)))
+    ((resolve-rimdb2 ent :query-list) ctx args value)))
 
 (defn resolve-list-meta [ent]
   (fn [ctx args value]
     ;(debug "LIST QUERY" ent args)
-    ((resolve-rimdb ent :query-meta) ctx args value)))
+    ((resolve-rimdb2 ent :query-meta) ctx args value)))

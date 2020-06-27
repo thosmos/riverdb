@@ -156,9 +156,7 @@
                                              (into {}
                                                (concat
                                                  {:id {:type 'ID}}
-                                                 (for [{:keys [attr/key attr/type attr/ref
-                                                               attr/component attr/cardinality
-                                                               attr/gql attr/doc]
+                                                 (for [{:attr/keys [key type ref component cardinality gql doc]
                                                         :as   attr} attrs]
                                                    (let [col-k-nm  (gql-name attr)
                                                          col-k     (keyword col-k-nm)
@@ -174,7 +172,7 @@
                                                                                       (keyword (name (get-ref-key specs-ds attr)))
                                                                                       'ID)
                                                                            col-val  {:type    col-type}]
-                                                                                     ;:resolve [(:fk resolvers) spec-ns]}]
+                                                                                     ;:resolve [:resolve-rimdb-fk spec-ns]}]
                                                                        col-val)
 
                                                                      ;; all others
@@ -458,17 +456,17 @@
                                                       :notes    {:type 'String}
                                                       :valid    {:type 'Boolean}
                                                       :station  {:type :station}
-                                                      :resultsv {:type '(list :fldrslt)
+                                                      :resultsv {:type        '(list :fldrslt)
                                                                  :description "summary info about a field result"}}}
 
 
-                   :agency_detail       {:fields {:AgencyCode     {:type 'String}
-                                                  :AgencyDescr    {:type 'String}
-                                                  :Email          {:type 'String}
-                                                  :WebAddress     {:type 'String}
-                                                  :Telephone      {:type 'String}
-                                                  :PrimaryContact {:type 'String}
-                                                  :Active         {:type 'Boolean}}}
+                   :agency_detail      {:fields {:AgencyCode     {:type 'String}
+                                                 :AgencyDescr    {:type 'String}
+                                                 :Email          {:type 'String}
+                                                 :WebAddress     {:type 'String}
+                                                 :Telephone      {:type 'String}
+                                                 :PrimaryContact {:type 'String}
+                                                 :Active         {:type 'Boolean}}}
 
                    ;:project_detail     {:fields {:ProjectID       {:type 'Int}
                    ;                              :AgencyCode      {:type 'String}}}
@@ -492,39 +490,48 @@
                                                  :LocalWatershed  {:type 'String}
                                                  :StationCode     {:type 'String}}}
 
-                   :safe_data   {:fields {:date            {:type 'String}
-                                          :value           {:type 'Float}
-                                          :qual            {:type 'String}
-                                          :avg             {:type 'Float}}}
+                   :safe_data          {:fields {:date  {:type 'String}
+                                                 :value {:type 'Float}
+                                                 :qual  {:type 'String}
+                                                 :avg   {:type 'Float}}}
 
-                   :safetoswim  {:fields {:id              {:type 'ID}
-                                          :StationID       {:type 'Int}
-                                          :Agency          {:type    :agency_detail
-                                                            :resolve :resolve-agency-ref}
-                                          :Description     {:type 'String}
-                                          :Active          {:type 'Boolean}
-                                          :StationName     {:type 'String}
-                                          :LocalWaterbody  {:type 'String}
-                                          :ForkTribGroup   {:type 'String}
-                                          :RiverFork       {:type 'String}
-                                          :NHDWaterbody    {:type 'String}
-                                          :HydrologicUnit  {:type 'String}
-                                          :StreamSubsystem {:type 'String}
-                                          :TargetLat       {:type 'Float}
-                                          :TargetLong      {:type 'Float}
-                                          :County          {:type 'String}
-                                          :LocalWatershed  {:type 'String}
-                                          :StationCode     {:type 'String}
-                                          :latest          {:type :safe_data}
-                                          :values          {:type '(list :safe_data)}}}
+                   :safetoswim         {:fields {:id              {:type 'ID}
+                                                 :StationID       {:type 'Int}
+                                                 :Agency          {:type    :agency_detail
+                                                                   :resolve :resolve-agency-ref}
+                                                 :Description     {:type 'String}
+                                                 :Active          {:type 'Boolean}
+                                                 :StationName     {:type 'String}
+                                                 :LocalWaterbody  {:type 'String}
+                                                 :ForkTribGroup   {:type 'String}
+                                                 :RiverFork       {:type 'String}
+                                                 :NHDWaterbody    {:type 'String}
+                                                 :HydrologicUnit  {:type 'String}
+                                                 :StreamSubsystem {:type 'String}
+                                                 :TargetLat       {:type 'Float}
+                                                 :TargetLong      {:type 'Float}
+                                                 :County          {:type 'String}
+                                                 :LocalWatershed  {:type 'String}
+                                                 :StationCode     {:type 'String}
+                                                 :latest          {:type :safe_data}
+                                                 :values          {:type '(list :safe_data)}}}
 
+                   :logsample          {:fields {:id    {:type 'ID}
+                                                 :value {:type 'Float}
+                                                 :inst  {:type 'Int}}}
+
+                   :logger             {:fields {:id         {:type 'ID}
+                                                 :name       {:type 'String}
+                                                 :projectRef    {:type :projectslookup}
+                                                 :parameterRef  {:type :parameter}
+                                                 :deviceTypeRef {:type :samplingdevicelookup}
+                                                 :stationRef    {:type :stationlookup}}}
 
 
                    :role               {:fields {:name {:type 'String}
                                                  :uuid {:type 'ID}
                                                  :type {:type 'String}
                                                  :doc  {:type 'String}}}
-                   ;:agency {:type 'String}
 
 
                    :user               {:fields {:name  {:type 'String}
@@ -589,13 +596,29 @@
                    {:type        '(list :safetoswim)
                     :resolve     :resolve-safetoswim
                     :description "safetoswim details"
-                    :args        {:agency {:type 'String}
-                                  :active {:type 'Boolean}
+                    :args        {:agency      {:type 'String}
+                                  :active      {:type 'Boolean}
                                   :constituent {:type 'String}
-                                  :limit  {:type    'Int
-                                           :default 10}
-                                  :offset {:type    'Int
-                                           :default 0}}}
+                                  :limit       {:type    'Int
+                                                :default 10}
+                                  :offset      {:type    'Int
+                                                :default 0}}}
+
+                   :loggers
+                   {:type        '(list :logger)
+                    :resolve     :resolve-loggers
+                    :description "loggers"
+                    :args        {:projectRef    {:type 'ID}
+                                  :stationRef    {:type 'ID}
+                                  :parameterRef  {:type 'ID}}}
+
+                   :logsamples
+                   {:type    '(list :logsample)
+                    :resolve :resolve-logsamples
+                    :args    {:loggerRef {:type 'ID}
+                              :before {:type 'Int}
+                              :after  {:type 'Int}}}
+
 
                    ;:line_snap
                    ;{:type        :line_snap

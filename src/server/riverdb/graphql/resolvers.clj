@@ -6,7 +6,7 @@
 (defn resolvers []
   {:resolve-hello            q/resolve-hello
    :resolve-sitevisit        q/resolve-sitevisits
-   :resolve-rimdb            q/resolve-rimdb
+   :resolve-rimdb            q/resolve-rimdb2
    :resolve-rimdb-fk         q/resolve-rimdb-fk
    ;:resolve-rimdb-rk         q/resolve-rimdb-rk
    :resolve-spec-query       q/resolve-spec
@@ -14,6 +14,8 @@
    ;:resolve-spec-rk          q/resolve-rimdb-rk
    :resolve-stationdetail    q/resolve-stations
    :resolve-safetoswim       q/resolve-safetoswim
+   :resolve-loggers          q/resolve-loggers
+   :resolve-logsamples       q/resolve-logsamples
    :resolve-agency-ref       q/resolve-agency-ref
    :resolve-specs            q/resolve-specs
    :resolve-db-specs         q/resolve-db-specs

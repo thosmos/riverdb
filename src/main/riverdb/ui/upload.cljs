@@ -18,8 +18,6 @@
 
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
-    ;[com.fulcrologic.rad.rendering.semantic-ui.decimal-field :refer [ui-decimal-input]]
-    ;[com.fulcrologic.rad.type-support.decimal :as dec :refer [numeric]]
     [com.fulcrologic.fulcro-css.css :as css]
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
     [com.fulcrologic.semantic-ui.elements.loader.ui-loader :refer [ui-loader]]
@@ -128,23 +126,10 @@
 
         (dom/div :.field
           (dom/label "CSV File")
-          ;(ui-button
-          ;  {:content       "Choose File"
-          ;   :labelPosition "left"
-          ;   :icon          "file"
-          ;   :onClick       (fn [] (when-let [input-field (gobj/get this "input-ref")] (.click input-field)))})
-          ;(ui-input
-          ;  {:action {:color "teal"
-          ;            :labelPosition "left"
-          ;            :icon "file"
-          ;            :content "Choose File"
-          ;            :onClick       (fn [] (when-let [input-field (gobj/get this "input-ref")] (.click input-field)))}
-          ;   :actionPosition "left"})
           (dom/input
             {:type     "file"
              :accept   "text/csv"
              :ref      save-ref
-             ;:hidden true
              :onChange (fn [evt]
                          (let [file    (first (file-upload/evt->uploads evt))
                                js-file (:js-value (meta (:file/content file)))]
@@ -155,45 +140,23 @@
                                      parsed (csv/read-csv text)]
                                  (debug "CSV" (first parsed))
                                  (comp/set-state! this {:csv-params parsed}))))
-                                 ;(fm/set-value! this :ui/csv-params parsed))))
                            (debug "FILE" file)))}))
         (when csv-params
           (dom/div :.field
             (dom/label "Import Parameters")
             (dom/table {:className "ui selectable small table"}
               (dom/thead
-                (dom/th "CSV Column")
-                (dom/th "Type")
-                (dom/th "Parameter")
-                (dom/th "Unit")
-                (dom/th ""))
+                (dom/tr
+                  (dom/th "CSV Column")
+                  (dom/th "Type")
+                  (dom/th "Parameter")
+                  (dom/th "Unit")
+                  (dom/th "")))
               (dom/tbody
-                ;(dom/tr
-                ;  (dom/td (dom/b "date"))
-                ;  (dom/td (ui-dropdown {:options          [{:text "Date" :value 0}]
-                ;                        :value            0
-                ;                        :style            {:width "auto" :minWidth "10em"}}))
-                ;  (dom/td (ui-dropdown {:options          [{:text "" :value 0}]
-                ;                        :value            0
-                ;                        :style            {:width "auto" :minWidth "10em"}}))
-                ;  (dom/td (ui-dropdown {:options          [{:text "" :value 0} {:text "MPN/100mL" :value 1}]
-                ;                        :value            0
-                ;                        :style            {:width "auto" :minWidth "10em"}})))
-                ;(dom/tr
-                ;  (dom/td (dom/b "temp"))
-                ;  (dom/td (ui-dropdown {:options          [{:text "Date" :value 0} {:text "Station" :value 1} {:text "Value" :value 2} {:text "Unit" :value 3}]
-                ;                        :value            2
-                ;                        :style            {:width "auto" :minWidth "10em"}}))
-                ;  (dom/td (ui-dropdown {:options          [{:text "Temp" :value 0} {:text "E. coli" :value 1} {:text "Coliform" :value 2} {:text "Entero" :value 3}]
-                ;                        :value            0
-                ;                        :style            {:width "auto" :minWidth "10em"}}))
-                ;  (dom/td (ui-dropdown {:options          [{:text "°C" :value 0} {:text "MPN/100mL" :value 1}]
-                ;                        :value            0
-                ;                        :style            {:width "auto" :minWidth "10em"}})))
                 (map-indexed
                   (fn [i col]
-                    (dom/tr
-                      (dom/th {:key i} (str col))
+                    (dom/tr {:key i}
+                      (dom/td {} (dom/b (str col)))
                       (dom/td (ui-dropdown {:options          [{:text "" :value -1} {:text "Result" :value 0}
                                                                {:text "Date" :value 1} {:text "Station" :value 2}
                                                                {:text "Unit" :value 3} {:text "Device Type" :value 4}
@@ -207,8 +170,6 @@
                                             :value            -1
                                             :style            {:width "auto" :minWidth "10em"}}))))
                   (first csv-params))))))
-
-            ;(str (first csv-params))))
         (dom/div
           (dom/button :.ui.button {:onClick (fn []
                                               (let [file (comp/get-state this :file)]))}
@@ -219,7 +180,6 @@
 (defsc UploadModal [this {:ui/keys [show-upload] :as props} {:keys [onClose]}]
   {}
   (ui-modal {:open show-upload :onClose onClose}
-    ;(ui-modal-header {:content "BULK IMPORT CSV DATA"})
     (ui-modal-content {}
       (ui-upload-comp {}))))
 (def ui-upload-modal (comp/factory UploadModal))

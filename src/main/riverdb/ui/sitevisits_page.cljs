@@ -55,7 +55,7 @@
     [riverdb.ui.inputs :refer [ui-float-input]]
     [riverdb.ui.upload :refer [ui-upload-modal]]
     [riverdb.ui.util :as rutil :refer [walk-ident-refs* walk-ident-refs make-tempid make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save set-editing set-value set-value! set-refs! set-ref! set-ref set-refs get-ref-set-val lookup-db-ident filter-param-typecode]]
-    [riverdb.util :refer [paginate nest-by]]
+    [riverdb.util :refer [paginate nest-by filter-sample-typecode]]
     [com.rpl.specter :as sp :refer [ALL LAST]]
     ;[tick.alpha.api :as t]
     [theta.log :as log :refer [debug info]]
@@ -578,9 +578,6 @@
                      :samp-ident                   samp-ident}))))))))))
 
 (def ui-fieldmeasure-param-list (comp/factory FieldMeasureParamList))
-
-(defn filter-sample-typecode [type samples]
-  (filter #(= type (get-in % [:sample/SampleTypeCode :sampletypelookup/SampleTypeCode])) samples))
 
 (defsc SampleForm [this
                    {:ui/keys [ready]
