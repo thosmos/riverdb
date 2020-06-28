@@ -9,7 +9,8 @@
     [java-time :as jt]
     [riverdb.util :as util]
     [taoensso.timbre :as log :refer [debug info]]
-    [thosmos.util :as tu])
+    [thosmos.util :as tu]
+    [clojure.pprint :as pprint])
   (:import (java.io Writer)
            (java.time ZonedDateTime)))
 
@@ -285,9 +286,7 @@
                    :where '[[?sv :sitevisit/QACheck true]]
                    :args  [db]}
 
-
          q        (cond-> q
-
                     ;; if station
                     station
                     (->
@@ -352,6 +351,127 @@
                     (empty? (:where q))
                     (->
                       (update :where conj '[?sv :sitevisit/StationID])))
+         q        (remap-query q)]
+     ;; this query only returns field results due to missing :db/id on sample
+     ;; we can modiy this to handle labresults too, or do it somewhere else
+     (debug "QUERY" q)
+
+     (d/query q))))
+
+(defn get-sitevisits3
+  ([db {:keys [year agency fromDate toDate station stationCode projectID] :as opts}]
+   ;agency fromDate toDate station
+   ;(debug "get-sitevisits" db opts)
+   (let [fromDate (if (some? fromDate)
+                    fromDate
+                    (when year
+                      (jt/zoned-date-time year)))
+         toDate   (if (some? toDate)
+                    toDate
+                    (when year
+                      (jt/plus fromDate (jt/years 1))))
+
+         q        {:find  ['[(pull ?sv [:db/id
+                                        [:sitevisit/SiteVisitID :as :svid]
+                                        [:sitevisit/SiteVisitDate :as :date]
+                                        [:sitevisit/Time :as :time]
+                                        [:sitevisit/Notes :as :notes]
+                                        {[:sitevisit/StationID :as :station]
+                                         [:db/id
+                                          [:stationlookup/StationID :as :station_id]
+                                          [:stationlookup/StationCode :as :station_code]
+                                          [:stationlookup/RiverFork :as :river_fork]
+                                          [:stationlookup/ForkTribGroup :as :trib_group]]}
+                                        {[:sitevisit/StationFailCode :as :failcode] [[:stationfaillookup/FailureReason :as :reason]]}
+                                        {[:sitevisit/Samples :as :samples]
+                                         [{[:sample/ConstituentRef :as :constituent]
+                                           [{[:constituentlookup/AnalyteCode :as :analyte]
+                                             [[:analytelookup/AnalyteShort :as :name]]}
+                                            {[:constituentlookup/MatrixCode :as :matrix]
+                                             [[:matrixlookup/MatrixShort :as :name]]}
+                                            {[:constituentlookup/UnitCode :as :unit]
+                                             [[:unitlookup/Unit :as :name]]}]}
+                                          {[:sample/DeviceIDRef :as :device]
+                                           [[:samplingdevice/CommonID :as :id]
+                                            {[:samplingdevice/DeviceType :as :type]
+                                             [[:samplingdevicelookup/SampleDevice :as :name]]}]}
+                                          {[:sample/FieldResults :as :results]
+                                           [[:fieldresult/Result :as :result]
+                                            [:fieldresult/FieldReplicate :as :replicate]]}]}]) ...]]
+                   :in    '[$]
+                   :where '[]
+                   :args  [db]}
+
+
+         q        (cond-> q
+
+                    ;; if station
+                    station
+                    (->
+                      (update :where #(-> %
+                                        (conj '[?st :stationlookup/StationID ?station])
+                                        (conj '[?sv :sitevisit/StationID ?st])))
+                      (update :in conj '?station)
+                      (update :args conj station))
+
+                    ;; if stationCode
+                    stationCode
+                    (->
+                      (update :where #(-> %
+                                        (conj '[?st :stationlookup/StationCode ?stationCode])
+                                        (conj '[?sv :sitevisit/StationID ?st])))
+                      (update :in conj '?stationCode)
+                      (update :args conj stationCode))
+
+                    agency
+                    (->
+                      (update :where #(-> %
+                                        (conj '[?pj :projectslookup/AgencyCode ?agency])
+                                        (conj '[?sv :sitevisit/ProjectID ?pj])))
+                      (update :in conj '?agency)
+                      (update :args conj agency))
+
+                    projectID
+                    (->
+                      (update :where #(-> %
+                                        (conj '[?pj :projectslookup/ProjectID ?projectID])
+                                        (conj '[?sv :sitevisit/ProjectID ?pj])))
+                      (update :in conj '?projectID)
+                      (update :args conj projectID))
+
+                    ;; If either from- or to- date were passed, join the `sitevisit` entity
+                    ;; and bind its `SiteVisitDate` attribute to the `?date` variable.
+                    (or fromDate toDate)
+                    (update :where conj
+                      '[?sv :sitevisit/SiteVisitDate ?date])
+
+                    ;; If the `fromDate` filter was passed, do the following:
+                    ;; 1. add a parameter placeholder into the query;
+                    ;; 2. add an actual value to the arguments;
+                    ;; 3. add a proper condition against `?date` variable
+                    ;; (remember, it was bound above).
+                    fromDate
+                    (->
+                      (update :in conj '?fromDate)
+                      (update :args conj (jt/java-date fromDate))
+                      (update :where conj
+                        '[(> ?date ?fromDate)]))
+
+                    ;; similar to ?fromDate
+                    toDate
+                    (->
+                      (update :in conj '?toDate)
+                      (update :args conj (jt/java-date toDate))
+                      (update :where conj
+                        '[(< ?date ?toDate)])))
+
+                    ;;; last one, in case there are no conditions, get all sitevisits
+                    ;(empty? (:where q))
+                    ;(->
+                    ;  (update :where conj '[?sv :sitevisit/StationID])))
+
+         q        (update q :where conj '[?sv :sitevisit/QACheck true])
+
          q        (remap-query q)]
      ;; this query only returns field results due to missing :db/id on sample
      ;; we can modiy this to handle labresults too, or do it somewhere else
@@ -425,7 +545,7 @@
 
 ;; if it's nil, make it a []
 (defn conjv [coll val]
-  (conj (or coll []) val))
+  ((fnil conj []) coll val))
 
 ;;;;; data manip
 
@@ -489,6 +609,92 @@
 
               init))
     {} fieldresults))
+
+(defn reduce-samples-to-map
+  "reduce a set of samples into a map of parameter maps indexed by parameter name"
+  [samples]
+  {:station
+             {:db/id 17592186178191,
+              :station_id 65,
+              :station_code "999MY65",
+              :river_fork "M Yuba",
+              :trib_group "MYT"},
+   :trib nil,
+   :samples
+             [{:constituent
+               {:analyte {:name "DO"},
+                :matrix {:name "H2O"},
+                :unit {:name "mg/L"}},
+               :results
+               [{:result 10.79, :replicate 2}
+                {:result 10.78, :replicate 1}
+                {:result 10.71, :replicate 3}]}
+              {:constituent
+                       {:analyte {:name "Temp"},
+                        :matrix {:name "H2O"},
+                        :unit {:name "°C"}},
+               :device {:id "22", :type {:name "ECTestr 11"}},
+               :results
+                       [{:result 13.1, :replicate 1}
+                        {:result 12.8, :replicate 2}
+                        {:result 12.8, :replicate 3}]}
+              {:constituent
+                       {:analyte {:name "Cond"},
+                        :matrix {:name "H2O"},
+                        :unit {:name "µS/cm"}},
+               :device {:id "22", :type {:name "ECTestr 11"}},
+               :results
+                       [{:result 90.0, :replicate 1}
+                        {:result 90.0, :replicate 2}
+                        {:result 90.0, :replicate 3}]}
+              {:constituent
+                       {:analyte {:name "Turb"},
+                        :matrix {:name "H2O"},
+                        :unit {:name "NTU"}},
+               :device {:id "1", :type {:name "LaMotteTurb"}},
+               :results
+                       [{:result 0.38, :replicate 1}
+                        {:result 0.47, :replicate 2}
+                        {:result 0.41, :replicate 3}]}
+              {:constituent
+                       {:analyte {:name "pH"},
+                        :matrix {:name "H2O"},
+                        :unit {:name "none"}},
+               :device {:id "147", :type {:name "HannaPH"}},
+               :results
+                       [{:result 7.8, :replicate 2}
+                        {:result 7.85, :replicate 3}
+                        {:result 7.82, :replicate 1}]}
+              {:constituent
+                        {:analyte {:name "Temp"},
+                         :matrix {:name "Air"},
+                         :unit {:name "°C"}},
+               :device {:id "35", :type {:name "SupcoTemp"}},
+               :results [{:result 26.2, :replicate 1}]}],
+   :date #inst "2020-05-07T07:00:00.000-00:00",
+   :time "10:55",
+   :failcode "None",
+   :notes "DO Meter",
+   :db/id 17592186302671,
+   :fork "M Yuba"}
+  (reduce (fn [init {:keys [constituent results device]}]
+            (let [c         constituent
+                  analyte   (get-in c [:analyte :name])
+                  matrix    (get-in c [:matrix :name])
+                  unit      (get-in c [:unit :name])
+                  device    (str (get-in device [:type :name]) " - " (:id device))
+                  analyte-k (keyword (str matrix "_" analyte))
+                  vals (->> results
+                         (sort-by :replicate)
+                         (mapv :result))
+                  summary {:vals vals
+                           :device device
+                           :unit unit
+                           :matrix matrix
+                           :analyte analyte}]
+
+              (assoc init analyte-k summary)))
+    {} samples))
 
 
 ;; FIXME per group
@@ -579,39 +785,39 @@
 ;                          :threshold 0.1}}})
 
 (defn calc [vals]
-  (let [mn (mean vals)
-        _min (apply min vals)
-        _max (apply max vals)
+  (let [mn     (mean vals)
+        _min   (apply min vals)
+        _max   (apply max vals)
         stddev (std-dev vals)
-        rng (- _max _min)
-        rsd (percent-rds mn stddev)]
+        rng    (- _max _min)
+        rsd    (percent-rds mn stddev)]
 
     (println (format "Values: %.1f, %.1f, %.1f \nMean: %.1f \nMin: %.1f \nMax: %.1f \nRange: %.1f \nStdDev: %.2f \nRSD: %.2f "
                (get vals 0) (get vals 1) (get vals 2) mn _min _max rng stddev rsd))
-    {:vals vals
-     :range rng
-     :mean mn
+    {:vals   vals
+     :range  rng
+     :mean   mn
      :stddev stddev
-     :max _max
-     :min _min
-     :rsd rsd}))
+     :max    _max
+     :min    _min
+     :rsd    rsd}))
 
 (defn calc2 [vals]
-  (let [mn (mean vals)
-        _min (apply min vals)
-        _max (apply max vals)
+  (let [mn     (mean vals)
+        _min   (apply min vals)
+        _max   (apply max vals)
         stddev (std-dev vals)
-        rng (- _max _min)
-        rsd (percent-rds mn stddev)]
+        rng    (- _max _min)
+        rsd    (percent-rds mn stddev)]
     (println (format "Values: %.2f, %.2f, %.2f \nMean: %.2f \nMin: %.2f \nMax: %.2f \nRange: %.2f \nStdDev: %.3f \nRSD: %.3f "
                (get vals 0) (get vals 1) (get vals 2) mn _min _max rng stddev rsd))
-    {:vals vals
-     :mean mn
+    {:vals   vals
+     :mean   mn
      :stddev stddev
-     :range rng
-     :max _max
-     :min _min
-     :rsd rsd}))
+     :range  rng
+     :max    _max
+     :min    _min
+     :rsd    rsd}))
 
 
 
@@ -670,7 +876,7 @@
                   ;; calculate precision thresholds
                   req-percent  (get-in qapp [:params k :precision :percent])
                   req-unit     (get-in qapp [:params k :precision :unit])
-                  req-range     (get-in qapp [:params k :precision :range])
+                  req-range    (get-in qapp [:params k :precision :range])
 
                   threshold    (when (and req-percent req-unit)
                                  (or
@@ -707,30 +913,30 @@
                   invalid?     (and qapp? (or incomplete? imprecision?))
                   exceedance?  (and qapp? (not invalid?) (or too-low? too-high?))
 
-                  v            (merge v {:invalid?    invalid?
-                                         :exceedance? exceedance?
-                                         :is_valid (not invalid?)
+                  v            (merge v {:invalid?      invalid?
+                                         :exceedance?   exceedance?
+                                         :is_valid      (not invalid?)
                                          :is_exceedance exceedance?
-                                         :count       val-count
-                                         :max         mx
-                                         :min         mn
-                                         :range       (round2 2 range)
-                                         :stddev      (round2 2 stddev)
-                                         :mean        (round2 2 mean)
-                                         :prec        (if (some? prec-percent) (round2 2 prec-percent) nil)
-                                         :vals        vals})
+                                         :count         val-count
+                                         :max           mx
+                                         :min           mn
+                                         :range         (round2 2 range)
+                                         :stddev        (round2 2 stddev)
+                                         :mean          (round2 2 mean)
+                                         :prec          (if (some? prec-percent) (round2 2 prec-percent) nil)
+                                         :vals          vals})
 
                   v            (cond-> v
                                  exceedance?
-                                 (merge {:too-low?  too-low?
-                                         :too-high? too-high?
-                                         :is_too_low too-low?
+                                 (merge {:too-low?    too-low?
+                                         :too-high?   too-high?
+                                         :is_too_low  too-low?
                                          :is_too_high too-high?})
                                  invalid?
-                                 (merge {:incomplete? incomplete?
-                                         :imprecise?  imprecision?
+                                 (merge {:incomplete?   incomplete?
+                                         :imprecise?    imprecision?
                                          :is_incomplete incomplete?
-                                         :is_imprecise imprecision?})
+                                         :is_imprecise  imprecision?})
                                  (and elide? include-elided?)
                                  (merge {:orig-vals orig-vals
                                          :orig_vals orig-vals}))]
@@ -813,6 +1019,7 @@
                   (assoc :fork (get-in sv [:station :river_fork]))
                   ;(assoc :station (get-in sv [:station :db/id]))
                   (assoc :failcode (get-in sv [:failcode :reason])))
+            _   (debug "SV" sv)
 
             ;; pull out fieldresult list
             frs (get-in sv [:sitevisit/Samples 0 :sample/FieldResults])
@@ -839,6 +1046,44 @@
             ;; count valid params
 
             sv  (calc-sitevisit-stats sv)]
+
+        sv)
+      (catch Exception ex (debug "Error in create-param-summaries" ex)))))
+
+(defn create-sitevisit-summaries3
+  "create summary info per sitevisit"
+  [sitevisits]
+  (for [sv sitevisits]
+    (try
+      (let [
+            ;_        (debug "processing SV " (get-in sv [:sitevisit/StationID
+            ;                                    :stationlookup/StationID]))
+
+            ;; remap nested values to root
+            sv   (-> sv
+                   (assoc :trib (get-in sv [:station :trib]))
+                   (assoc :fork (get-in sv [:station :river_fork]))
+                   ;(assoc :station (get-in sv [:station :db/id]))
+                   (assoc :failcode (get-in sv [:failcode :reason])))
+
+
+            ;; pull out samples list
+            sas  (get-in sv [:samples])
+
+            _   (debug "reduce Samples to param sums")
+            sums (reduce-samples-to-map sas)
+            _   (debug "calc param sums")
+            sums (calc-param-summaries sums)
+            ;; remove the list of samples and add the new param map
+            sv   (-> sv
+                   ;(dissoc :samples)
+                   (assoc :fieldresults sums))
+            ;_   (debug "count valid params")
+            ;; count valid params
+
+            sv   (calc-sitevisit-stats sv)
+            _    (debug "SV" (pprint/pprint sv))]
+
 
         sv)
       (catch Exception ex (debug "Error in create-param-summaries" ex)))))
@@ -1282,8 +1527,16 @@
 (defn get-sitevisit-summaries [db opts]
   ;(debug "get-sitevisit-summaries opts: " opts)
   (let [sitevisits (get-sitevisits2 db opts)
-        sitevisits (filter-empty-fieldresults sitevisits)
         sitevisits (create-sitevisit-summaries2 sitevisits)
+        sitevisits (filter-empty-fieldresults sitevisits)
+        sitevisits (util/sort-maps-by sitevisits [:date :site])]
+    sitevisits))
+
+(defn get-sitevisit-summaries3 [db opts]
+  ;(debug "get-sitevisit-summaries opts: " opts)
+  (let [sitevisits (get-sitevisits3 db opts)
+        sitevisits (create-sitevisit-summaries3 sitevisits)
+        sitevisits (filter-empty-fieldresults sitevisits)
         sitevisits (util/sort-maps-by sitevisits [:date :site])]
     sitevisits))
 

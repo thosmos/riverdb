@@ -113,7 +113,7 @@
                      (merge
                        {:toDate toDate}))
 
-        svs        (tac-report/get-sitevisit-summaries (db) opts)
+        svs        (tac-report/get-sitevisit-summaries3 (db) opts)
 
 
         limit      (get args :limit)

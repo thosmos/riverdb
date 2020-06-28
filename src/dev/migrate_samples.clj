@@ -2,10 +2,24 @@
   (:require
     [datomic.api :as d]
     [theta.log :as log]
-    [riverdb.state :refer [db cx]]))
+    [riverdb.state :refer [db cx]]
+    [riverdb.db :as rdb]))
+
+(defn get-sa-ik [sa-ik const]
+  (let [sa-ik (when sa-ik
+                (let [[mat ana] (d/q '[:find [?mat ?ana]
+                                       :in $ ?e
+                                       :where
+                                       [?e :constituentlookup/AnalyteCode ?a]
+                                       [?a :analytelookup/AnalyteShort ?ana]
+                                       [?e :constituentlookup/MatrixCode ?m]
+                                       [?m :matrixlookup/MatrixShort ?mat]]
+                                  (db) (:db/id const))]
+                  (str sa-ik "-" mat "_" ana)))]))
+
 
 (defn migrate-fms [sv sa]
-  (log/debug "MIGRATE FIELD MEASURES")
+  ;(log/debug "MIGRATE FIELD MEASURES")
   (let [sv-id (:db/id sv)
         sa-id (:db/id sa)
         fr-m  (reduce
@@ -20,19 +34,21 @@
                         devID  (:fieldresult/SamplingDeviceID fr)
                         time   (:fieldresult/ResultTime fr)
                         qaFlag (:fieldresult/QAFlag fr)
-                        frs    (map #(-> %
-                                       (dissoc :db/id)
-                                       (dissoc :fieldresult/SigFig)
-                                       (dissoc :fieldresult/SampleRowID)
-                                       (dissoc :fieldresult/SamplingDeviceCode)
-                                       (dissoc :fieldresult/FieldResultRowID)
-                                       (dissoc :fieldresult/ConstituentRowID)
-                                       (dissoc :fieldresult/SamplingDeviceID)
-                                       (dissoc :fieldresult/ResultTime)
-                                       (assoc :fieldresult/uuid (d/squuid))
-                                       ((fn [fr] (if (= 0 qaFlag)
-                                                   (dissoc fr :fieldresult/QAFlag)
-                                                   fr))))
+
+                        frs    (map (fn [fr]
+                                      (-> fr
+                                        (dissoc :db/id)
+                                        (dissoc :fieldresult/SigFig)
+                                        (dissoc :fieldresult/SampleRowID)
+                                        (dissoc :fieldresult/SamplingDeviceCode)
+                                        (dissoc :fieldresult/FieldResultRowID)
+                                        (dissoc :fieldresult/ConstituentRowID)
+                                        (dissoc :fieldresult/SamplingDeviceID)
+                                        (dissoc :fieldresult/ResultTime)
+                                        (assoc :fieldresult/uuid (d/squuid))
+                                        (#(if (= 0 qaFlag)
+                                            (dissoc % :fieldresult/QAFlag)
+                                            %))))
                                  frs)
                         new-sa (-> sa
                                  (dissoc :db/id)
@@ -43,24 +59,33 @@
                                  (dissoc :sample/SampleComplete)
                                  (dissoc :sample/SampleReplicate)
                                  (dissoc :sample/DepthSampleCollection)
+                                 (dissoc :org.riverdb/import-key)
                                  (assoc :sample/uuid (d/squuid))
                                  (assoc :sample/FieldResults (vec frs))
                                  (assoc :sample/ConstituentRef const)
-                                 (assoc :sample/DeviceTypeRef devType)
-                                 (assoc :sample/DeviceIDRef devID)
-                                 (assoc :sample/Time time)
+                                 (#(if devType
+                                     (assoc % :sample/DeviceTypeRef devType)
+                                     %))
+                                 (#(if devID
+                                     (assoc % :sample/DeviceIDRef devID)
+                                     %))
+                                 (#(if time
+                                     (assoc % :sample/Time time)
+                                     %))
                                  (assoc :sample/SampleTypeCode :sampletypelookup.SampleTypeCode/FieldMeasure))]
                     (conj sas new-sa)))
                 [] fr-m)
 
 
         txds  [[[:db/retractEntity sa-id]]]
-        txds  (conj txds [{:db/id             sv-id
-                           :sitevisit/Samples sas}])]
+        txds  (if (seq sas)
+                (conj txds [{:db/id             sv-id
+                             :sitevisit/Samples sas}])
+                txds)]
     txds))
 
 (defn migrate-labs [sv sa]
-  (log/debug "MIGRATE LABS")
+  ;(log/debug "MIGRATE LABS")
   (let [sv-id (:db/id sv)
         sa-id (:db/id sa)
         lr-m  (reduce
@@ -77,8 +102,8 @@
                                        (dissoc :labresult/LabResultRowID)
                                        (dissoc :labresult/SampleRowID)
                                        (dissoc :labresult/SigFig)
-                                       ;(dissoc :labresult/ConstituentRowID)
-                                       ;(assoc :labresult/uuid (d/squuid))
+                                       (dissoc :labresult/ConstituentRowID)
+                                       (assoc :labresult/uuid (d/squuid))
                                        ((fn [lr] (if (= 0 qaFlag)
                                                    (dissoc lr :labresult/QAFlag)
                                                    lr))))
@@ -89,6 +114,7 @@
                                  (dissoc :sample/LabResults)
                                  (dissoc :sample/SampleRowID)
                                  (dissoc :sample/SampleComplete)
+                                 (dissoc :org.riverdb/import-key)
                                  (assoc :sample/uuid (d/squuid))
                                  (assoc :sample/LabResults (vec lrs))
                                  (assoc :sample/ConstituentRef const)
@@ -96,12 +122,14 @@
                     (conj sas new-sa)))
                 [] lr-m)
         txds  [[[:db/retractEntity sa-id]]]
-        txds  (conj txds [{:db/id             sv-id
-                           :sitevisit/Samples sas}])]
+        txds  (if (seq sas)
+                (conj txds [{:db/id             sv-id
+                             :sitevisit/Samples sas}])
+                txds)]
     txds))
 
 (defn migrate-obs [sv sa]
-  (log/debug "MIGRATE OBSERVATIONS")
+  ;(log/debug "MIGRATE OBSERVATIONS")
   (let [sv-id  (:db/id sv)
         sa-id  (:db/id sa)
         obsr-m (reduce
@@ -111,11 +139,12 @@
                  {} (:sample/FieldObsResults sa))
         sas    (reduce
                  (fn [sas [const obsrs]]
-                   (let [obsrs (map #(-> %
-                                       (dissoc :db/id)
-                                       (dissoc :fieldobsresult/FieldObsResultRowID)
-                                       (dissoc :fieldobsresult/SampleRowID))
-                                 obsrs)
+                   (let [obsrs  (map #(-> %
+                                        (dissoc :db/id)
+                                        (dissoc :fieldobsresult/FieldObsResultRowID)
+                                        (dissoc :fieldobsresult/SampleRowID)
+                                        (assoc :fieldobsresult/uuid (d/squuid)))
+                                  obsrs)
                          new-sa (-> sa
                                   (dissoc :db/id)
                                   (dissoc :sample/SiteVisitID)
@@ -124,6 +153,8 @@
                                   (dissoc :sample/SampleComplete)
                                   (dissoc :sample/SampleReplicate)
                                   (dissoc :sample/DepthSampleCollection)
+                                  (dissoc :org.riverdb/import-key)
+                                  (dissoc :sample/uuid)
                                   (assoc :sample/uuid (d/squuid))
                                   (assoc :sample/FieldObsResults (vec obsrs))
                                   (assoc :sample/ConstituentRef const)
@@ -131,26 +162,45 @@
                      (conj sas new-sa)))
                  [] obsr-m)
         txds   [[[:db/retractEntity sa-id]]]
-        txds   (conj txds [{:db/id             sv-id
-                            :sitevisit/Samples sas}])]
+        txds   (if (seq sas)
+                 (conj txds [{:db/id             sv-id
+                              :sitevisit/Samples sas}])
+                 txds)]
     txds))
 
+(defn migrate-sv [sv]
+  (let [sas (:sitevisit/Samples sv)]
+    (try
+      (log/debug "MIGRATING SV" (:db/id sv) (.toInstant ^java.util.Date (:sitevisit/SiteVisitDate sv)))
+      (reduce
+        (fn [txds sa]
+          (vec
+            (concat txds
+              (case (get-in sa [:sample/SampleTypeCode :sampletypelookup/SampleTypeCode])
+                "FieldMeasure" (migrate-fms sv sa)
+                "FieldObs" (migrate-obs sv sa)
+                "Grab" (migrate-labs sv sa)
+                []))))
+        [] sas)
+      (catch Exception ex (log/debug "FAILED TO MIGRATE SV" sv ex)))))
 
 (defn migrate [db]
   (log/debug "MIGRATE")
-  (let [sv  (d/pull db '[* {:sitevisit/Samples [* {:sample/SampleTypeCode [*]}]}] 17592186176861)
-        sas (:sitevisit/Samples sv)]
-    (reduce
-      (fn [txds sa]
-        (vec
-          (concat txds
-            (case (get-in sa [:sample/SampleTypeCode :sampletypelookup/SampleTypeCode])
-              "FieldMeasure" (migrate-fms sv sa)
-              "FieldObs" (migrate-obs sv sa)
-              "Grab" (migrate-labs sv sa)
-              []))))
-      [] sas)))
+  (let [svs (d/q '[:find
+                   [(pull ?e
+                      [* {:sitevisit/Samples
+                          [* {:sample/SampleTypeCode [:sampletypelookup/SampleTypeCode]}]}]) ...]
+                   :where [?e :riverdb.entity/ns :entity.ns/sitevisit]]
+              db)]
+    (for [sv svs]
+      (migrate-sv sv))))
 
 (comment
-  (mapv #(d/transact (cx) %) (migrate (db)))
+  (doseq [txds (migrate (db))]
+    (mapv #(try
+             @(d/transact (cx) %)
+             (catch Exception ex
+               (log/debug "ERROR:" (.getMessage ^Exception ex)))) txds))
+  (let [sv (d/pull (db) '[* {:sitevisit/Samples [* {:sample/SampleTypeCode [:sampletypelookup/SampleTypeCode]}]}] 17592186284983)]
+    (mapv #(d/transact (cx) %) (migrate-sv sv)))
   #_"")
