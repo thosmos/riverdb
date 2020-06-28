@@ -45,6 +45,24 @@
                  sv)]
     sv))
 
+(defn add-results [sv fields]
+  (let [resultsv? (contains? (set fields) :resultsv)
+        fieldmeas? (contains? (set fields) :fieldmeas)
+        fieldobs? (contains? (set fields) :fieldobs)
+        labresults? (contains? (set fields) :labresults)]
+    (for [[_ rslt] (:results sv)]
+      (let [typ (:type rslt)]
+       (cond-> sv
+         resultsv?
+         (update :resultsv (fnil conj []) rslt)
+         (and fieldmeas? (= typ "FieldMeasure"))
+         (update :fieldmeas (fnil conj []) rslt)
+         (and fieldobs? (= typ "FieldObs"))
+         (update :fieldobs (fnil conj []) rslt)
+         (and labresults? (= typ "Lab"))
+         (update :labresults (fnil conj []) rslt))))))
+
+
 (defn parse-sels [sels]
   (vec
     (for [sel sels]
@@ -113,7 +131,9 @@
                      (merge
                        {:toDate toDate}))
 
-        svs        (tac-report/get-sitevisit-summaries3 (db) opts)
+        ;svs        (tac-report/get-sitevisit-summaries3 (db) opts)
+
+        svs (tac-report/get-sitevisits3 (db) opts)
 
 
         limit      (get args :limit)
@@ -121,6 +141,13 @@
         svs        (if (or limit offset)
                      (limit-fn limit offset svs)
                      svs)
+
+        svs (tac-report/create-sitevisit-summaries3 svs)
+        svs (tac-report/filter-empty-fieldresults svs)
+        svs (riverdb.util/sort-maps-by svs [:date :site])
+
+
+
         formatter  (SimpleDateFormat. "yyyy-MM-dd")
 
         svs        (for [sv svs]
@@ -129,8 +156,9 @@
                        (clojure.set/rename-keys key-change)
                        (tu/walk-modify-k-vals :id str)
                        (update :date #(.format formatter %))
+                       ;(add-results fields)
                        (add-resultsv fields)))]
-    (debug "SITEVISITS first:" (first svs))
+    ;(debug "SITEVISITS first:" (first svs))
     svs))
 
 

@@ -429,22 +429,36 @@
                    ;                       :entity_prn_dash_keys {:type 'String}}}
 
                    :list_meta          {:fields {:count {:type 'Int}}}
-                   :fldrslt            {:fields {:count         {:type 'Int}
-                                                 :matrix        {:type 'String}
-                                                 :analyte       {:type 'String}
-                                                 :unit          {:type 'String}
-                                                 :vals          {:type '(list Float)}
-                                                 :is_valid      {:type 'Boolean}
-                                                 :max           {:type 'Float}
-                                                 :min           {:type 'Float}
-                                                 :range         {:type 'Float}
-                                                 :stddev        {:type 'Float}
-                                                 :mean          {:type 'Float}
-                                                 :prec          {:type 'Float}
-                                                 :is_too_low    {:type 'Boolean}
-                                                 :is_too_high   {:type 'Boolean}
-                                                 :is_too_few    {:type 'Boolean}
-                                                 :is_exceedance {:type 'Boolean}}}
+                   :fldresult            {:fields {:count         {:type 'Int}
+                                                   :matrix        {:type 'String}
+                                                   :type          {:type 'String}
+                                                   :qual          {:type 'String}
+                                                   :analyte       {:type 'String}
+                                                   :unit          {:type 'String}
+                                                   :vals          {:type '(list Float)}
+                                                   :is_valid      {:type 'Boolean}
+                                                   :max           {:type 'Float}
+                                                   :min           {:type 'Float}
+                                                   :range         {:type 'Float}
+                                                   :stddev        {:type 'Float}
+                                                   :mean          {:type 'Float}
+                                                   :prec          {:type 'Float}
+                                                   :is_too_low    {:type 'Boolean}
+                                                   :is_too_high   {:type 'Boolean}
+                                                   :is_too_few    {:type 'Boolean}
+                                                   :is_exceedance {:type 'Boolean}}}
+                   :labrslt          {:fields {:matrix        {:type 'String}
+                                               :qual          {:type 'String
+                                                               :description "Result qualifier"}
+                                               :analyte       {:type 'String}
+                                               :unit          {:type 'String}
+                                               :result        {:type 'Float}
+                                               :is_too_low    {:type 'Boolean}
+                                               :is_too_high   {:type 'Boolean}
+                                               :is_exceedance {:type 'Boolean}}}
+                   :fieldobs           {:fields {:analyte       {:type 'String}
+                                                 :intvalue      {:type 'Int}
+                                                 :textvalue     {:type 'String}}}
                    :station            {:fields {:id           {:type 'ID}
                                                  :station_id   {:type 'Int}
                                                  :station_code {:type 'String}
@@ -456,8 +470,14 @@
                                                       :notes    {:type 'String}
                                                       :valid    {:type 'Boolean}
                                                       :station  {:type :station}
-                                                      :resultsv {:type        '(list :fldrslt)
-                                                                 :description "summary info about a field result"}}}
+                                                      :resultsv {:type '(list :fldresult)
+                                                                 :description "a field result"}
+                                                      :fieldmeas {:type '(list :fldresult)
+                                                                  :description "Field Measurements"}
+                                                      :labresults {:type '(list :labrslt)
+                                                                   :description "Field Measurements"}
+                                                      :fieldobs  {:type '(list :fieldobs)
+                                                                  :description "Field Observations"}}}
 
 
                    :agency_detail      {:fields {:AgencyCode     {:type 'String}
