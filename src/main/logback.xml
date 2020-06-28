@@ -31,6 +31,7 @@
     <!-- encoder defaults to ch.qos.logback.classic.encoder.PatternLayoutEncoder -->
     <encoder>
       <pattern>%-5level %logger{36} - %msg%n</pattern>
+<!--      <pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n</pattern>-->
     </encoder>
     <!-- Only log level INFO and above -->
     <!--<filter class="ch.qos.logback.classic.filter.ThresholdFilter">-->
@@ -51,6 +52,7 @@
   <logger name="domain-spec" level="ALL" />
   <logger name="riverdb-graphql" level="ALL" />
   <logger name="user" level="ALL" />
+  <logger name="migrate-samples" level="ALL" />
   <!-- To log pedestal internals, enable this and change ThresholdFilter to DEBUG
     <logger name="io.pedestal" level="ALL" />
   -->

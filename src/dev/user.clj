@@ -2,7 +2,6 @@
   (:require
     [clojure.edn :as edn]
     [clojure.tools.namespace.repl :as tools-ns :refer [set-refresh-dirs]]
-    [clojure.tools.logging :as log]
     [datascript.core :as ds]
     [datomic.api :as d]
     [domain-spec.core :as dspec]
