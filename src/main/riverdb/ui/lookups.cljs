@@ -772,20 +772,20 @@
   :query
   [:db/id
    :riverdb.entity/ns
-   :parameter/active
-   :parameter/color
-   :parameter/constituentlookupRef
-   :parameter/samplingdevicelookupRef
-   :parameter/high
-   :parameter/lines
-   :parameter/low
-   :parameter/name
-   :parameter/nameShort
-   :parameter/precisionCode
-   :parameter/replicates
-   :parameter/replicatesEntry
-   :parameter/replicatesElide
-   :parameter/sampleTypeRef
+   :parameter/Active
+   :parameter/Color
+   :parameter/Constituent
+   :parameter/DeviceType
+   :parameter/High
+   :parameter/Lines
+   :parameter/Low
+   :parameter/Name
+   :parameter/NameShort
+   :parameter/PrecisionCode
+   :parameter/Replicates
+   :parameter/ReplicatesEntry
+   :parameter/ReplicatesElide
+   :parameter/SampleType
    :parameter/uuid]}
  (debug (str "RENDER " ns)))
 
@@ -795,7 +795,7 @@
  {:ident [:org.riverdb.db.parameter/gid :db/id],
   :initial-state
   {:riverdb.entity/ns :entity.ns/parameter, :db/id (tempid)},
-  :query [:db/id :riverdb.entity/ns :parameter/active :parameter/name]})
+  :query [:db/id :riverdb.entity/ns :parameter/Active :parameter/Name]})
 
 
 (defsc

@@ -44,6 +44,7 @@
     [riverdb.util :refer [sort-maps-by with-index]]
     [riverdb.ui.agency :refer [preload-agency Agency]]
     [riverdb.ui.components :refer [ui-datepicker]]
+    [riverdb.ui.comps.sample-list :refer [ui-sample-list]]
     [riverdb.ui.forms :refer [SampleTypeCodeForm]]
     [riverdb.ui.globals :refer [Globals]]
     [riverdb.ui.lookup-options :refer [preload-options ui-theta-options ThetaOptions]]
@@ -88,6 +89,13 @@
    :query [:db/id
            :constituentlookup/Name
            fs/form-config-join]})
+
+(defsc SampleConstituentForm [this props]
+  {:ident [:org.riverdb.db.constituentlookup/gid :db/id]
+   :query [:db/id
+           :constituentlookup/Name
+           fs/form-config-join]
+   :form-fields #{:db/id}})
 
 
 (defsc FieldResultForm [this {:keys [] :as props}]
@@ -184,16 +192,16 @@
    {:keys [fieldobs-results fieldobs-params] :as props}
    {:keys [fieldobsvarlookup-options sample]}]
   {:query             [:fieldobs-results :fieldobs-params]
-   :initial-state     {:fieldobs-params  [{:parameter/name                 "CanopyCover"
-                                           :parameter/constituentlookupRef {:db/id "17592186158390"}}
-                                          {:parameter/name                 "SkyCode"
-                                           :parameter/constituentlookupRef {:db/id "17592186157657"}}
-                                          {:parameter/name                 "Precipitation"
-                                           :parameter/constituentlookupRef {:db/id "17592186156566"}}
-                                          {:parameter/name                 "WaterClarity"
-                                           :parameter/constituentlookupRef {:db/id "17592186158389"}}
-                                          {:parameter/name                 "WindSpeed"
-                                           :parameter/constituentlookupRef {:db/id "17592186158388"}}]
+   :initial-state     {:fieldobs-params  [{:parameter/Name                 "CanopyCover"
+                                           :parameter/Constituent {:db/id "17592186158390"}}
+                                          {:parameter/Name                 "SkyCode"
+                                           :parameter/Constituent {:db/id "17592186157657"}}
+                                          {:parameter/Name                 "Precipitation"
+                                           :parameter/Constituent {:db/id "17592186156566"}}
+                                          {:parameter/Name                 "WaterClarity"
+                                           :parameter/Constituent {:db/id "17592186158389"}}
+                                          {:parameter/Name                 "WindSpeed"
+                                           :parameter/Constituent {:db/id "17592186158388"}}]
                        :fieldobs-results [{:db/id                           (tempid/tempid)
                                            :riverdb.entity/ns               :entity.ns/fieldobsresult
                                            :fieldobsresult/uuid             (tempid/uuid)
@@ -233,13 +241,13 @@
       (dom/h3 {} "Field Observations")
       (vec
         (map-indexed
-          (fn [i {:parameter/keys [name constituentlookupRef]}]
-            (let [obsresult (filter #(= (:db/id constituentlookupRef) (get-in % [:fieldobsresult/ConstituentRowID :db/id])) fieldobs-results)
+          (fn [i {:parameter/keys [Name Constituent]}]
+            (let [obsresult (filter #(= (:db/id Constituent) (get-in % [:fieldobsresult/ConstituentRowID :db/id])) fieldobs-results)
                   obsvalue  (when (seq obsresult) (:fieldobsresult/TextResult (first obsresult)))
                   intval    (when (seq obsresult) (:fieldobsresult/IntResult (first obsresult)))
-                  options   (filter #(= (:filt %) name) (:ui/options fieldobsvarlookup-options))]
-              (debug "Param" name "obsvalue" obsvalue "intval" intval "fieldobs-results" fieldobs-results)
-              (div :.fields {:key i} (str name ": (" intval ":" obsvalue ") ")
+                  options   (filter #(= (:filt %) Name) (:ui/options fieldobsvarlookup-options))]
+              (debug "Param" Name "obsvalue" obsvalue "intval" intval "fieldobs-results" fieldobs-results)
+              (div :.fields {:key i} (str Name ": (" intval ":" obsvalue ") ")
                 (vec
                   (map-indexed
                     (fn [j {:keys [value text]}]
@@ -249,13 +257,13 @@
                           {:radio    true
                            :key      value
                            :label    text
-                           :name     name
+                           :name     Name
                            :value    value
                            :checked  ichecked
                            :style    {:marginLeft 10}
                            :onChange #(let []
-                                        (debug "ON CHANGE" name value obsvalue text (not ichecked))
-                                        (comp/transact! this `[(save-obs {:sample ~sample :name ~name :text ~text :value ~value :obsvalue ~obsvalue :intval ~intval :const ~constituentlookupRef})])
+                                        (debug "ON CHANGE" Name value obsvalue text (not ichecked))
+                                        (comp/transact! this `[(save-obs {:sample ~sample :name ~Name :text ~text :value ~value :obsvalue ~obsvalue :intval ~intval :const ~Constituent})])
                                         #_(fm/set-value! this :fieldobsresult/TextResult text))})))
                     options)))))
           fieldobs-params)))))
@@ -378,16 +386,14 @@
 
 (defsc FieldMeasureParamForm
   [this
-   {:parameter/keys [replicates replicatesEntry
-                     samplingdevicelookupRef constituentlookupRef
-                     precisionCode high low]
+   {:parameter/keys [Replicates
+                     PrecisionCode High Low]
     :keys           [db/id] :as props}
-   {:keys [samplingdevicelookup-options
-           sv-comp sample-props fieldresults fr-map reps
+   {:keys [sv-comp sample-props fieldresults fr-map reps
            samp-ident deviceTypeLookup deviceLookup]}]
   {:query          (fn [] [:db/id
-                           :parameter/name
-                           :parameter/samplingdevicelookupRef])
+                           :parameter/Name
+                           :parameter/DeviceType])
    :initLocalState (fn [this props]
                      ;(debug "INIT LOCAL STATE FieldMeasureParamForm" props)
                      (let [cmp   (:fulcro.client.primitives/computed props)
@@ -404,9 +410,9 @@
                        ;(debug "INIT LOCAL STATE FieldMeasureParamForm" stuff)
                        stuff))}
 
-  (let [p-name        (:parameter/name props)
-        p-device      (:parameter/samplingdevicelookupRef props)
-        p-const       (:parameter/constituentlookupRef props)
+  (let [p-name        (:parameter/Name props)
+        p-device      (:parameter/DeviceType props)
+        p-const       (:parameter/Constituent props)
         results       fieldresults
         rs-map        (into {} (map #(identity [(:fieldresult/FieldReplicate %) %]) fieldresults))
         rslts         (->> (mapv :fieldresult/Result results)
@@ -432,7 +438,7 @@
         mean          (tu/round2 2 mean)
 
         stddev        (tu/round2 2 stddev)
-        prec          (clojure.edn/read-string precisionCode)
+        prec          (clojure.edn/read-string PrecisionCode)
         precRSD       (:rsd prec)
         precRange     (:range prec)
         precThreshold (:threshold prec)
@@ -442,8 +448,8 @@
                             (> rnge precRange)
                             (< mean precThreshold))
                           (> rnge precRange)))
-        low (when low (.-rep low))
-        high (when high (.-rep high))
+        low (when Low (.-rep Low))
+        high (when High (.-rep High))
 
         qualExc       (or
                         (and high (> mean high))
@@ -508,7 +514,7 @@
                                                  (comp/transact! this `[(set-all {:dbids ~(mapv :db/id results)
                                                                                   :k     :fieldresult/ResultTime
                                                                                   :v     ~value})]))}))
-      (td {:key "reps" :style {:color (if (< (count rslts) replicates) "red" "black")}} (or (str (count rslts)) ""))
+      (td {:key "reps" :style {:color (if (< (count rslts) Replicates) "red" "black")}} (or (str (count rslts)) ""))
       (ui-popup
         {:open    false
          :trigger (td {:key "range" :style {:color (if rangeExc "red" "black")}} (or (str rnge) ""))}
@@ -522,12 +528,69 @@
 
 (def ui-fieldmeasure-param-form (comp/factory FieldMeasureParamForm {:keyfn :db/id}))
 
+;(defsc FieldMeasureParamList [this
+;                              {:keys [fieldresults
+;                                      fieldmeasure-params]}
+;                              {:keys [deviceTypeLookup
+;                                      deviceLookup
+;                                      samplingdevicelookup-options
+;                                      sv-comp
+;                                      sample-props
+;                                      samp-ident]}]
+;  {:query [{:fieldresults (comp/get-query FieldResultForm)}
+;           :fieldmeasure-params]}
+;  (let [max-reps (reduce
+;                   (fn [mx p]
+;                     (if-let [reps (:parameter/ReplicatesEntry p)]
+;                       (max reps mx)
+;                       mx))
+;                   1 fieldmeasure-params)
+;        fr-map   (fieldresults->fr-map (map rutil/convert-db-refs fieldresults))]
+;    ;(debug "RENDER FieldMeasureParamList" "params" fieldmeasure-params) ;"fr-map" fr-map "results" fieldresults) ;"params" fieldmeasure-params)
+;    (div {}
+;      (dom/h3 {} "Field Measurements")
+;      (table :.ui.very.compact.mini.table {:key "wqtab"}
+;        (thead {:key 1}
+;          (tr {}
+;            (th {:key "nm"} "Param")
+;            (th {:key "inst"} "Device")
+;            (th {:key "instID"} "Inst ID")
+;            (th {:key "units"} "Units")
+;            (map
+;              #(identity
+;                 (th {:key (str %)} (str "Test " %)))
+;              (range 1 (inc max-reps)))
+;            (th {:key "time"} "Time")
+;            (th {:key "reps"} "# Tests")
+;            (th {:key "range"} "Range")
+;            (th {:key "mean"} "Mean")
+;            (th {:key "stddev"} "Std Dev")))
+;            ;(th {:key "rds"} "Prec")))
+;        (tbody {:key 2}
+;          (vec
+;            (for [fm-param fieldmeasure-params]
+;              (let [const     (:parameter/Constituent fm-param)
+;                    f-results (filter-fieldresult-constituent const fieldresults)]
+;                (ui-fieldmeasure-param-form
+;                  (comp/computed fm-param
+;                    {:samplingdevicelookup-options samplingdevicelookup-options
+;                     :deviceTypeLookup             deviceTypeLookup
+;                     :deviceLookup                 deviceLookup
+;                     :sv-comp                      sv-comp
+;                     :sample-props                 sample-props
+;                     :fieldresults                 f-results
+;                     :fr-map                       fr-map
+;                     :reps                         max-reps
+;                     :samp-ident                   samp-ident}))))))))))
+;
+;(def ui-fieldmeasure-param-list (comp/factory FieldMeasureParamList))
+
+
 (defsc FieldMeasureParamList [this
                               {:keys [fieldresults
                                       fieldmeasure-params]}
                               {:keys [deviceTypeLookup
                                       deviceLookup
-                                      samplingdevicelookup-options
                                       sv-comp
                                       sample-props
                                       samp-ident]}]
@@ -535,7 +598,7 @@
            :fieldmeasure-params]}
   (let [max-reps (reduce
                    (fn [mx p]
-                     (if-let [reps (:parameter/replicatesEntry p)]
+                     (if-let [reps (:parameter/ReplicatesEntry p)]
                        (max reps mx)
                        mx))
                    1 fieldmeasure-params)
@@ -559,16 +622,15 @@
             (th {:key "range"} "Range")
             (th {:key "mean"} "Mean")
             (th {:key "stddev"} "Std Dev")))
-            ;(th {:key "rds"} "Prec")))
+        ;(th {:key "rds"} "Prec")))
         (tbody {:key 2}
           (vec
             (for [fm-param fieldmeasure-params]
-              (let [const     (:parameter/constituentlookupRef fm-param)
+              (let [const     (:parameter/Constituent fm-param)
                     f-results (filter-fieldresult-constituent const fieldresults)]
                 (ui-fieldmeasure-param-form
                   (comp/computed fm-param
-                    {:samplingdevicelookup-options samplingdevicelookup-options
-                     :deviceTypeLookup             deviceTypeLookup
+                    {:deviceTypeLookup             deviceTypeLookup
                      :deviceLookup                 deviceLookup
                      :sv-comp                      sv-comp
                      :sample-props                 sample-props
@@ -600,6 +662,7 @@
                        :sample/SampleDate
                        :sample/SampleTime
                        :sample/Time
+                       {:sample/Constituent (comp/get-query SampleConstituentForm)}
                        {:sample/SampleTypeCode (comp/get-query SampleTypeCodeForm)}
                        {:sample/FieldResults (comp/get-query FieldResultForm)}
                        {:sample/FieldObsResults (comp/get-query FieldObsResultForm)}
@@ -625,7 +688,7 @@
                                                   (lookup-db-ident {:db/ident :sampletypelookup.SampleTypeCode/FieldObs})
                                                   :grab
                                                   (lookup-db-ident {:db/ident :sampletypelookup.SampleTypeCode/Grab})
-                                                  ;; default:
+                                                  :fieldmeasure
                                                   (lookup-db-ident {:db/ident :sampletypelookup.SampleTypeCode/FieldMeasure}))})
    :form-fields       #{:db/id
                         :sample/uuid
@@ -740,6 +803,7 @@
 ;      :entity.ns/person
 ;      (swap! state riverdb.ui.person/add-person* v target field-k options-target))))
 
+
 (fm/defmutation post-save-mutation [{:keys [form-ident field-k ent-ns orig new-id new-name options-target modal-ident]}]
   (action [{:keys [state]}]
     (debug "POST SAVE MUTATION" form-ident ent-ns field-k orig new-id new-name options-target)
@@ -839,14 +903,12 @@
                       :sitevisit/uuid              (or uuid (tempid/uuid))
                       :sitevisit/CreationTimestamp (js/Date.)
                       :sitevisit/Visitors          []
-                      :sitevisit/Samples           [(comp/get-initial-state SampleForm {:type :fieldmeasure})
-                                                    (comp/get-initial-state SampleForm {:type :fieldobs})
-                                                    (comp/get-initial-state SampleForm {:type :grab})]
+                      :sitevisit/Samples           []
                       :sitevisit/VisitType         (or VisitType {:db/ident :sitevisittype/Monthly})
                       :sitevisit/StationFailCode   (or StationFailCode {:db/ident :stationfaillookup/None})})
 
    :initLocalState (fn [this props]
-                     {:onChange #(debug "ON CHANGE SAMPLE" %)})
+                     {:onChangeSample #(debug "ON CHANGE SAMPLE" %)})
 
    :form-fields    #{:riverdb.entity/ns
                      :sitevisit/uuid
@@ -862,7 +924,8 @@
   (let [{:keys [onChangeSample]} (comp/get-state this)
         dirty-fields  (fs/dirty-fields props false)
         dirty?        (some? (seq dirty-fields))
-        active-params (filter :parameter/active parameters)
+        active-params (filter :parameter/Active parameters)
+        param-types   (set (map #(get-in % [:parameter/SampleType :db/ident]) active-params))
         this-ident    (when props
                         (comp/get-ident this))
         default-opts  {:clearable true
@@ -877,7 +940,7 @@
          stationfaillookup-options :entity.ns/stationfaillookup
          fieldobsvarlookup-options :entity.ns/fieldobsvarlookup} (:riverdb.theta.options/ns props)]
 
-    (debug "RENDER SiteVisitForm") ;"props" props "params" active-params)
+    (debug "RENDER SiteVisitForm" "props" props "params" active-params)
     (div :.dimmable.fields {:key "sv-form"}
       (ui-dimmer {:inverted true :active (or (not ready) (not props))}
         (ui-loader {:indeterminate true}))
@@ -1041,27 +1104,20 @@
                                            (set-value! this :sitevisit/Notes (-> % .-target .-value)))})
 
 
-          (when (not-empty Samples)
-            (let [fm   (first (filter-sample-typecode "FieldMeasure" Samples))
-                  obs  (first (filter-sample-typecode "FieldObs" Samples))
-                  grab (first (filter-sample-typecode "Grab" Samples))]
-              ;(debug "SAMPLES" "FM" fm "OBS" obs)
-              [(ui-sample-form
-                 (comp/computed (or fm (comp/get-initial-state SampleForm {:type :fieldmeasure}))
-                   {:active-params active-params
-                    :sv-comp       this
-                    :onChange      onChangeSample}))]))
-          ;(ui-sample-form
-          ;  (comp/computed (or obs (comp/get-initial-state SampleForm {:type :fieldobs}))
-          ;    {:active-params             active-params
-          ;     :sv-comp                   this
-          ;     :onChange                  onChangeSample
-          ;     :fieldobsvarlookup-options fieldobsvarlookup-options}))
-          ;(ui-sample-form
-          ;  (comp/computed (or grab (comp/get-initial-state SampleForm {:type :grab}))
-          ;    {:active-params active-params
-          ;     :sv-comp       this
-          ;     :onChange      onChangeSample}))]))
+
+          (div (str param-types))
+          (for [sample-type param-types]
+            (let [params (filter-param-typecode sample-type active-params)
+                  samples (filter-sample-typecode sample-type Samples)]
+              (ui-sample-list
+                (comp/computed
+                  {:ui/sample-type sample-type
+                   :ui/params      params
+                   :ui/samples     samples}
+                  {:sv-comp        this
+                   :onChangeSample onChangeSample}))))
+
+
 
 
 
@@ -1251,7 +1307,7 @@
                         :.ui.raised.segment {:padding ".3em"}
                         :.ui.table {:margin-top ".3em"}]]}
   (let [parameters (get-in current-project [:projectslookup/Parameters])
-        parameters (vec (riverdb.util/sort-maps-by parameters [:parameter/order]))
+        parameters (vec (riverdb.util/sort-maps-by parameters [:parameter/Order]))
         marker     (get props [df/marker-table ::sv])]
     (debug "RENDER SiteVisitsEditor")
     (div {}

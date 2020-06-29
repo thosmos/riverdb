@@ -62,12 +62,12 @@
                                  (dissoc :org.riverdb/import-key)
                                  (assoc :sample/uuid (d/squuid))
                                  (assoc :sample/FieldResults (vec frs))
-                                 (assoc :sample/ConstituentRef const)
+                                 (assoc :sample/Constituent const)
                                  (#(if devType
-                                     (assoc % :sample/DeviceTypeRef devType)
+                                     (assoc % :sample/DeviceType devType)
                                      %))
                                  (#(if devID
-                                     (assoc % :sample/DeviceIDRef devID)
+                                     (assoc % :sample/DeviceID devID)
                                      %))
                                  (#(if time
                                      (assoc % :sample/Time time)
@@ -117,7 +117,7 @@
                                  (dissoc :org.riverdb/import-key)
                                  (assoc :sample/uuid (d/squuid))
                                  (assoc :sample/LabResults (vec lrs))
-                                 (assoc :sample/ConstituentRef const)
+                                 (assoc :sample/Constituent const)
                                  (assoc :sample/SampleTypeCode :sampletypelookup.SampleTypeCode/Grab))]
                     (conj sas new-sa)))
                 [] lr-m)
@@ -157,7 +157,7 @@
                                   (dissoc :sample/uuid)
                                   (assoc :sample/uuid (d/squuid))
                                   (assoc :sample/FieldObsResults (vec obsrs))
-                                  (assoc :sample/ConstituentRef const)
+                                  (assoc :sample/Constituent const)
                                   (assoc :sample/SampleTypeCode :sampletypelookup.SampleTypeCode/FieldObs))]
                      (conj sas new-sa)))
                  [] obsr-m)

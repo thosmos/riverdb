@@ -90,12 +90,12 @@
 (s/def ::range number?)
 (s/def ::rsd number?)
 (s/def ::threshold number?)
-(s/def :parameter/precisionCode (s/nilable (s/keys :opt-un [::range ::rsd ::threshold])))
+(s/def :parameter/PrecisionCode (s/nilable (s/keys :opt-un [::range ::rsd ::threshold])))
 
 (defn parameter-valid [form field]
   (let [v (get form field)]
     (case field
-      :parameter/precisionCode
+      :parameter/PrecisionCode
       (let [edn-val (try (cljs.reader/read-string v) (catch js/Object ex nil))
             {:keys [threshold range rsd]} edn-val]
         (cond
@@ -237,7 +237,7 @@
 
 (def ui-param-cell (comp/factory ParamCell))
 
-(defsc ParamRow [this {:parameter/keys [name active] :as props} {:keys [provided snapshot onEdit] :as computed}]
+(defsc ParamRow [this {:parameter/keys [Name Active] :as props} {:keys [provided snapshot onEdit] :as computed}]
   {}
   ;(debug "RENDER ParamRow" name)
   (let [{:keys [dragHandleProps draggableProps innerRef]} (js->clj provided :keywordize-keys true)
@@ -257,11 +257,11 @@
       (ui-param-cell
         {:cellId     "name"
          :isDragging isDragging}
-        name)
+        Name)
       (ui-param-cell
         {:cellId     "active"
          :isDragging isDragging}
-        (str active))
+        (str Active))
       (ui-param-cell
         {:cellId     "edit"
          :isDragging isDragging}
@@ -282,11 +282,10 @@
 
 (defsc ParameterForm [this {:keys           [root/tx-result db/id]
                             :ui/keys        [editing saving]
-                            :parameter/keys [active name nameShort high low
-                                             precisionCode replicates
-                                             constituentlookupRef
-                                             samplingdevicelookupRef
-                                             sampleTypeRef]
+                            :parameter/keys [Name
+                                             Constituent
+                                             DeviceType
+                                             SampleType]
                             :as             props}
                       {:keys [cancel-new on-save i]}]
   {:ident          [:org.riverdb.db.parameter/gid :db/id]
@@ -294,24 +293,23 @@
                      [fs/form-config-join
                       :db/id
                       :riverdb.entity/ns
-                      :parameter/active
-                      :parameter/color
-                      :parameter/high
-                      :parameter/lines
-                      :parameter/low
-                      :parameter/name
-                      :parameter/nameShort
-                      :parameter/order
-                      :parameter/precisionCode
-                      :parameter/replicates
-                      :parameter/replicatesEntry
-                      :parameter/replicatesElide
+                      :parameter/Active
+                      :parameter/Color
+                      :parameter/High
+                      :parameter/Lines
+                      :parameter/Low
+                      :parameter/Name
+                      :parameter/NameShort
+                      :parameter/Order
+                      :parameter/PrecisionCode
+                      :parameter/Replicates
+                      :parameter/ReplicatesEntry
+                      :parameter/ReplicatesElide
                       ;; passed to lookup dropdowns
                       :parameter/uuid
-                      :parameter/constituentlookupRef
-                      :parameter/samplingdevicelookupRef
-                      ;:parameter/sampleTypeRef
-                      {:parameter/sampleTypeRef (comp/get-query SampleTypeForm)}
+                      :parameter/Constituent
+                      :parameter/DeviceType
+                      {:parameter/SampleType (comp/get-query SampleTypeForm)}
                       :ui/editing
                       :ui/saving
                       [:riverdb.theta.options/ns '_]
@@ -325,32 +323,32 @@
                      {:db/id                   (tempid/tempid)
                       :parameter/uuid          (tempid/uuid)
                       :riverdb.entity/ns       :entity.ns/parameter
-                      :parameter/name          ""
+                      :parameter/Name          ""
                       :ui/editing              true
                       :ui/saving               false
-                      :parameter/active        false
-                      :parameter/order         999
-                      :parameter/sampleTypeRef type})
+                      :parameter/Active        false
+                      :parameter/Order         999
+                      :parameter/SampleType    type})
    :form-fields    #{:db/id
                      :riverdb.entity/ns
                      :parameter/uuid
-                     :parameter/name
-                     :parameter/active
-                     :parameter/constituentlookupRef
-                     :parameter/samplingdevicelookupRef
-                     :parameter/sampleTypeRef
-                     :parameter/color
-                     :parameter/high
-                     :parameter/lines
-                     :parameter/low
-                     :parameter/nameShort
-                     :parameter/order
-                     :parameter/replicates
-                     :parameter/replicatesEntry
-                     :parameter/replicatesElide
-                     :parameter/precisionCode}}
+                     :parameter/Name
+                     :parameter/Active
+                     :parameter/Constituent
+                     :parameter/DeviceType
+                     :parameter/SampleType
+                     :parameter/Color
+                     :parameter/High
+                     :parameter/Lines
+                     :parameter/Low
+                     :parameter/NameShort
+                     :parameter/Order
+                     :parameter/Replicates
+                     :parameter/ReplicatesEntry
+                     :parameter/ReplicatesElide
+                     :parameter/PrecisionCode}}
   ;:pre-merge     (fn [{:keys [current-normalized data-tree] :as env}]
-  ;                 ;(debug "PREMERGE ParameterForm" (:parameter/active data-tree) current-normalized data-tree)
+  ;                 ;(debug "PREMERGE ParameterForm" (:parameter/Active data-tree) current-normalized data-tree)
   ;                 (->> data-tree
   ;                   (clojure.walk/postwalk #(if (= % :com.fulcrologic.fulcro.algorithms.merge/not-found) nil %))
   ;                   (merge current-normalized)))}
@@ -362,26 +360,26 @@
         {sampletypelookup-options     :entity.ns/sampletypelookup
          constituentlookup-options    :entity.ns/constituentlookup
          samplingdevicelookup-options :entity.ns/samplingdevicelookup} (:riverdb.theta.options/ns props)]
-    (debug "RENDER ParameterForm" name props)
+    (debug "RENDER ParameterForm" Name props)
     (if editing
       (ui-modal {:open editing}
-        (ui-modal-header {:content (str "Edit Parameter: " name)})
+        (ui-modal-header {:content (str "Edit Parameter: " Name)})
         (ui-modal-content {}
           (when (not (empty? tx-result))
             (ui-tx-result tx-result))
           (div :.ui.form {}
             (div :.ui.segment {}
-              (ui-header {} name)
+              (ui-header {} Name)
               (div :.fields {}
-                (div :.field {} (rui-input this :parameter/name {:required true :style {:width 200}}))
+                (div :.field {} (rui-input this :parameter/Name {:required true :style {:width 200}}))
                 (div :.field {}
                   (ui-popup
-                    {:trigger (rui-input this :parameter/nameShort
+                    {:trigger (rui-input this :parameter/NameShort
                                 {:required true :style {:width 100}
                                  :label    (label {} "Short Name" info-icon)})}
-                    (get-in param-specs [:parameter/nameShort :attr/doc])))
+                    (get-in param-specs [:parameter/NameShort :attr/doc])))
 
-                (div :.field {} (rui-checkbox this :parameter/active {})))
+                (div :.field {} (rui-checkbox this :parameter/Active {})))
               (div :.field {}
                 (dom/label {} "Sample Type")
                 (ui-theta-options
@@ -389,11 +387,11 @@
                     (merge
                       sampletypelookup-options
                       {:riverdb.entity/ns :entity.ns/sampletypelookup
-                       :value             sampleTypeRef
+                       :value             SampleType
                        :opts              {:load true}})
                     {:changeMutation `set-value
                      :changeParams   {:ident this-ident
-                                      :k     :parameter/sampleTypeRef}})))
+                                      :k     :parameter/SampleType}})))
               (div :.field {}
                 (dom/label {} "Constituent (Analyte | Matrix | Unit | Method | Fraction)")
                 (ui-theta-options
@@ -401,12 +399,12 @@
                     (merge
                       constituentlookup-options
                       {:riverdb.entity/ns :entity.ns/constituentlookup
-                       :value             constituentlookupRef
+                       :value             Constituent
                        :opts              {:load  true
                                            :style {:width "100%"}}})
                     {:changeMutation `set-value
                      :changeParams   {:ident this-ident
-                                      :k     :parameter/constituentlookupRef}})))
+                                      :k     :parameter/Constituent}})))
               (div :.field {}
                 (dom/label {} "Default Device")
                 (ui-theta-options
@@ -414,29 +412,29 @@
                     (merge
                       samplingdevicelookup-options
                       {:riverdb.entity/ns :entity.ns/samplingdevicelookup
-                       :value             samplingdevicelookupRef
+                       :value             DeviceType
                        :opts              {:clearable true :load true}})
                     {:changeMutation `set-value
                      :changeParams   {:ident this-ident
-                                      :k     :parameter/samplingdevicelookupRef}})))
+                                      :k     :parameter/DeviceType}})))
               (div :.field
                 (label {} "Data Quality")
                 (div :.fields {}
-                  (div :.field {} (rui-bigdec this :parameter/low {:style {:width 80}}))
-                  (div :.field {} (rui-bigdec this :parameter/high {:style {:width 80}}))
+                  (div :.field {} (rui-bigdec this :parameter/Low {:style {:width 80}}))
+                  (div :.field {} (rui-bigdec this :parameter/High {:style {:width 80}}))
                   (div :.field {}
                     (ui-popup
-                      {:trigger (rui-int this :parameter/replicates {:style {:width 80} :label (label {} "Required Replicates" info-icon)})}
-                      (get-in param-specs [:parameter/replicates :attr/doc])))
+                      {:trigger (rui-int this :parameter/Replicates {:style {:width 80} :label (label {} "Required Replicates" info-icon)})}
+                      (get-in param-specs [:parameter/Replicates :attr/doc])))
                   (div :.field {}
                     (ui-popup
-                      {:trigger (rui-int this :parameter/replicatesEntry {:label (label {} "Entry Replicates" info-icon) :style {:width 80}})}
-                      (get-in param-specs [:parameter/replicatesEntry :attr/doc])))
+                      {:trigger (rui-int this :parameter/ReplicatesEntry {:label (label {} "Entry Replicates" info-icon) :style {:width 80}})}
+                      (get-in param-specs [:parameter/ReplicatesEntry :attr/doc])))
                   (div :.field {}
                     (ui-popup
-                      {:trigger (rui-checkbox this :parameter/replicatesElide {:label (label {} "Elide Outliers?" info-icon)})}
-                      (get-in param-specs [:parameter/replicatesElide :attr/doc])))))
-              (ui-precision this :parameter/precisionCode)
+                      {:trigger (rui-checkbox this :parameter/ReplicatesElide {:label (label {} "Elide Outliers?" info-icon)})}
+                      (get-in param-specs [:parameter/ReplicatesElide :attr/doc])))))
+              (ui-precision this :parameter/PrecisionCode)
 
               #_(div :.field {}
                   (label {} "Chart Lines")
@@ -444,7 +442,7 @@
               (when saving
                 "SAVING")
               (ui-cancel-save this props dirty?
-                {:success-msg (str "Parameter " name " Saved")
+                {:success-msg (str "Parameter " Name " Saved")
                  :onCancel    #(when (tempid/tempid? id)
                                  (cancel-new id))
                  :onSave      on-save})))))
@@ -496,7 +494,7 @@
 (defn update-param-order* [state param-idents]
   (loop [i 0 st state]
     (if-let [ident (get param-idents i)]
-      (recur (inc i) (assoc-in st (conj ident :parameter/order) i))
+      (recur (inc i) (assoc-in st (conj ident :parameter/Order) i))
       st)))
 
 (defmutation reorder-params [{:keys [param-ids]}]
@@ -512,8 +510,7 @@
         onDragEnd         (fn [e]
                             (let [{:keys [source reason destination] :as result} (js->clj e :keywordize-keys true)
                                   fromIndex (:index source)
-                                  toIndex   (:index destination)
-                                  {:keys [params]} (comp/props this)]
+                                  toIndex   (:index destination)]
                               (debug ":onDragEnd" "FROM" fromIndex "TO" toIndex)
                               (reset! isDragOccurring false)
                               (cond
@@ -570,8 +567,8 @@
                                       :style {}}
                                      (js->clj (. provided -droppableProps)))
                                    (map-indexed
-                                     (fn [i p]
-                                       (let [p-data (fs/add-form-config ParameterForm p)]
+                                     (fn [i p-data]
+                                       (let [p-data (fs/add-form-config ParameterForm p-data)]
                                          (debug "param" i p-data)
                                          (ui-parameter-form
                                            (comp/computed
@@ -639,10 +636,11 @@
                         (let [props (comp/props this)]
                           #_(fm/set-value! this :ui/ready true)))}
   (let [this-ident   (comp/get-ident this)
-        Parameters   (vec (riverdb.util/sort-maps-by Parameters [:parameter/order]))
+        Parameters   (vec (riverdb.util/sort-maps-by Parameters [:parameter/Order]))
         fm-params    (filter-param-typecode :sampletypelookup.SampleTypeCode/FieldMeasure Parameters)
         obs-params   (filter-param-typecode :sampletypelookup.SampleTypeCode/FieldObs Parameters)
         lab-params   (filter-param-typecode :sampletypelookup.SampleTypeCode/Grab Parameters)
+        logger-params (filter-param-typecode :sampletypelookup.SampleTypeCode/Logger Parameters)
         dirty-fields (fs/dirty-fields props true)
         dirty?       (some? (seq dirty-fields))
         _            (debug "DIRTY?" dirty? dirty-fields)
@@ -698,15 +696,9 @@
                                         :proj-ident this-ident
                                         :on-save    on-save})
 
-                (ui-param-list-fn this {:type       :sampletypelookup.SampleTypeCode/Grab
-                                        :label      "Bacteria"
-                                        :params     fm-params
-                                        :proj-ident this-ident
-                                        :on-save    on-save})
-
                 (ui-param-list-fn this {:type       :sampletypelookup.SampleTypeCode/Logger
                                         :label      "Logger"
-                                        :params     fm-params
+                                        :params     logger-params
                                         :proj-ident this-ident
                                         :on-save    on-save})]})
 
@@ -735,7 +727,7 @@
                 (fn [s id]
                   (let [proj-ident [:org.riverdb.db.projectslookup/gid id]]
                     (-> s
-                      (rm/sort-ident-list-by* (conj proj-ident :projectslookup/Parameters) :parameter/order)
+                      (rm/sort-ident-list-by* (conj proj-ident :projectslookup/Parameters) :parameter/Order)
                       (fs/add-form-config* ProjectForm proj-ident)
                       (update-in [:component/id :projects :projects] (fnil conj []) proj-ident))))
                 s ids)

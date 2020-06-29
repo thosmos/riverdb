@@ -595,7 +595,7 @@
                                   :station     {:type 'Int}
                                   :stationCode {:type 'String}
                                   :agency      {:type 'String}
-                                  :projectID   {:type 'String}
+                                  :project     {:type 'String}
                                   :limit       {:type    'Int
                                                 :default 10}
                                   :offset      {:type    'Int

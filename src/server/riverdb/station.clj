@@ -55,7 +55,7 @@
                                         ;[?sv :sitevisit/SiteVisitDate ?svdt]
                                         ;[(> ?svdt #inst "2019")]
                                         [?sv :sitevisit/Samples ?sa]
-                                        [?sa :sample/ConstituentRef ?cnst]
+                                        [?sa :sample/Constituent ?cnst]
                                         [?cnst :constituentlookup/ConstituentCode ?cnstcode]]))
                                         ;[?sa :sample/LabResults ?frs]
                                         ;[?frs :labresult/ConstituentRowID ?cnst]

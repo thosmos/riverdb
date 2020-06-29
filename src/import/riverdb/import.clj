@@ -627,16 +627,16 @@
                            :sample/EventType       [:eventtypelookup/EventType event-type]
                            :sample/SampleTypeCode  [:sampletypelookup/SampleTypeCode sample-type]
                            :sample/QCCheck         true
-                           :sample/ConstituentRef  constituent
+                           :sample/Constituent     constituent
                            :sample/SampleReplicate 0}]
         (cond-> sa-result
           (= type :field)
           (->
             (assoc :sample/FieldResults (import-field-results constituent (get devtype-table k) import-key-sa (:vals result)))
-            (assoc :sample/DeviceTypeRef (get devtype-table k))
+            (assoc :sample/DeviceType (get devtype-table k))
             (cond->
               devID
-              (assoc :sample/DeviceIDRef (get-device-id agency devID (get devtype-table k)))))
+              (assoc :sample/DeviceID (get-device-id agency devID (get devtype-table k)))))
           (= type :lab)
           (assoc :sample/LabResults [(import-lab-result constituent import-key-sa result)]))))))
 

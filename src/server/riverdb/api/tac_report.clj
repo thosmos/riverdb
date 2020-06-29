@@ -96,27 +96,76 @@
           [(riverdb.api.tac-report/year-from-instant ?date) ?year]]
      db project)))
 
-(def default-query
+;(def default-query
+;  [:db/id
+;   [:sitevisit/SiteVisitID :as :svid]
+;   [:sitevisit/SiteVisitDate :as :date]
+;   [:sitevisit/Time :as :time]
+;   [:sitevisit/Notes :as :notes]
+;   {[:sitevisit/StationID :as :site]
+;    [[:stationlookup/StationID :as :id]
+;     [:stationlookup/RiverFork :as :fork]
+;     [:stationlookup/ForkTribGroup :as :trib]]}
+;   {[:sitevisit/StationFailCode :as :failcode]
+;    [[:stationfaillookup/FailureReason :as :reason]]}
+;   {:sitevisit/Samples
+;    [{:sample/FieldResults
+;      [:db/id :fieldresult/Result :fieldresult/FieldReplicate
+;       {:fieldresult/ConstituentRowID
+;        [:db/id ;:constituentlookup/HighValue :constituentlookup/LowValue
+;         {:constituentlookup/AnalyteCode [:analytelookup/AnalyteShort]}
+;         {:constituentlookup/MatrixCode [:matrixlookup/MatrixShort]}
+;         {:constituentlookup/UnitCode [:unitlookup/Unit]}]}
+;       {[:fieldresult/SamplingDeviceID :as :device]
+;        [[:samplingdevice/CommonID :as :id]
+;         {[:samplingdevice/DeviceType :as :type] [[:samplingdevicelookup/SampleDevice :as :name]]}]}]}]}])
+
+(def default-query2
   [:db/id
    [:sitevisit/SiteVisitID :as :svid]
    [:sitevisit/SiteVisitDate :as :date]
    [:sitevisit/Time :as :time]
    [:sitevisit/Notes :as :notes]
-   {[:sitevisit/StationID :as :site] [[:stationlookup/StationID :as :id]
-                                      [:stationlookup/RiverFork :as :fork]
-                                      [:stationlookup/ForkTribGroup :as :trib]]}
-   {[:sitevisit/StationFailCode :as :failcode] [[:stationfaillookup/FailureReason :as :reason]]}
-   {:sitevisit/Samples
-    [{:sample/FieldResults
-      [:db/id :fieldresult/Result :fieldresult/FieldReplicate
-       {:fieldresult/ConstituentRowID
-        [:db/id ;:constituentlookup/HighValue :constituentlookup/LowValue
-         {:constituentlookup/AnalyteCode [:analytelookup/AnalyteShort]}
-         {:constituentlookup/MatrixCode [:matrixlookup/MatrixShort]}
-         {:constituentlookup/UnitCode [:unitlookup/Unit]}]}
-       {[:fieldresult/SamplingDeviceID :as :device]
-        [[:samplingdevice/CommonID :as :id]
-         {[:samplingdevice/DeviceType :as :type] [[:samplingdevicelookup/SampleDevice :as :name]]}]}]}]}])
+   {[:sitevisit/StationID :as :station]
+    [:db/id
+     [:stationlookup/StationID :as :station_id]
+     [:stationlookup/StationCode :as :station_code]
+     [:stationlookup/RiverFork :as :river_fork]
+     [:stationlookup/ForkTribGroup :as :trib_group]]}
+   {[:sitevisit/StationFailCode :as :failcode]
+    [[:stationfaillookup/FailureReason :as :reason]]}
+   {[:sitevisit/Samples :as :samples]
+    [{[:sample/SampleTypeCode :as :type]
+      [[:sampletypelookup/SampleTypeCode :as :code]
+       [:db/ident :as :ident]]}
+     {[:sample/Constituent :as :constituent]
+      [{[:constituentlookup/AnalyteCode :as :analyte]
+        [[:analytelookup/AnalyteName :as :name]
+         [:analytelookup/AnalyteShort :as :short]]}
+       {[:constituentlookup/MatrixCode :as :matrix]
+        [[:matrixlookup/MatrixName :as :name]
+         [:matrixlookup/MatrixShort :as :short]]}
+       {[:constituentlookup/UnitCode :as :unit]
+        [[:unitlookup/Unit :as :name]]}]}
+     {[:sample/DeviceID :as :device]
+      [[:samplingdevice/CommonID :as :id]
+       {[:samplingdevice/DeviceType :as :type]
+        [[:samplingdevicelookup/SampleDevice :as :name]]}]}
+     {[:sample/DeviceType :as :type]
+      [[:samplingdevicelookup/SampleDevice :as :name]]}
+     {[:sample/FieldResults :as :results]
+      [[:fieldresult/Result :as :result]
+       [:fieldresult/FieldReplicate :as :replicate]
+       {[:fieldresult/ResQualCode :as :qual]
+        [[:resquallookup/ResQualCode :as :code]]}]}
+     {[:sample/LabResults :as :results]
+      [[:labresult/Result :as :result]
+       [:labresult/LabReplicate :as :replicate]
+       {[:labresult/ResQualCode :as :qual]
+        [[:resquallookup/ResQualCode :as :code]]}]}
+     {[:sample/FieldObsResults :as :results]
+      [[:fieldobsresult/IntResult :as :iresult]
+       [:fieldobsresult/TextResult :as :tresult]]}]}])
 
 (defn remap-query
   [{args :args :as m}]
@@ -124,238 +173,210 @@
    :args  args})
 
 ;; one graph query to pull all the data we need at once!
-(defn get-sitevisits
-  ([db]
-   (get-sitevisits db nil nil nil nil nil default-query))
-  ([db agency]
-   (get-sitevisits db agency nil nil nil nil default-query))
-  ([db agency year]
-   (get-sitevisits db agency nil year))
-  ([db agency project year]
-   (let [;_          (debug "YEAR" year (type year))
-         start-time (jt/zoned-date-time year)
-         ;start-time (jt/instant year)
-         end-time   (jt/plus start-time (jt/years 1))]
-     ;end-time   (jt/instant (inc year))]
-     (get-sitevisits db agency start-time end-time project nil default-query)))
-  ([db agency fromDate toDate project station]
-   (get-sitevisits db agency fromDate toDate project station default-query))
-  ([db agency fromDate toDate project station query]
-   (log/debug "GET SITEVISITS" agency fromDate toDate project station)
-   (let [q      {:find  ['[(pull ?sv qu) ...]]
-                 :in    '[$ qu]
-                 :where '[]
-                 :args  [db query]}
+(defn get-sitevisits [db {:keys [agency fromDate toDate year
+                                 project station stationCode query qaCheck] :as opts}]
+  (log/debug "GET SITEVISITS" agency fromDate toDate project station)
+  (let [fromDate (if (some? fromDate)
+                   fromDate
+                   (when year
+                     (jt/zoned-date-time year)))
+        toDate   (if (some? toDate)
+                   toDate
+                   (when year
+                     (jt/plus fromDate (jt/years 1))))
+
+        query    (or query default-query2)
+
+        q      {:find  ['[(pull ?sv qu) ...]]
+                :in    '[$ qu]
+                :where '[]
+                :args  [db query]}
 
 
-         q      (cond-> q
+        q      (cond-> q
 
-                  ;; if station
-                  station
-                  (->
-                    (update :where #(-> %
-                                      (conj '[?st :stationlookup/StationID ?station])
-                                      (conj '[?sv :sitevisit/StationID ?st])))
-                    (update :in conj '?station)
-                    (update :args conj station))
+                 ;; if station
+                 station
+                 (->
+                   (update :where #(-> %
+                                     (conj '[?st :stationlookup/StationID ?station])
+                                     (conj '[?sv :sitevisit/StationID ?st])))
+                   (update :in conj '?station)
+                   (update :args conj station))
 
-                  agency
-                  (->
-                    (update :where #(-> %
-                                      (conj '[?pj :projectslookup/AgencyCode ?agency])))
-                    (update :in conj '?agency)
-                    (update :args conj agency))
+                 ;; if stationCode
+                 stationCode
+                 (->
+                   (update :where #(-> %
+                                     (conj '[?st :stationlookup/StationCode ?stationCode])
+                                     (conj '[?sv :sitevisit/StationID ?st])))
+                   (update :in conj '?stationCode)
+                   (update :args conj stationCode))
 
-                  project
-                  (->
-                    (update :where #(-> %
-                                      (conj '[?pj :projectslookup/ProjectID ?proj])))
-                    (update :in conj '?proj)
-                    (update :args conj project))
+                 agency
+                 (->
+                   (update :where #(-> %
+                                     (conj '[?pj :projectslookup/AgencyCode ?agency])))
+                   (update :in conj '?agency)
+                   (update :args conj agency))
 
-
-                  (or agency project)
-                  (->
-                    (update :where #(-> %
-                                      (conj '[?sv :sitevisit/ProjectID ?pj]))))
-
-
-                  ;; If either from- or to- date were passed, join the `sitevisit` entity
-                  ;; and bind its `SiteVisitDate` attribute to the `?date` variable.
-                  (or fromDate toDate)
-                  (update :where conj
-                    '[?sv :sitevisit/SiteVisitDate ?date])
-
-                  ;; If the `fromDate` filter was passed, do the following:
-                  ;; 1. add a parameter placeholder into the query;
-                  ;; 2. add an actual value to the arguments;
-                  ;; 3. add a proper condition against `?date` variable
-                  ;; (remember, it was bound above).
-                  fromDate
-                  (->
-                    (update :in conj '?fromDate)
-                    (update :args conj (jt/java-date fromDate))
-                    (update :where conj
-                      '[(>= ?date ?fromDate)]))
-
-                  ;; similar to ?fromDate
-                  toDate
-                  (->
-                    (update :in conj '?toDate)
-                    (update :args conj (jt/java-date toDate))
-                    (update :where conj
-                      '[(< ?date ?toDate)]))
-
-                  ;; last one, in case there are no conditions, get all sitevisits
-                  (empty? (:where q))
-                  (->
-                    (update :where conj '[?sv :sitevisit/StationID])))
-         q      (remap-query q)
-         ;_ (log/debug "SITEVISITS QUERY" q)
-         result (d/query q)
-         _      (log/debug "SITEVISIT RESULTS" (count result))]
-
-     ;; this query only returns field results due to missing :db/id on sample
-     ;; we can modiy this to handle labresults too, or do it somewhere else
-
-     result)))
+                 project
+                 (->
+                   (update :where #(-> %
+                                     (conj '[?pj :projectslookup/ProjectID ?proj])))
+                   (update :in conj '?proj)
+                   (update :args conj project))
 
 
+                 (or agency project)
+                 (->
+                   (update :where #(-> %
+                                     (conj '[?sv :sitevisit/ProjectID ?pj]))))
 
-(defn get-sitevisits3
-  ([db {:keys [year agency fromDate toDate station stationCode projectID] :as opts}]
-   ;(debug "get-sitevisits" db opts)
-   (let [fromDate (if (some? fromDate)
-                    fromDate
-                    (when year
-                      (jt/zoned-date-time year)))
-         toDate   (if (some? toDate)
-                    toDate
-                    (when year
-                      (jt/plus fromDate (jt/years 1))))
 
-         q        {:find  ['[(pull ?sv [:db/id
-                                        [:sitevisit/SiteVisitID :as :svid]
-                                        [:sitevisit/SiteVisitDate :as :date]
-                                        [:sitevisit/Time :as :time]
-                                        [:sitevisit/Notes :as :notes]
-                                        {[:sitevisit/StationID :as :station]
-                                         [:db/id
-                                          [:stationlookup/StationID :as :station_id]
-                                          [:stationlookup/StationCode :as :station_code]
-                                          [:stationlookup/RiverFork :as :river_fork]
-                                          [:stationlookup/ForkTribGroup :as :trib_group]]}
-                                        {[:sitevisit/StationFailCode :as :failcode] [[:stationfaillookup/FailureReason :as :reason]]}
-                                        {[:sitevisit/Samples :as :samples]
-                                         [:db/id
-                                          {[:sample/SampleTypeCode :as :type]
-                                           [[:sampletypelookup/SampleTypeCode :as :code]
-                                            [:db/ident :as :ident]]}
-                                          {[:sample/ConstituentRef :as :constituent]
-                                           [{[:constituentlookup/AnalyteCode :as :analyte]
-                                             [[:analytelookup/AnalyteName :as :name]
-                                              [:analytelookup/AnalyteShort :as :short]]}
-                                            {[:constituentlookup/MatrixCode :as :matrix]
-                                             [[:matrixlookup/MatrixName :as :name]
-                                              [:matrixlookup/MatrixShort :as :short]]}
-                                            {[:constituentlookup/UnitCode :as :unit]
-                                             [[:unitlookup/Unit :as :name]]}]}
-                                          {[:sample/DeviceIDRef :as :device]
-                                           [[:samplingdevice/CommonID :as :id]
-                                            {[:samplingdevice/DeviceType :as :type]
-                                             [[:samplingdevicelookup/SampleDevice :as :name]]}]}
-                                          {[:sample/FieldResults :as :results]
-                                           [[:fieldresult/Result :as :result]
-                                            [:fieldresult/FieldReplicate :as :replicate]
-                                            {[:fieldresult/ResQualCode :as :qual]
-                                             [[:resquallookup/ResQualCode :as :code]]}]}
-                                          {[:sample/LabResults :as :results]
-                                           [[:labresult/Result :as :result]
-                                            [:labresult/LabReplicate :as :replicate]
-                                            {[:labresult/ResQualCode :as :qual]
-                                             [[:resquallookup/ResQualCode :as :code]]}]}
-                                          {[:sample/FieldObsResults :as :results]
-                                           [[:fieldobsresult/IntResult :as :iresult]
-                                            [:fieldobsresult/TextResult :as :tresult]]}]}]) ...]]
-                   :in    '[$]
-                   :where '[]
-                   :args  [db]}
+                 ;; If the `fromDate` filter was passed, do the following:
+                 ;; 1. add a parameter placeholder into the query;
+                 ;; 2. add an actual value to the arguments;
+                 ;; 3. add a proper condition against `?date` variable
+                 ;; (remember, it was bound above).
+                 fromDate
+                 (->
+                   (update :in conj '?fromDate)
+                   (update :args conj (jt/java-date fromDate))
+                   (update :where conj
+                     '[(>= ?date ?fromDate)]))
 
-         q        (cond-> q
+                 ;; similar to ?fromDate
+                 toDate
+                 (->
+                   (update :in conj '?toDate)
+                   (update :args conj (jt/java-date toDate))
+                   (update :where conj
+                     '[(< ?date ?toDate)]))
 
-                    ;; if station
-                    station
-                    (->
-                      (update :where #(-> %
-                                        (conj '[?st :stationlookup/StationID ?station])
-                                        (conj '[?sv :sitevisit/StationID ?st])))
-                      (update :in conj '?station)
-                      (update :args conj station))
+                 ;; If either from- or to- date were passed, join the `sitevisit` entity
+                 ;; and bind its `SiteVisitDate` attribute to the `?date` variable.
+                 (or fromDate toDate)
+                 (update :where conj
+                   '[?sv :sitevisit/SiteVisitDate ?date])
 
-                    ;; if stationCode
-                    stationCode
-                    (->
-                      (update :where #(-> %
-                                        (conj '[?st :stationlookup/StationCode ?stationCode])
-                                        (conj '[?sv :sitevisit/StationID ?st])))
-                      (update :in conj '?stationCode)
-                      (update :args conj stationCode))
+                 qaCheck
+                 (update q :where conj '[?sv :sitevisit/QACheck true])
 
-                    agency
-                    (->
-                      (update :where #(-> %
-                                        (conj '[?pj :projectslookup/AgencyCode ?agency])
-                                        (conj '[?sv :sitevisit/ProjectID ?pj])))
-                      (update :in conj '?agency)
-                      (update :args conj agency))
+                 ;; last one, in case there are no conditions, get all sitevisits
+                 (empty? (:where q))
+                 (->
+                   (update :where conj '[?sv :sitevisit/StationID])))
+        q      (remap-query q)
+        ;_ (log/debug "SITEVISITS QUERY" q)
+        result (d/qseq q)
+        _      (log/debug "SITEVISIT RESULTS" (count result))]
 
-                    projectID
-                    (->
-                      (update :where #(-> %
-                                        (conj '[?pj :projectslookup/ProjectID ?projectID])
-                                        (conj '[?sv :sitevisit/ProjectID ?pj])))
-                      (update :in conj '?projectID)
-                      (update :args conj projectID))
+    ;; this query only returns field results due to missing :db/id on sample
+    ;; we can modiy this to handle labresults too, or do it somewhere else
 
-                    ;; If either from- or to- date were passed, join the `sitevisit` entity
-                    ;; and bind its `SiteVisitDate` attribute to the `?date` variable.
-                    (or fromDate toDate)
-                    (update :where conj
-                      '[?sv :sitevisit/SiteVisitDate ?date])
+    result))
 
-                    ;; If the `fromDate` filter was passed, do the following:
-                    ;; 1. add a parameter placeholder into the query;
-                    ;; 2. add an actual value to the arguments;
-                    ;; 3. add a proper condition against `?date` variable
-                    ;; (remember, it was bound above).
-                    fromDate
-                    (->
-                      (update :in conj '?fromDate)
-                      (update :args conj (jt/java-date fromDate))
-                      (update :where conj
-                        '[(> ?date ?fromDate)]))
 
-                    ;; similar to ?fromDate
-                    toDate
-                    (->
-                      (update :in conj '?toDate)
-                      (update :args conj (jt/java-date toDate))
-                      (update :where conj
-                        '[(< ?date ?toDate)])))
-
-         ;;; last one, in case there are no conditions, get all sitevisits
-         ;(empty? (:where q))
-         ;(->
-         ;  (update :where conj '[?sv :sitevisit/StationID])))
-
-         q        (update q :where conj '[?sv :sitevisit/QACheck true])
-
-         q        (remap-query q)]
-     ;; this query only returns field results due to missing :db/id on sample
-     ;; we can modiy this to handle labresults too, or do it somewhere else
-     (debug "QUERY" q)
-
-     (d/qseq q))))
+;
+;(defn get-sitevisits3
+;  ([db {:keys [year agency fromDate toDate station stationCode projectID query qaCheck] :as opts}]
+;   ;(debug "get-sitevisits" db opts)
+;   (let [fromDate (if (some? fromDate)
+;                    fromDate
+;                    (when year
+;                      (jt/zoned-date-time year)))
+;         toDate   (if (some? toDate)
+;                    toDate
+;                    (when year
+;                      (jt/plus fromDate (jt/years 1))))
+;
+;         query    (or query default-query2)
+;
+;         q        {:find  ['[(pull ?sv qu) ...]]
+;                   :in    '[$ qu]
+;                   :where '[]
+;                   :args  [db query]}
+;
+;         q        (cond-> q
+;
+;                    ;; if station
+;                    station
+;                    (->
+;                      (update :where #(-> %
+;                                        (conj '[?st :stationlookup/StationID ?station])
+;                                        (conj '[?sv :sitevisit/StationID ?st])))
+;                      (update :in conj '?station)
+;                      (update :args conj station))
+;
+;                    ;; if stationCode
+;                    stationCode
+;                    (->
+;                      (update :where #(-> %
+;                                        (conj '[?st :stationlookup/StationCode ?stationCode])
+;                                        (conj '[?sv :sitevisit/StationID ?st])))
+;                      (update :in conj '?stationCode)
+;                      (update :args conj stationCode))
+;
+;                    agency
+;                    (->
+;                      (update :where #(-> %
+;                                        (conj '[?pj :projectslookup/AgencyCode ?agency])
+;                                        (conj '[?sv :sitevisit/ProjectID ?pj])))
+;                      (update :in conj '?agency)
+;                      (update :args conj agency))
+;
+;                    projectID
+;                    (->
+;                      (update :where #(-> %
+;                                        (conj '[?pj :projectslookup/ProjectID ?projectID])
+;                                        (conj '[?sv :sitevisit/ProjectID ?pj])))
+;                      (update :in conj '?projectID)
+;                      (update :args conj projectID))
+;
+;                    ;; If either from- or to- date were passed, join the `sitevisit` entity
+;                    ;; and bind its `SiteVisitDate` attribute to the `?date` variable.
+;                    (or fromDate toDate)
+;                    (update :where conj
+;                      '[?sv :sitevisit/SiteVisitDate ?date])
+;
+;                    ;; If the `fromDate` filter was passed, do the following:
+;                    ;; 1. add a parameter placeholder into the query;
+;                    ;; 2. add an actual value to the arguments;
+;                    ;; 3. add a proper condition against `?date` variable
+;                    ;; (remember, it was bound above).
+;                    fromDate
+;                    (->
+;                      (update :in conj '?fromDate)
+;                      (update :args conj (jt/java-date fromDate))
+;                      (update :where conj
+;                        '[(> ?date ?fromDate)]))
+;
+;                    ;; similar to ?fromDate
+;                    toDate
+;                    (->
+;                      (update :in conj '?toDate)
+;                      (update :args conj (jt/java-date toDate))
+;                      (update :where conj
+;                        '[(< ?date ?toDate)]))
+;
+;                    qaCheck
+;                    (update q :where conj '[?sv :sitevisit/QACheck true]))
+;
+;
+;         ;;; last one, in case there are no conditions, get all sitevisits
+;         ;(empty? (:where q))
+;         ;(->
+;         ;  (update :where conj '[?sv :sitevisit/StationID])))
+;
+;         q        (update q :where conj '[?sv :sitevisit/QACheck true])
+;
+;         q        (remap-query q)]
+;     ;; this query only returns field results due to missing :db/id on sample
+;     ;; we can modiy this to handle labresults too, or do it somewhere else
+;     (debug "QUERY" q)
+;
+;     (d/qseq q))))
 
 
 
@@ -827,52 +848,6 @@
         sv  (assoc sv :exceedance? (some? (:count-params-exceedance sv)))]
     sv))
 
-(defn create-sitevisit-summaries
-  "create summary info per sitevisit"
-  [sitevisits]
-  (for [sv sitevisits]
-    (try
-      (let [
-            ;_        (println "processing SV " (get-in sv [:sitevisit/StationID
-            ;                                    :stationlookup/StationID]))
-
-            ;; remap nested values to root
-            sv  (-> sv
-                  (assoc :trib (get-in sv [:site :trib]))
-                  (assoc :fork (get-in sv [:site :fork]))
-                  (assoc :site (get-in sv [:site :id]))
-                  (assoc :failcode (get-in sv [:failcode :reason])))
-
-            ;; pull out fieldresult list
-            frs (get-in sv [:sitevisit/Samples 0 :sample/FieldResults])
-            ;; restrict to water samples (no air)
-            ;frs (filter #(= "H2O" (get-in % [:fieldresult/ConstituentRowID
-            ;                                 :constituentlookup/MatrixCode
-            ;                                 :matrixlookup/MatrixShort])) frs)
-
-            ;; toss velocity
-            ;frs (remove #(= "Velocity" (get-in % [:fieldresult/ConstituentRowID
-            ;                                      :constituentlookup/AnalyteCode
-            ;                                      :analytelookup/AnalyteShort])) frs)
-
-            ;_   (println "reduce FRs to param sums")
-            frs (reduce-fieldresults-to-map frs)
-            ;_   (println "calc param sums")
-            frs (calc-param-summaries frs)
-            ;; remove the list of samples and add the new param map
-            ;_   (println "move FRS")
-            sv  (-> sv
-                  (dissoc :sitevisit/Samples)
-                  (assoc :fieldresults frs))
-            ;_   (println "count valid params")
-            ;; count valid params
-
-            sv  (calc-sitevisit-stats sv)]
-
-        sv)
-      (catch Exception ex (println "Error in create-param-summaries" ex)))))
-
-
 (defn create-sitevisit-summaries3
   "create summary info per sitevisit"
   [sitevisits]
@@ -886,8 +861,8 @@
             sv   (-> sv
                    (assoc :trib (get-in sv [:station :trib]))
                    (assoc :fork (get-in sv [:station :river_fork]))
-                   (assoc :failcode (get-in sv [:failcode :reason])))
-
+                   (assoc :failcode (get-in sv [:failcode :reason]))
+                   (assoc :site (get-in sv [:station :station_id])))
 
             ;; pull out samples list
             sas  (get-in sv [:samples])
@@ -1176,11 +1151,11 @@
         ;start-time (jt/zoned-date-time year)
         ;end-time   (jt/plus start-time (jt/years 1))
         sitevisits (if year
-                     (get-sitevisits db agency project year)
-                     (get-sitevisits db agency))
+                     (get-sitevisits db {:agency agency :project project :year year})
+                     (get-sitevisits db {:agency agency}))
         _          (debug "svs" (first sitevisits))
         ;sitevisits (filter-sitevisits sitevisits)
-        sitevisits (create-sitevisit-summaries sitevisits)
+        sitevisits (create-sitevisit-summaries3 sitevisits)
         _          (println "report reducer")
         ;param-keys (reduce #(apply conj %1 (map first (get-in %2 [:fieldresults]))) #{} sitevisits)
         report     (report-reducer db sitevisits)
@@ -1212,11 +1187,11 @@
           year         (if (= year "") nil (Long/parseLong year))
           ;_            (check ::report-year year)
           param-config (into {} (remove #(:elide? (val %)) param-config))
-          svs          (get-sitevisits db nil project year)
+          svs          (get-sitevisits db {:project project :year year})
           ;_            (debug "sitevisits" (count svs))
-          svs          (filter-empty-fieldresults svs)
+          svs          (create-sitevisit-summaries3 svs)
           ;_            (debug "sitevisits filtered" (count svs))
-          svs          (create-sitevisit-summaries svs)
+          svs          (filter-empty-fieldresults svs)
           ;_            (debug "sitevisits summaries" (count svs))
           svs          (sort-by :date svs)
           ;_            (debug "sitevisits first" (first svs))
@@ -1302,18 +1277,18 @@
   ([^Writer writer db agency]
    (let [_            (log/info "CSV-ALL-YEARS" agency)
          param-config (remove #(:elide? (val %)) param-config)
-         sitevisits   (get-sitevisits db agency)
-         sitevisit    (filter-empty-fieldresults sitevisits)
-         sitevisits   (create-sitevisit-summaries sitevisits)
+         sitevisits   (get-sitevisits db {:agency agency})
+         sitevisits   (create-sitevisit-summaries3 sitevisits)
+         sitevisits   (filter-empty-fieldresults sitevisits)
          sitevisits   (util/sort-maps-by sitevisits [:date :site])]
      (sitevisits->csv writer sitevisits param-config))))
 
 
-(defn get-sitevisit-summaries3 [db opts]
-  ;(debug "get-sitevisit-summaries opts: " opts)
-  (let [sitevisits (get-sitevisits3 db opts)
-        sitevisits (create-sitevisit-summaries3 sitevisits)
-        sitevisits (filter-empty-fieldresults sitevisits)
-        sitevisits (util/sort-maps-by sitevisits [:date :site])]
-    sitevisits))
+;(defn get-sitevisit-summaries3 [db opts]
+;  ;(debug "get-sitevisit-summaries opts: " opts)
+;  (let [sitevisits (get-sitevisits3 db opts)
+;        sitevisits (create-sitevisit-summaries3 sitevisits)
+;        sitevisits (filter-empty-fieldresults sitevisits)
+;        sitevisits (util/sort-maps-by sitevisits [:date :site])]
+;    sitevisits))
 

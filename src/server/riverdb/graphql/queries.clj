@@ -131,10 +131,7 @@
                      (merge
                        {:toDate toDate}))
 
-        ;svs        (tac-report/get-sitevisit-summaries3 (db) opts)
-
-        svs (tac-report/get-sitevisits3 (db) opts)
-
+        svs (tac-report/get-sitevisits (db) opts)
 
         limit      (get args :limit)
         offset     (get args :offset)

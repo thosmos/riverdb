@@ -1,4 +1,4 @@
-(ns riverdb.ui.components.drag
+(ns riverdb.ui.comps.drag
   (:require [com.fulcrologic.fulcro.components :as comp]))
 
 (defn cancelEvs [e]

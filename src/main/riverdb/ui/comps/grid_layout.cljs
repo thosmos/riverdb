@@ -1,4 +1,4 @@
-(ns riverdb.ui.components.grid-layout
+(ns riverdb.ui.comps.grid-layout
   (:require [com.fulcrologic.fulcro.components :as fp]
             [com.fulcrologic.fulcro-css.localized-dom :as dom]
             [garden.selectors :as gs]

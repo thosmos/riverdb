@@ -8,19 +8,19 @@
   {:ident [:org.riverdb.db.parameter/gid :db/id]
    :query [:db/id
            :riverdb.entity/ns
-           :parameter/active
-           :parameter/color
-           :parameter/high
-           :parameter/lines
-           :parameter/low
-           :parameter/name
-           :parameter/nameShort
-           :parameter/order
-           :parameter/precisionCode
-           :parameter/replicates
-           :parameter/replicatesEntry
-           :parameter/replicatesElide
+           :parameter/Active
+           :parameter/Color
+           :parameter/High
+           :parameter/Lines
+           :parameter/Low
+           :parameter/Name
+           :parameter/NameShort
+           :parameter/Order
+           :parameter/PrecisionCode
+           :parameter/Replicates
+           :parameter/ReplicatesEntry
+           :parameter/ReplicatesElide
            :parameter/uuid
-           {:parameter/constituentlookupRef (comp/get-query Constituent)}
-           {:parameter/samplingdevicelookupRef (comp/get-query looks/samplingdevicelookup-sum)}
-           {:parameter/sampleTypeRef (comp/get-query looks/sampletypelookup-sum)}]})
+           {:parameter/Constituent (comp/get-query Constituent)}
+           {:parameter/DeviceType (comp/get-query looks/samplingdevicelookup-sum)}
+           {:parameter/SampleType (comp/get-query looks/sampletypelookup-sum)}]})

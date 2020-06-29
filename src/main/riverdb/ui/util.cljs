@@ -461,7 +461,7 @@
       res)))
 
 (defn filter-param-typecode [type params]
-  (filterv #(= type (get-in % [:parameter/sampleTypeRef :db/ident])) params))
+  (filterv #(= type (get-in % [:parameter/SampleType :db/ident])) params))
 
 
 (comment
