@@ -201,6 +201,24 @@
              @(d/transact (cx) %)
              (catch Exception ex
                (log/debug "ERROR:" (.getMessage ^Exception ex)))) txds))
-  (let [sv (d/pull (db) '[* {:sitevisit/Samples [* {:sample/SampleTypeCode [:sampletypelookup/SampleTypeCode]}]}] 17592186284983)]
+
+  ;; convert SVs that didn't migrate
+  (doseq [txds (let [svs (d/q '[:find [(pull ?sv
+                                         [* {:sitevisit/Samples
+                                             [* {:sample/SampleTypeCode [:sampletypelookup/SampleTypeCode]}]}]) ...]
+                                :where
+                                [?fr :fieldresult/ConstituentRowID]
+                                [?sa :sample/FieldResults ?fr]
+                                (not [?sa :sample/Constituent])
+                                [?sv :sitevisit/Samples ?sa]]
+                           (db))]
+                 (for [sv svs]
+                   (migrate-sv sv)))]
+    (mapv #(try
+             @(d/transact (cx) %)
+             (catch Exception ex
+               (log/debug "ERROR:" (.getMessage ^Exception ex)))) txds))
+
+  (let [sv (d/pull (db) '[* {:sitevisit/Samples [* {:sample/SampleTypeCode [:sampletypelookup/SampleTypeCode]}]}] 17592186270560)]
     (mapv #(d/transact (cx) %) (migrate-sv sv)))
   #_"")

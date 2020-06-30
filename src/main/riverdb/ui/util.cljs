@@ -308,10 +308,10 @@
 
 (defn set-value! [this k value]
   (let [ident (comp/get-ident this)]
-    (comp/transact! this `[(set-value {:ident ~ident :k ~k :v ~value})])))
+    (comp/transact!! this `[(set-value {:ident ~ident :k ~k :v ~value})])))
 
 (defn set-ident-value! [ident k value]
-  (comp/transact! SPA `[(set-value {:ident ~ident :k ~k :v ~value})]))
+  (comp/transact!! SPA `[(set-value {:ident ~ident :k ~k :v ~value})]))
 
 (fm/defmutation set-ref [{:keys [ident k v]}]
   (action [{:keys [state]}]
@@ -320,7 +320,7 @@
       (swap! state set-value* ident k v))))
 
 (defn set-ref! [this k id]
-  (comp/transact! this `[(set-ref {:ident ~(comp/get-ident this) :k ~k :v ~id})]))
+  (comp/transact!! this `[(set-ref {:ident ~(comp/get-ident this) :k ~k :v ~id})]))
 
 (fm/defmutation set-refs [{:keys [ident k v]}]
   (action [{:keys [state]}]
@@ -329,7 +329,7 @@
       (swap! state set-value* ident k v))))
 
 (defn set-refs! [this k ids]
-  (comp/transact! this `[(set-refs {:ident ~(comp/get-ident this) :k ~k :v ~ids})]))
+  (comp/transact!! this `[(set-refs {:ident ~(comp/get-ident this) :k ~k :v ~ids})]))
 
 
 

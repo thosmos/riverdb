@@ -84,7 +84,7 @@
   (com.fulcrologic.fulcro.algorithms.tempid/tempid (first form)))
 
 (defn filter-sample-typecode [type samples]
-  (filter #(= type (get-in % [:sample/SampleTypeCode :sampletypelookup/SampleTypeCode])) samples))
+  (filter #(= type (get-in % [:sample/SampleTypeCode :db/ident])) samples))
 
 ;(defn history-view
 ;  "Return a function that will display transaction history with

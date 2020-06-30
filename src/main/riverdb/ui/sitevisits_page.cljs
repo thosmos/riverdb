@@ -44,7 +44,8 @@
     [riverdb.util :refer [sort-maps-by with-index]]
     [riverdb.ui.agency :refer [preload-agency Agency]]
     [riverdb.ui.components :refer [ui-datepicker]]
-    [riverdb.ui.comps.sample-list :refer [ui-sample-list]]
+    [riverdb.ui.comps.sample-list :refer [ui-sample-list SampleList]]
+    [riverdb.ui.forms.sample :refer [SampleForm]]
     [riverdb.ui.forms :refer [SampleTypeCodeForm]]
     [riverdb.ui.globals :refer [Globals]]
     [riverdb.ui.lookup-options :refer [preload-options ui-theta-options ThetaOptions]]
@@ -90,443 +91,464 @@
            :constituentlookup/Name
            fs/form-config-join]})
 
-(defsc SampleConstituentForm [this props]
-  {:ident [:org.riverdb.db.constituentlookup/gid :db/id]
-   :query [:db/id
-           :constituentlookup/Name
-           fs/form-config-join]
-   :form-fields #{:db/id}})
+;(defsc SampleConstituentForm [this props]
+;  {:ident [:org.riverdb.db.constituentlookup/gid :db/id]
+;   :query [:db/id
+;           :constituentlookup/Name
+;           fs/form-config-join]
+;   :form-fields #{:db/id}})
+;
+;(defsc DeviceTypeForm [_ _]
+;  {:ident [:org.riverdb.db.samplingdevicelookup/gid :db/id],
+;   :initial-state {:db/id (tempid/tempid),
+;                   :riverdb.entity/ns :entity.ns/samplingdevicelookup}
+;   :query [:db/id
+;           :riverdb.entity/ns
+;           fs/form-config-join
+;           :samplingdevicelookup/Active
+;           :samplingdevicelookup/SampleDevice
+;           :samplingdevicelookup/DeviceMax
+;           :samplingdevicelookup/DeviceMin]})
+;
+;(defsc DeviceIDForm [_ _]
+;  {:ident         [:org.riverdb.db.samplingdevice/gid :db/id],
+;   :initial-state {:db/id (tempid/tempid),
+;                   :riverdb.entity/ns :entity.ns/samplingdevice},
+;   :query         [:db/id
+;                   :riverdb.entity/ns
+;                   fs/form-config-join
+;                   :samplingdevice/CommonID
+;                   :samplingdevice/DeviceType]})
+;
+;(defsc FieldResultForm [this {:keys [] :as props}]
+;  {:ident         [:org.riverdb.db.fieldresult/gid :db/id]
+;   :query         [:db/id
+;                   :riverdb.entity/ns
+;                   fs/form-config-join
+;                   :fieldresult/uuid
+;                   :fieldresult/Result
+;                   :fieldresult/ResultTime
+;                   :fieldresult/FieldReplicate
+;                   :fieldresult/ConstituentRowID
+;                   :fieldresult/SamplingDeviceID
+;                   :fieldresult/SamplingDeviceCode
+;                   :fieldresult/FieldResultComments]
+;   :form-fields   #{:db/id
+;                    :riverdb.entity/ns
+;                    :fieldresult/uuid
+;                    :fieldresult/Result
+;                    :fieldresult/ResultTime
+;                    :fieldresult/FieldReplicate
+;                    :fieldresult/ConstituentRowID
+;                    :fieldresult/SamplingDeviceID
+;                    :fieldresult/SamplingDeviceCode
+;                    :fieldresult/FieldResultComments}
+;   :initial-state {:db/id                          :param/id
+;                   :riverdb.entity/ns              :entity.ns/fieldresult
+;                   :fieldresult/uuid               :param/uuid
+;                   :fieldresult/Result             :param/result
+;                   :fieldresult/ResultTime         :param/time
+;                   :fieldresult/FieldReplicate     :param/rep
+;                   :fieldresult/ConstituentRowID   :param/const
+;                   :fieldresult/SamplingDeviceID   :param/devID
+;                   :fieldresult/SamplingDeviceCode :param/devType}})
+;
+;(defsc FieldObsResultForm [this {:keys [] :as props}]
+;  {:ident         [:org.riverdb.db.fieldobsresult/gid :db/id]
+;   :query         [:db/id
+;                   :riverdb.entity/ns
+;                   fs/form-config-join
+;                   :fieldobsresult/uuid
+;                   :fieldobsresult/IntResult
+;                   :fieldobsresult/TextResult
+;                   :fieldobsresult/FieldObsResultComments
+;                   {:fieldobsresult/ConstituentRowID
+;                    (comp/get-query Constituent)}]
+;   :form-fields   #{:riverdb.entity/ns
+;                    :fieldobsresult/uuid
+;                    :fieldobsresult/IntResult
+;                    :fieldobsresult/TextResult
+;                    :fieldobsresult/FieldObsResultComments}
+;   :initial-state {:riverdb.entity/ns               :entity.ns/fieldobsresult
+;                   :db/id                           :param/id
+;                   :fieldobsresult/uuid             :param/uuid
+;                   :fieldobsresult/IntResult        :param/int
+;                   :fieldobsresult/TextResult       :param/text
+;                   :fieldobsresult/ConstituentRowID :param/const}})
+;
+;
+;(defsc LabResultForm [this {:keys [] :as props}]
+;  {:ident         [:org.riverdb.db.labresult/gid :db/id]
+;   :query         [:db/id
+;                   :riverdb.entity/ns
+;                   fs/form-config-join
+;                   :labresult/uuid
+;                   :labresult/AnalysisDate
+;                   :labresult/LabReplicate
+;                   :labresult/LabResultComments
+;                   :labresult/Result
+;                   :labresult/SigFig
+;                   {:labresult/ConstituentRowID
+;                    (comp/get-query Constituent)}]
+;   :form-fields   #{:db/id
+;                    :riverdb.entity/ns
+;                    :labresult/uuid
+;                    :labresult/AnalysisDate
+;                    :labresult/ExpectedValue
+;                    :labresult/LabResultComments
+;                    :labresult/Result
+;                    :labresult/SigFig}
+;   :initial-state {:db/id                      :param/id
+;                   :riverdb.entity/ns          :entity.ns/labresult
+;                   :labresult/uuid             :param/uuid
+;                   :labresult/LabReplicate     :param/rep
+;                   :labresult/ConstituentRowID :param/const}})
+;
+;(fm/defmutation save-obs [{:keys [sample name text value obsvalue intval constituentlookupRef]}]
+;  (action [{:keys [state]}]
+;    (debug "SAVE OBS RESULT" "name" name "text" text "value" value "obsvalue" obsvalue "intval" intval "constituentlookupRef" constituentlookupRef)))
+;
+;
+;(defsc FieldObsParamForm
+;  [this
+;   {:keys [fieldobs-results fieldobs-params] :as props}
+;   {:keys [fieldobsvarlookup-options sample]}]
+;  {:query             [:fieldobs-results :fieldobs-params]
+;   :initial-state     {:fieldobs-params  [{:parameter/Name                 "CanopyCover"
+;                                           :parameter/Constituent {:db/id "17592186158390"}}
+;                                          {:parameter/Name                 "SkyCode"
+;                                           :parameter/Constituent {:db/id "17592186157657"}}
+;                                          {:parameter/Name                 "Precipitation"
+;                                           :parameter/Constituent {:db/id "17592186156566"}}
+;                                          {:parameter/Name                 "WaterClarity"
+;                                           :parameter/Constituent {:db/id "17592186158389"}}
+;                                          {:parameter/Name                 "WindSpeed"
+;                                           :parameter/Constituent {:db/id "17592186158388"}}]
+;                       :fieldobs-results [{:db/id                           (tempid/tempid)
+;                                           :riverdb.entity/ns               :entity.ns/fieldobsresult
+;                                           :fieldobsresult/uuid             (tempid/uuid)
+;                                           :fieldobsresult/IntResult        1
+;                                           :fieldobsresult/TextResult       "Less"
+;                                           :fieldobsresult/ConstituentRowID {:db/id "17592186158390"}}
+;                                          {:db/id                           (tempid/tempid)
+;                                           :riverdb.entity/ns               :entity.ns/fieldobsresult
+;                                           :fieldobsresult/uuid             (tempid/uuid)
+;                                           :fieldobsresult/IntResult        1
+;                                           :fieldobsresult/TextResult       "no clouds"
+;                                           :fieldobsresult/ConstituentRowID {:db/id "17592186157657"}}
+;                                          {:db/id                           (tempid/tempid)
+;                                           :riverdb.entity/ns               :entity.ns/fieldobsresult
+;                                           :fieldobsresult/uuid             (tempid/uuid)
+;                                           :fieldobsresult/IntResult        1
+;                                           :fieldobsresult/TextResult       "none"
+;                                           :fieldobsresult/ConstituentRowID {:db/id "17592186156566"}}
+;                                          {:db/id                           (tempid/tempid)
+;                                           :riverdb.entity/ns               :entity.ns/fieldobsresult
+;                                           :fieldobsresult/uuid             (tempid/uuid)
+;                                           :fieldobsresult/IntResult        1
+;                                           :fieldobsresult/TextResult       "Clear"
+;                                           :fieldobsresult/ConstituentRowID {:db/id "17592186158389"}}
+;                                          {:db/id                           (tempid/tempid)
+;                                           :riverdb.entity/ns               :entity.ns/fieldobsresult
+;                                           :fieldobsresult/uuid             (tempid/uuid)
+;                                           :fieldobsresult/IntResult        1
+;                                           :fieldobsresult/TextResult       "calm"
+;                                           :fieldobsresult/ConstituentRowID {:db/id "17592186158388"}}]}
+;   :componentDidMount (fn [this])}
+;
+;
+;  (let []
+;    (debug "RENDER SampleObsForm" fieldobsvarlookup-options fieldobs-results fieldobs-params)
+;    (div {}
+;      (dom/h3 {} "Field Observations")
+;      (vec
+;        (map-indexed
+;          (fn [i {:parameter/keys [Name Constituent]}]
+;            (let [obsresult (filter #(= (:db/id Constituent) (get-in % [:fieldobsresult/ConstituentRowID :db/id])) fieldobs-results)
+;                  obsvalue  (when (seq obsresult) (:fieldobsresult/TextResult (first obsresult)))
+;                  intval    (when (seq obsresult) (:fieldobsresult/IntResult (first obsresult)))
+;                  options   (filter #(= (:filt %) Name) (:ui/options fieldobsvarlookup-options))]
+;              (debug "Param" Name "obsvalue" obsvalue "intval" intval "fieldobs-results" fieldobs-results)
+;              (div :.fields {:key i} (str Name ": (" intval ":" obsvalue ") ")
+;                (vec
+;                  (map-indexed
+;                    (fn [j {:keys [value text]}]
+;                      (let [checked  (= obsvalue text)
+;                            ichecked (= (dec intval) j)]
+;                        (ui-checkbox
+;                          {:radio    true
+;                           :key      value
+;                           :label    text
+;                           :name     Name
+;                           :value    value
+;                           :checked  ichecked
+;                           :style    {:marginLeft 10}
+;                           :onChange #(let []
+;                                        (debug "ON CHANGE" Name value obsvalue text (not ichecked))
+;                                        (comp/transact! this `[(save-obs {:sample ~sample :name ~Name :text ~text :value ~value :obsvalue ~obsvalue :intval ~intval :const ~Constituent})])
+;                                        #_(fm/set-value! this :fieldobsresult/TextResult text))})))
+;                    options)))))
+;          fieldobs-params)))))
+;
+;
+;(def ui-fieldobs-param-form (comp/factory FieldObsParamForm))
 
 
-(defsc FieldResultForm [this {:keys [] :as props}]
-  {:ident         [:org.riverdb.db.fieldresult/gid :db/id]
-   :query         [:db/id
-                   :riverdb.entity/ns
-                   fs/form-config-join
-                   :fieldresult/uuid
-                   :fieldresult/Result
-                   :fieldresult/ResultTime
-                   :fieldresult/FieldReplicate
-                   :fieldresult/ConstituentRowID
-                   :fieldresult/SamplingDeviceID
-                   :fieldresult/SamplingDeviceCode
-                   :fieldresult/FieldResultComments]
-   :form-fields   #{:db/id
-                    :riverdb.entity/ns
-                    :fieldresult/uuid
-                    :fieldresult/Result
-                    :fieldresult/ResultTime
-                    :fieldresult/FieldReplicate
-                    :fieldresult/ConstituentRowID
-                    :fieldresult/SamplingDeviceID
-                    :fieldresult/SamplingDeviceCode
-                    :fieldresult/FieldResultComments}
-   :initial-state {:db/id                          :param/id
-                   :riverdb.entity/ns              :entity.ns/fieldresult
-                   :fieldresult/uuid               :param/uuid
-                   :fieldresult/Result             :param/result
-                   :fieldresult/ResultTime         :param/time
-                   :fieldresult/FieldReplicate     :param/rep
-                   :fieldresult/ConstituentRowID   :param/const
-                   :fieldresult/SamplingDeviceID   :param/devID
-                   :fieldresult/SamplingDeviceCode :param/devType}})
+;(defn set-in* [state path val]
+;  (assoc-in state path val))
+;(fm/defmutation set-in [{:keys [path val]}]
+;  (action [{:keys [state]}]
+;    (swap! state set-in* path val)))
+;(defn set-in! [path val]
+;  (comp/transact! SPA `[(set-in {:path ~path :val ~val})]))
 
-(defsc FieldObsResultForm [this {:keys [] :as props}]
-  {:ident         [:org.riverdb.db.fieldobsresult/gid :db/id]
-   :query         [:db/id
-                   :riverdb.entity/ns
-                   fs/form-config-join
-                   :fieldobsresult/uuid
-                   :fieldobsresult/IntResult
-                   :fieldobsresult/TextResult
-                   :fieldobsresult/FieldObsResultComments
-                   {:fieldobsresult/ConstituentRowID
-                    (comp/get-query Constituent)}]
-   :form-fields   #{:riverdb.entity/ns
-                    :fieldobsresult/uuid
-                    :fieldobsresult/IntResult
-                    :fieldobsresult/TextResult
-                    :fieldobsresult/FieldObsResultComments}
-   :initial-state {:riverdb.entity/ns               :entity.ns/fieldobsresult
-                   :db/id                           :param/id
-                   :fieldobsresult/uuid             :param/uuid
-                   :fieldobsresult/IntResult        :param/int
-                   :fieldobsresult/TextResult       :param/text
-                   :fieldobsresult/ConstituentRowID :param/const}})
-
-
-(defsc LabResultForm [this {:keys [] :as props}]
-  {:ident         [:org.riverdb.db.labresult/gid :db/id]
-   :query         [:db/id
-                   :riverdb.entity/ns
-                   fs/form-config-join
-                   :labresult/uuid
-                   :labresult/AnalysisDate
-                   :labresult/LabReplicate
-                   :labresult/LabResultComments
-                   :labresult/Result
-                   :labresult/SigFig
-                   {:labresult/ConstituentRowID
-                    (comp/get-query Constituent)}]
-   :form-fields   #{:db/id
-                    :riverdb.entity/ns
-                    :labresult/uuid
-                    :labresult/AnalysisDate
-                    :labresult/ExpectedValue
-                    :labresult/LabResultComments
-                    :labresult/Result
-                    :labresult/SigFig}
-   :initial-state {:db/id                      :param/id
-                   :riverdb.entity/ns          :entity.ns/labresult
-                   :labresult/uuid             :param/uuid
-                   :labresult/LabReplicate     :param/rep
-                   :labresult/ConstituentRowID :param/const}})
-
-(fm/defmutation save-obs [{:keys [sample name text value obsvalue intval constituentlookupRef]}]
-  (action [{:keys [state]}]
-    (debug "SAVE OBS RESULT" "name" name "text" text "value" value "obsvalue" obsvalue "intval" intval "constituentlookupRef" constituentlookupRef)))
-
-
-(defsc FieldObsParamForm
-  [this
-   {:keys [fieldobs-results fieldobs-params] :as props}
-   {:keys [fieldobsvarlookup-options sample]}]
-  {:query             [:fieldobs-results :fieldobs-params]
-   :initial-state     {:fieldobs-params  [{:parameter/Name                 "CanopyCover"
-                                           :parameter/Constituent {:db/id "17592186158390"}}
-                                          {:parameter/Name                 "SkyCode"
-                                           :parameter/Constituent {:db/id "17592186157657"}}
-                                          {:parameter/Name                 "Precipitation"
-                                           :parameter/Constituent {:db/id "17592186156566"}}
-                                          {:parameter/Name                 "WaterClarity"
-                                           :parameter/Constituent {:db/id "17592186158389"}}
-                                          {:parameter/Name                 "WindSpeed"
-                                           :parameter/Constituent {:db/id "17592186158388"}}]
-                       :fieldobs-results [{:db/id                           (tempid/tempid)
-                                           :riverdb.entity/ns               :entity.ns/fieldobsresult
-                                           :fieldobsresult/uuid             (tempid/uuid)
-                                           :fieldobsresult/IntResult        1
-                                           :fieldobsresult/TextResult       "Less"
-                                           :fieldobsresult/ConstituentRowID {:db/id "17592186158390"}}
-                                          {:db/id                           (tempid/tempid)
-                                           :riverdb.entity/ns               :entity.ns/fieldobsresult
-                                           :fieldobsresult/uuid             (tempid/uuid)
-                                           :fieldobsresult/IntResult        1
-                                           :fieldobsresult/TextResult       "no clouds"
-                                           :fieldobsresult/ConstituentRowID {:db/id "17592186157657"}}
-                                          {:db/id                           (tempid/tempid)
-                                           :riverdb.entity/ns               :entity.ns/fieldobsresult
-                                           :fieldobsresult/uuid             (tempid/uuid)
-                                           :fieldobsresult/IntResult        1
-                                           :fieldobsresult/TextResult       "none"
-                                           :fieldobsresult/ConstituentRowID {:db/id "17592186156566"}}
-                                          {:db/id                           (tempid/tempid)
-                                           :riverdb.entity/ns               :entity.ns/fieldobsresult
-                                           :fieldobsresult/uuid             (tempid/uuid)
-                                           :fieldobsresult/IntResult        1
-                                           :fieldobsresult/TextResult       "Clear"
-                                           :fieldobsresult/ConstituentRowID {:db/id "17592186158389"}}
-                                          {:db/id                           (tempid/tempid)
-                                           :riverdb.entity/ns               :entity.ns/fieldobsresult
-                                           :fieldobsresult/uuid             (tempid/uuid)
-                                           :fieldobsresult/IntResult        1
-                                           :fieldobsresult/TextResult       "calm"
-                                           :fieldobsresult/ConstituentRowID {:db/id "17592186158388"}}]}
-   :componentDidMount (fn [this])}
-
-
-  (let []
-    (debug "RENDER SampleObsForm" fieldobsvarlookup-options fieldobs-results fieldobs-params)
-    (div {}
-      (dom/h3 {} "Field Observations")
-      (vec
-        (map-indexed
-          (fn [i {:parameter/keys [Name Constituent]}]
-            (let [obsresult (filter #(= (:db/id Constituent) (get-in % [:fieldobsresult/ConstituentRowID :db/id])) fieldobs-results)
-                  obsvalue  (when (seq obsresult) (:fieldobsresult/TextResult (first obsresult)))
-                  intval    (when (seq obsresult) (:fieldobsresult/IntResult (first obsresult)))
-                  options   (filter #(= (:filt %) Name) (:ui/options fieldobsvarlookup-options))]
-              (debug "Param" Name "obsvalue" obsvalue "intval" intval "fieldobs-results" fieldobs-results)
-              (div :.fields {:key i} (str Name ": (" intval ":" obsvalue ") ")
-                (vec
-                  (map-indexed
-                    (fn [j {:keys [value text]}]
-                      (let [checked  (= obsvalue text)
-                            ichecked (= (dec intval) j)]
-                        (ui-checkbox
-                          {:radio    true
-                           :key      value
-                           :label    text
-                           :name     Name
-                           :value    value
-                           :checked  ichecked
-                           :style    {:marginLeft 10}
-                           :onChange #(let []
-                                        (debug "ON CHANGE" Name value obsvalue text (not ichecked))
-                                        (comp/transact! this `[(save-obs {:sample ~sample :name ~Name :text ~text :value ~value :obsvalue ~obsvalue :intval ~intval :const ~Constituent})])
-                                        #_(fm/set-value! this :fieldobsresult/TextResult text))})))
-                    options)))))
-          fieldobs-params)))))
-
-
-(def ui-fieldobs-param-form (comp/factory FieldObsParamForm))
-
-
-(defn set-in* [state path val]
-  (assoc-in state path val))
-(fm/defmutation set-in [{:keys [path val]}]
-  (action [{:keys [state]}]
-    (swap! state set-in* path val)))
-(defn set-in! [path val]
-  (comp/transact! SPA `[(set-in {:path ~path :val ~val})]))
-
-(defn set-field-result* [state db-id val]
-  (-> state
-    (assoc-in [:org.riverdb.db.fieldresult/gid db-id :fieldresult/Result] val)
-    (fs/mark-complete* [:org.riverdb.db.fieldresult/gid db-id] :fieldresult/Result)))
-
-(defn remove-field-result* [state samp-ident db-id]
-  (debug "MUTATION remove field result" samp-ident db-id)
-  (let [path     (conj samp-ident :sample/FieldResults)
-        frs      (get-in state path)
-        str-dbid (str db-id)
-        new-frs  (vec (remove nil?
-                        (for [fr frs]
-                          (let [id    (second fr)
-                                strid (str id)]
-                            (debug "FR" strid)
-                            (if (= strid str-dbid)
-                              nil
-                              fr)))))]
-    (-> state
-      (assoc-in path new-frs)
-      (#(if (tempid/tempid? db-id)
-          (update % :org.riverdb.db.fieldresult/gid dissoc db-id)
-          %)))))
-
-(fm/defmutation set-all [{:keys [k v dbids onChange]}]
-  (action [{:keys [state]}]
-    (let [val v]
-      (debug "MUTATION set-all" k val dbids onChange)
-      (when onChange
-        (onChange v))
-      (swap! state
-        (fn [s]
-          (reduce
-            (fn [s id]
-              (-> s
-                (assoc-in [:org.riverdb.db.fieldresult/gid id k] val)
-                (fs/mark-complete* [:org.riverdb.db.fieldresult/gid id] k)))
-            s dbids))))))
-
-(defn filter-fieldresult-constituent [const results]
-  (filter #(= (rutil/get-ref-val const) (rutil/get-ref-val (:fieldresult/ConstituentRowID %))) results))
-
-(defn fieldresults->fr-map [fieldresults]
-  (nest-by [#(-> % :fieldresult/ConstituentRowID (rutil/get-ref-val)) #(-> % :fieldresult/SamplingDeviceCode (rutil/get-ref-val)) :fieldresult/FieldReplicate] fieldresults))
-
-(defn fr-map->fieldresults [fr-map]
-  (sp/select [ALL LAST ALL LAST ALL LAST] fr-map))
-
-(fm/defmutation set-field-result [{:keys [val i samp-ident p-const devType devID fr-map]}]
-  (action [{:keys [state]}]
-    (let [const    (rutil/map->ident p-const :org.riverdb.db.constituentlookup/gid)
-          const-id (rutil/get-ref-val const)
-          dev-id   (rutil/get-ref-val devType)
-          current  (get-in fr-map [const-id dev-id i])
-          db-id    (:db/id current)]
-      (debug "MUTATION set-field-result" "samp-ident" samp-ident i val "const" const "devType" devType "current" current "fr-m" fr-map)
-
-      (cond
-
-        ;; NOTE updated existing fieldresult
-        (some? db-id)
-        (do
-          (debug "UPDATE EXISTING" db-id)
-          (if (some? val)
-            (swap! state set-field-result* db-id val)
-            (swap! state remove-field-result* samp-ident db-id)))
-
-        ;; NOTE add a new fieldresult
-        (and (nil? db-id) (some? val))
-        (let [new-id   (tempid/tempid)
-              new-fr   (comp/get-initial-state FieldResultForm
-                         {:id new-id :uuid (tempid/uuid) :const p-const :rep i :result val :devID devID :devType devType})
-              new-fr'  (rutil/convert-db-refs new-fr)
-              new-form (fs/add-form-config FieldResultForm new-fr')
-              fr-map'  (assoc-in fr-map [const-id dev-id i] new-form)
-              frs      (mapv rutil/thing->ident (fr-map->fieldresults fr-map'))]
-          (debug "CREATE NEW" "fr-map'" fr-map' "frs" frs)
-          (swap! state
-            (fn [st]
-              (-> st
-                (merge/merge-component FieldResultForm new-form)
-                (assoc-in (conj samp-ident :sample/FieldResults) frs)))))))))
-
-(defn rui-fieldres [samp-ident i p-const rs-map fr-map devType devID]
-  (let [fr  (get rs-map i)
-        val (:fieldresult/Result fr)]
-    ;(debug "RENDER rui-fieldres" i (pr-str val))
-    (ui-float-input {:type     "text"
-                     :value    val
-                     :style    {:width "60px" :paddingLeft 7 :paddingRight 7}
-                     :onChange #(let [db-id (:db/id fr)
-                                      v     %]
-                                  (debug "CHANGE FIELD RESULT" db-id v)
-                                  (comp/transact! SPA `[(set-field-result
-                                                          ~{:samp-ident samp-ident
-                                                            :p-const    p-const
-                                                            :devType    devType
-                                                            :fr-map     fr-map
-                                                            :devID      devID
-                                                            :val        v
-                                                            :i          i})]))})))
-
-
-
-(defsc FieldMeasureParamForm
-  [this
-   {:parameter/keys [Replicates
-                     PrecisionCode High Low]
-    :keys           [db/id] :as props}
-   {:keys [sv-comp sample-props fieldresults fr-map reps
-           samp-ident deviceTypeLookup deviceLookup]}]
-  {:query          (fn [] [:db/id
-                           :parameter/Name
-                           :parameter/DeviceType])
-   :initLocalState (fn [this props]
-                     ;(debug "INIT LOCAL STATE FieldMeasureParamForm" props)
-                     (let [cmp   (:fulcro.client.primitives/computed props)
-                           fst   (first (:fieldresults cmp))
-                           stuff {:time          (:fieldresult/ResultTime fst)
-                                  ;:devType       (:fieldresult/SamplingDeviceCode fst)
-                                  ;:devID         (:fieldresult/SamplingDeviceID fst)
-                                  :setDeviceType #(do
-                                                    (debug "SET STATE :devType" %)
-                                                    (comp/set-state! this {:devType %}))
-                                  :setDeviceID   #(do
-                                                    (debug "SET STATE :devID" %)
-                                                    (comp/set-state! this {:devID %}))}]
-                       ;(debug "INIT LOCAL STATE FieldMeasureParamForm" stuff)
-                       stuff))}
-
-  (let [p-name        (:parameter/Name props)
-        p-device      (:parameter/DeviceType props)
-        p-const       (:parameter/Constituent props)
-        results       fieldresults
-        rs-map        (into {} (map #(identity [(:fieldresult/FieldReplicate %) %]) fieldresults))
-        rslts         (->> (mapv :fieldresult/Result results)
-                        (mapv parse-float)
-                        (remove nil?))
-        {:keys [time setDeviceType setDeviceID devType devID] :as state} (comp/get-state this)
-        ;_             (debug "READ STATE" state)
-        fst           (first fieldresults)
-        devFst        (:fieldresult/SamplingDeviceCode fst)
-        devType       (if fst
-                        devFst
-                        (or devType p-device))
-        devType       (rutil/map->ident devType :org.riverdb.db.samplingdevicelookup/gid)
-        devIDfst      (:fieldresult/SamplingDeviceID fst)
-        devID         (if fst
-                        devIDfst
-                        devID)
-        devID         (rutil/map->ident devID :org.riverdb.db.samplingdevice/gid)
-        mean          (/ (reduce + rslts) (count rslts))
-        stddev        (tu/std-dev rslts)
-        rsd           (tu/round2 2 (tu/percent-prec mean stddev))
-        rnge          (tu/round2 2 (- (reduce max rslts) (reduce min rslts)))
-        mean          (tu/round2 2 mean)
-
-        stddev        (tu/round2 2 stddev)
-        prec          (clojure.edn/read-string PrecisionCode)
-        precRSD       (:rsd prec)
-        precRange     (:range prec)
-        precThreshold (:threshold prec)
-        rangeExc      (when precRange
-                        (if precThreshold
-                          (and
-                            (> rnge precRange)
-                            (< mean precThreshold))
-                          (> rnge precRange)))
-        low (when Low (.-rep Low))
-        high (when High (.-rep High))
-
-        qualExc       (or
-                        (and high (> mean high))
-                        (and low (< mean low)))
-
-        ;_             (debug "prec" prec "rnge" rnge "precRange" precRange "typeRange" (type precRange)
-        ;                "typeRSD" (type precRSD) "typeThresh" (type precThreshold) "range exceedance?" (> rnge precRange))
-
-
-
-        rsdExc        (when precRSD
-                        (if precThreshold
-                          (and
-                            (> mean precThreshold)
-                            (> rsd precRSD))
-                          (> rsd precRSD)))
-        time          (or time (:fieldresult/ResultTime (first results)))
-        unit          (get-in p-const [:constituentlookup/UnitCode :unitlookup/Unit])]
-    (debug "RENDER FieldMeasureParamForm" p-name "rs-map" rs-map "props" props) ; "devType" devType "devID" devID "p-const" p-const "fieldresults" fieldresults)
-
-    (tr {:key id}
-      (td {:key "name"} p-name)
-      (td {:key "inst"}
-        (ui-theta-options (comp/computed
-                            (merge deviceTypeLookup
-                              {:riverdb.entity/ns :entity.ns/samplingdevicelookup
-                               :value             devType
-                               :opts              {:load  false
-                                                   :style {:paddingLeft 5 :paddingRight 5}}})
-                            {:changeMutation `set-all
-                             :changeParams   {:dbids    (mapv :db/id results)
-                                              :k        :fieldresult/SamplingDeviceCode
-                                              :onChange setDeviceType}})))
-
-      (td {:key "instID"}
-        (ui-theta-options (comp/computed
-                            (merge deviceLookup
-                              {:riverdb.entity/ns :entity.ns/samplingdevice
-                               :value             devID
-                               :filter-key        :samplingdevice/DeviceType
-                               :filter-val        {:db/id (second devType)}
-                               :opts              {:load false :style {:width 70 :minWidth 50 :paddingLeft 5 :paddingRight 5}}})
-                            {:changeMutation `set-all
-                             :changeParams   {:dbids    (mapv :db/id results)
-                                              :k        :fieldresult/SamplingDeviceID
-                                              :onChange setDeviceID}})))
-
-      (td {:key "unit"} (or unit ""))
-
-      ;; NOTE this is the (difficult) shizzle here
-      (mapv
-        (fn [i]
-          (td {:key i}
-            (rui-fieldres samp-ident i (select-keys p-const [:db/id]) rs-map fr-map devType devID)))
-        (range 1 (inc reps)))
-
-
-      (td {:key "time"} (dom/input {:type     "text"
-                                    :style    {:width "80px" :paddingLeft 7 :paddingRight 7}
-                                    :value    (or (str time) "")
-                                    :onChange #(let [value (-> % .-target .-value)]
-                                                 (comp/transact! this `[(set-all {:dbids ~(mapv :db/id results)
-                                                                                  :k     :fieldresult/ResultTime
-                                                                                  :v     ~value})]))}))
-      (td {:key "reps" :style {:color (if (< (count rslts) Replicates) "red" "black")}} (or (str (count rslts)) ""))
-      (ui-popup
-        {:open    false
-         :trigger (td {:key "range" :style {:color (if rangeExc "red" "black")}} (or (str rnge) ""))}
-        "Range exceedance")
-      (td {:key "mean" :style {:color (if qualExc "red" "black")}} (or (str mean) ""))
-      (td {:key "stddev"} (or (str stddev) "")))))
-      ;(ui-popup
-      ;  {:open    false
-      ;   :trigger (td {:key "rsd" :style {:color (if rsdExc "red" "black")}} (or (str rsd) ""))}
-      ;  "RSD exceedance"))))
-
-(def ui-fieldmeasure-param-form (comp/factory FieldMeasureParamForm {:keyfn :db/id}))
+;(defn set-field-result* [state db-id val]
+;  (-> state
+;    (assoc-in [:org.riverdb.db.fieldresult/gid db-id :fieldresult/Result] val)
+;    (fs/mark-complete* [:org.riverdb.db.fieldresult/gid db-id] :fieldresult/Result)))
+;
+;(defn remove-field-result* [state samp-ident db-id]
+;  (debug "MUTATION remove field result" samp-ident db-id)
+;  (let [path     (conj samp-ident :sample/FieldResults)
+;        frs      (get-in state path)
+;        str-dbid (str db-id)
+;        new-frs  (vec (remove nil?
+;                        (for [fr frs]
+;                          (let [id    (second fr)
+;                                strid (str id)]
+;                            (debug "FR" strid)
+;                            (if (= strid str-dbid)
+;                              nil
+;                              fr)))))]
+;    (-> state
+;      (assoc-in path new-frs)
+;      (#(if (tempid/tempid? db-id)
+;          (update % :org.riverdb.db.fieldresult/gid dissoc db-id)
+;          %)))))
+;
+;(fm/defmutation set-all [{:keys [k v dbids onChange]}]
+;  (action [{:keys [state]}]
+;    (let [val v]
+;      (debug "MUTATION set-all" k val dbids onChange)
+;      (when onChange
+;        (onChange v))
+;      (swap! state
+;        (fn [s]
+;          (reduce
+;            (fn [s id]
+;              (-> s
+;                (assoc-in [:org.riverdb.db.fieldresult/gid id k] val)
+;                (fs/mark-complete* [:org.riverdb.db.fieldresult/gid id] k)))
+;            s dbids))))))
+;
+;(defn filter-fieldresult-constituent [const results]
+;  (filter #(= (rutil/get-ref-val const) (rutil/get-ref-val (:fieldresult/ConstituentRowID %))) results))
+;
+;(defn fieldresults->fr-map [fieldresults]
+;  (nest-by [#(-> % :fieldresult/ConstituentRowID (rutil/get-ref-val)) #(-> % :fieldresult/SamplingDeviceCode (rutil/get-ref-val)) :fieldresult/FieldReplicate] fieldresults))
+;
+;(defn fr-map->fieldresults [fr-map]
+;  (sp/select [ALL LAST ALL LAST ALL LAST] fr-map))
+;
+;(fm/defmutation set-field-result [{:keys [val i samp-ident p-const devType devID fr-map]}]
+;  (action [{:keys [state]}]
+;    (let [const    (rutil/map->ident p-const :org.riverdb.db.constituentlookup/gid)
+;          const-id (rutil/get-ref-val const)
+;          dev-id   (rutil/get-ref-val devType)
+;          current  (get-in fr-map [const-id dev-id i])
+;          db-id    (:db/id current)]
+;      (debug "MUTATION set-field-result" "samp-ident" samp-ident i val "const" const "devType" devType "current" current "fr-m" fr-map)
+;
+;      (cond
+;
+;        ;; NOTE updated existing fieldresult
+;        (some? db-id)
+;        (do
+;          (debug "UPDATE EXISTING" db-id)
+;          (if (some? val)
+;            (swap! state set-field-result* db-id val)
+;            (swap! state remove-field-result* samp-ident db-id)))
+;
+;        ;; NOTE add a new fieldresult
+;        (and (nil? db-id) (some? val))
+;        (let [new-id   (tempid/tempid)
+;              new-fr   (comp/get-initial-state FieldResultForm
+;                         {:id new-id :uuid (tempid/uuid) :const p-const :rep i :result val :devID devID :devType devType})
+;              new-fr'  (rutil/convert-db-refs new-fr)
+;              new-form (fs/add-form-config FieldResultForm new-fr')
+;              fr-map'  (assoc-in fr-map [const-id dev-id i] new-form)
+;              frs      (mapv rutil/thing->ident (fr-map->fieldresults fr-map'))]
+;          (debug "CREATE NEW" "fr-map'" fr-map' "frs" frs)
+;          (swap! state
+;            (fn [st]
+;              (-> st
+;                (merge/merge-component FieldResultForm new-form)
+;                (assoc-in (conj samp-ident :sample/FieldResults) frs)))))))))
+;
+;(defn rui-fieldres [samp-ident i p-const rs-map fr-map devType devID]
+;  (let [fr  (get rs-map i)
+;        val (:fieldresult/Result fr)]
+;    ;(debug "RENDER rui-fieldres" i (pr-str val))
+;    (ui-float-input {:type     "text"
+;                     :value    val
+;                     :style    {:width "60px" :paddingLeft 7 :paddingRight 7}
+;                     :onChange #(let [db-id (:db/id fr)
+;                                      v     %]
+;                                  (debug "CHANGE FIELD RESULT" db-id v)
+;                                  (comp/transact! SPA `[(set-field-result
+;                                                          ~{:samp-ident samp-ident
+;                                                            :p-const    p-const
+;                                                            :devType    devType
+;                                                            :fr-map     fr-map
+;                                                            :devID      devID
+;                                                            :val        v
+;                                                            :i          i})]))})))
+;
+;
+;
+;(defsc FieldMeasureParamForm
+;  [this
+;   {:parameter/keys [Replicates
+;                     PrecisionCode High Low]
+;    :keys           [db/id] :as props}
+;   {:keys [sv-comp sample-props fieldresults fr-map reps
+;           samp-ident deviceTypeLookup deviceLookup]}]
+;  {:query          (fn [] [:db/id
+;                           :parameter/Name
+;                           :parameter/DeviceType])
+;   :initLocalState (fn [this props]
+;                     ;(debug "INIT LOCAL STATE FieldMeasureParamForm" props)
+;                     (let [cmp   (:fulcro.client.primitives/computed props)
+;                           fst   (first (:fieldresults cmp))
+;                           stuff {:time          (:fieldresult/ResultTime fst)
+;                                  ;:devType       (:fieldresult/SamplingDeviceCode fst)
+;                                  ;:devID         (:fieldresult/SamplingDeviceID fst)
+;                                  :setDeviceType #(do
+;                                                    (debug "SET STATE :devType" %)
+;                                                    (comp/set-state! this {:devType %}))
+;                                  :setDeviceID   #(do
+;                                                    (debug "SET STATE :devID" %)
+;                                                    (comp/set-state! this {:devID %}))}]
+;                       ;(debug "INIT LOCAL STATE FieldMeasureParamForm" stuff)
+;                       stuff))}
+;
+;  (let [p-name        (:parameter/Name props)
+;        p-device      (:parameter/DeviceType props)
+;        p-const       (:parameter/Constituent props)
+;        results       fieldresults
+;        rs-map        (into {} (map #(identity [(:fieldresult/FieldReplicate %) %]) fieldresults))
+;        rslts         (->> (mapv :fieldresult/Result results)
+;                        (mapv parse-float)
+;                        (remove nil?))
+;        {:keys [time setDeviceType setDeviceID devType devID] :as state} (comp/get-state this)
+;        ;_             (debug "READ STATE" state)
+;        fst           (first fieldresults)
+;        devFst        (:fieldresult/SamplingDeviceCode fst)
+;        devType       (if fst
+;                        devFst
+;                        (or devType p-device))
+;        devType       (rutil/map->ident devType :org.riverdb.db.samplingdevicelookup/gid)
+;        devIDfst      (:fieldresult/SamplingDeviceID fst)
+;        devID         (if fst
+;                        devIDfst
+;                        devID)
+;        devID         (rutil/map->ident devID :org.riverdb.db.samplingdevice/gid)
+;        mean          (/ (reduce + rslts) (count rslts))
+;        stddev        (tu/std-dev rslts)
+;        rsd           (tu/round2 2 (tu/percent-prec mean stddev))
+;        rnge          (tu/round2 2 (- (reduce max rslts) (reduce min rslts)))
+;        mean          (tu/round2 2 mean)
+;
+;        stddev        (tu/round2 2 stddev)
+;        prec          (clojure.edn/read-string PrecisionCode)
+;        precRSD       (:rsd prec)
+;        precRange     (:range prec)
+;        precThreshold (:threshold prec)
+;        rangeExc      (when precRange
+;                        (if precThreshold
+;                          (and
+;                            (> rnge precRange)
+;                            (< mean precThreshold))
+;                          (> rnge precRange)))
+;        low (when Low (.-rep Low))
+;        high (when High (.-rep High))
+;
+;        qualExc       (or
+;                        (and high (> mean high))
+;                        (and low (< mean low)))
+;
+;        ;_             (debug "prec" prec "rnge" rnge "precRange" precRange "typeRange" (type precRange)
+;        ;                "typeRSD" (type precRSD) "typeThresh" (type precThreshold) "range exceedance?" (> rnge precRange))
+;
+;
+;
+;        rsdExc        (when precRSD
+;                        (if precThreshold
+;                          (and
+;                            (> mean precThreshold)
+;                            (> rsd precRSD))
+;                          (> rsd precRSD)))
+;        time          (or time (:fieldresult/ResultTime (first results)))
+;        unit          (get-in p-const [:constituentlookup/UnitCode :unitlookup/Unit])]
+;    (debug "RENDER FieldMeasureParamForm" p-name "rs-map" rs-map "props" props) ; "devType" devType "devID" devID "p-const" p-const "fieldresults" fieldresults)
+;
+;    (tr {:key id}
+;      (td {:key "name"} p-name)
+;      (td {:key "inst"}
+;        (ui-theta-options (comp/computed
+;                            (merge deviceTypeLookup
+;                              {:riverdb.entity/ns :entity.ns/samplingdevicelookup
+;                               :value             devType
+;                               :opts              {:load  false
+;                                                   :style {:paddingLeft 5 :paddingRight 5}}})
+;                            {:changeMutation `set-all
+;                             :changeParams   {:dbids    (mapv :db/id results)
+;                                              :k        :fieldresult/SamplingDeviceCode
+;                                              :onChange setDeviceType}})))
+;
+;      (td {:key "instID"}
+;        (ui-theta-options (comp/computed
+;                            (merge deviceLookup
+;                              {:riverdb.entity/ns :entity.ns/samplingdevice
+;                               :value             devID
+;                               :filter-key        :samplingdevice/DeviceType
+;                               :filter-val        {:db/id (second devType)}
+;                               :opts              {:load false :style {:width 70 :minWidth 50 :paddingLeft 5 :paddingRight 5}}})
+;                            {:changeMutation `set-all
+;                             :changeParams   {:dbids    (mapv :db/id results)
+;                                              :k        :fieldresult/SamplingDeviceID
+;                                              :onChange setDeviceID}})))
+;
+;      (td {:key "unit"} (or unit ""))
+;
+;      ;; NOTE this is the (difficult) shizzle here
+;      (mapv
+;        (fn [i]
+;          (td {:key i}
+;            (rui-fieldres samp-ident i (select-keys p-const [:db/id]) rs-map fr-map devType devID)))
+;        (range 1 (inc reps)))
+;
+;
+;      (td {:key "time"} (dom/input {:type     "text"
+;                                    :style    {:width "80px" :paddingLeft 7 :paddingRight 7}
+;                                    :value    (or (str time) "")
+;                                    :onChange #(let [value (-> % .-target .-value)]
+;                                                 (comp/transact! this `[(set-all {:dbids ~(mapv :db/id results)
+;                                                                                  :k     :fieldresult/ResultTime
+;                                                                                  :v     ~value})]))}))
+;      (td {:key "reps" :style {:color (if (< (count rslts) Replicates) "red" "black")}} (or (str (count rslts)) ""))
+;      (ui-popup
+;        {:open    false
+;         :trigger (td {:key "range" :style {:color (if rangeExc "red" "black")}} (or (str rnge) ""))}
+;        "Range exceedance")
+;      (td {:key "mean" :style {:color (if qualExc "red" "black")}} (or (str mean) ""))
+;      (td {:key "stddev"} (or (str stddev) "")))))
+;      ;(ui-popup
+;      ;  {:open    false
+;      ;   :trigger (td {:key "rsd" :style {:color (if rsdExc "red" "black")}} (or (str rsd) ""))}
+;      ;  "RSD exceedance"))))
+;
+;(def ui-fieldmeasure-param-form (comp/factory FieldMeasureParamForm {:keyfn :db/id}))
 
 ;(defsc FieldMeasureParamList [this
 ;                              {:keys [fieldresults
@@ -586,160 +608,165 @@
 ;(def ui-fieldmeasure-param-list (comp/factory FieldMeasureParamList))
 
 
-(defsc FieldMeasureParamList [this
-                              {:keys [fieldresults
-                                      fieldmeasure-params]}
-                              {:keys [deviceTypeLookup
-                                      deviceLookup
-                                      sv-comp
-                                      sample-props
-                                      samp-ident]}]
-  {:query [{:fieldresults (comp/get-query FieldResultForm)}
-           :fieldmeasure-params]}
-  (let [max-reps (reduce
-                   (fn [mx p]
-                     (if-let [reps (:parameter/ReplicatesEntry p)]
-                       (max reps mx)
-                       mx))
-                   1 fieldmeasure-params)
-        fr-map   (fieldresults->fr-map (map rutil/convert-db-refs fieldresults))]
-    ;(debug "RENDER FieldMeasureParamList" "params" fieldmeasure-params) ;"fr-map" fr-map "results" fieldresults) ;"params" fieldmeasure-params)
-    (div {}
-      (dom/h3 {} "Field Measurements")
-      (table :.ui.very.compact.mini.table {:key "wqtab"}
-        (thead {:key 1}
-          (tr {}
-            (th {:key "nm"} "Param")
-            (th {:key "inst"} "Device")
-            (th {:key "instID"} "Inst ID")
-            (th {:key "units"} "Units")
-            (map
-              #(identity
-                 (th {:key (str %)} (str "Test " %)))
-              (range 1 (inc max-reps)))
-            (th {:key "time"} "Time")
-            (th {:key "reps"} "# Tests")
-            (th {:key "range"} "Range")
-            (th {:key "mean"} "Mean")
-            (th {:key "stddev"} "Std Dev")))
-        ;(th {:key "rds"} "Prec")))
-        (tbody {:key 2}
-          (vec
-            (for [fm-param fieldmeasure-params]
-              (let [const     (:parameter/Constituent fm-param)
-                    f-results (filter-fieldresult-constituent const fieldresults)]
-                (ui-fieldmeasure-param-form
-                  (comp/computed fm-param
-                    {:deviceTypeLookup             deviceTypeLookup
-                     :deviceLookup                 deviceLookup
-                     :sv-comp                      sv-comp
-                     :sample-props                 sample-props
-                     :fieldresults                 f-results
-                     :fr-map                       fr-map
-                     :reps                         max-reps
-                     :samp-ident                   samp-ident}))))))))))
+;(defsc FieldMeasureParamList [this
+;                              {:keys [fieldresults
+;                                      fieldmeasure-params]}
+;                              {:keys [deviceTypeLookup
+;                                      deviceLookup
+;                                      sv-comp
+;                                      sample-props
+;                                      samp-ident]}]
+;  {:query [{:fieldresults (comp/get-query FieldResultForm)}
+;           :fieldmeasure-params]}
+;  (let [max-reps (reduce
+;                   (fn [mx p]
+;                     (if-let [reps (:parameter/ReplicatesEntry p)]
+;                       (max reps mx)
+;                       mx))
+;                   1 fieldmeasure-params)
+;        fr-map   (fieldresults->fr-map (map rutil/convert-db-refs fieldresults))]
+;    ;(debug "RENDER FieldMeasureParamList" "params" fieldmeasure-params) ;"fr-map" fr-map "results" fieldresults) ;"params" fieldmeasure-params)
+;    (div {}
+;      (dom/h3 {} "Field Measurements")
+;      (table :.ui.very.compact.mini.table {:key "wqtab"}
+;        (thead {:key 1}
+;          (tr {}
+;            (th {:key "nm"} "Param")
+;            (th {:key "inst"} "Device")
+;            (th {:key "instID"} "Inst ID")
+;            (th {:key "units"} "Units")
+;            (map
+;              #(identity
+;                 (th {:key (str %)} (str "Test " %)))
+;              (range 1 (inc max-reps)))
+;            (th {:key "time"} "Time")
+;            (th {:key "reps"} "# Tests")
+;            (th {:key "range"} "Range")
+;            (th {:key "mean"} "Mean")
+;            (th {:key "stddev"} "Std Dev")))
+;        ;(th {:key "rds"} "Prec")))
+;        (tbody {:key 2}
+;          (vec
+;            (for [fm-param fieldmeasure-params]
+;              (let [const     (:parameter/Constituent fm-param)
+;                    f-results (filter-fieldresult-constituent const fieldresults)]
+;                (ui-fieldmeasure-param-form
+;                  (comp/computed fm-param
+;                    {:deviceTypeLookup             deviceTypeLookup
+;                     :deviceLookup                 deviceLookup
+;                     :sv-comp                      sv-comp
+;                     :sample-props                 sample-props
+;                     :fieldresults                 f-results
+;                     :fr-map                       fr-map
+;                     :reps                         max-reps
+;                     :samp-ident                   samp-ident}))))))))))
+;
+;(def ui-fieldmeasure-param-list (comp/factory FieldMeasureParamList))
 
-(def ui-fieldmeasure-param-list (comp/factory FieldMeasureParamList))
-
-(defsc SampleForm [this
-                   {:ui/keys [ready]
-                    :sample/keys [SampleTypeCode
-                                  FieldResults
-                                  FieldObsResults
-                                  LabResults
-                                  uuid] :as props}
-                   {:keys [samplingdevicelookup-options
-                           fieldobsvarlookup-options
-                           active-params
-                           sv-comp
-                           onChange]}]
-  {:ident             [:org.riverdb.db.sample/gid :db/id]
-   :query             [:db/id
-                       :riverdb.entity/ns
-                       fs/form-config-join
-                       :ui/ready
-                       :sample/uuid
-                       :sample/SampleDate
-                       :sample/SampleTime
-                       :sample/Time
-                       {:sample/Constituent (comp/get-query SampleConstituentForm)}
-                       {:sample/SampleTypeCode (comp/get-query SampleTypeCodeForm)}
-                       {:sample/FieldResults (comp/get-query FieldResultForm)}
-                       {:sample/FieldObsResults (comp/get-query FieldObsResultForm)}
-                       {:sample/LabResults (comp/get-query LabResultForm)}
-                       [:riverdb.theta.options/ns '_]]
-
-   ;:initLocalState    (fn [app props]
-   ;                     (let [st {:sampleTypes
-   ;                               {:sampletypelookup.SampleTypeCode/Grab         (lookup-db-ident {:db/ident :sampletypelookup.SampleTypeCode/Grab})
-   ;                                :sampletypelookup.SampleTypeCode/FieldObs     (lookup-db-ident {:db/ident :sampletypelookup.SampleTypeCode/FieldObs})
-   ;                                :sampletypelookup.SampleTypeCode/FieldMeasure (lookup-db-ident {:db/ident :sampletypelookup.SampleTypeCode/FieldMeasure})}}]
-   ;                       (debug "INIT LOCAL STATE SampleForm" "state" st)
-   ;                       st))
-
-
-   :initial-state     (fn [{:keys [type]}]
-                        {:db/id                 (tempid/tempid)
-                         :sample/uuid           (tempid/uuid)
-                         :riverdb.entity/ns     :entity.ns/sample
-                         :ui/ready              false
-                         :sample/SampleTypeCode (case type
-                                                  :fieldobs
-                                                  (lookup-db-ident {:db/ident :sampletypelookup.SampleTypeCode/FieldObs})
-                                                  :grab
-                                                  (lookup-db-ident {:db/ident :sampletypelookup.SampleTypeCode/Grab})
-                                                  :fieldmeasure
-                                                  (lookup-db-ident {:db/ident :sampletypelookup.SampleTypeCode/FieldMeasure}))})
-   :form-fields       #{:db/id
-                        :sample/uuid
-                        :riverdb.entity/ns
-                        :sample/SampleTime
-                        :sample/FieldResults
-                        :sample/FieldObsResults
-                        :sample/LabResults
-                        :sample/SampleTypeCode}
-   :componentDidMount (fn [this]
-                        (let [props    (comp/props this)
-                              sampType (get-in props [:sample/SampleTypeCode])]
-                          (debug "DID MOUNT SampleForm" sampType)
-                          (fm/set-value! this :ui/ready true)))}
-
-  (let [sample-type      (:db/ident SampleTypeCode)
-        filtered-params  (filter-param-typecode sample-type active-params)
-        deviceTypeLookup (get-in props [:riverdb.theta.options/ns :entity.ns/samplingdevicelookup])
-        deviceLookup     (get-in props [:riverdb.theta.options/ns :entity.ns/samplingdevice])]
-    (debug "RENDER SampleForm" sample-type)
-    (div :.ui.segment {}
-      (case sample-type
-        :sampletypelookup.SampleTypeCode/FieldMeasure
-        (when true
-          ;(debug "active-params" active-params "filtered-params" filtered-params)
-          (ui-fieldmeasure-param-list
-            (comp/computed
-              {:fieldresults        FieldResults
-               :fieldmeasure-params filtered-params}
-              {:sv-comp          sv-comp
-               :sample-props     props
-               :samp-ident       (comp/get-ident this)
-               :deviceTypeLookup deviceTypeLookup
-               :deviceLookup     deviceLookup})))
-        :sampletypelookup.SampleTypeCode/FieldObs
-        (when true
-          ;(debug "TODO: RENDER Sample->FieldObsResults" "fieldobsvarlookup-options" fieldobsvarlookup-options)
-          (ui-fieldobs-param-form
-            (comp/computed
-              (tu/merge-tree
-                (comp/get-initial-state FieldObsParamForm)
-                {:fieldobs-results FieldObsResults})
-              {:fieldobsvarlookup-options fieldobsvarlookup-options
-               :sample                    this})))
-        :sampletypelookup.SampleTypeCode/Grab
-        (when true
-          (debug "TODO: RENDER Sample->LabResults")
-          (dom/h3 {} "Grabs and Labs"))
-        (div {} "Unknown Sample Type")))))
-
-(def ui-sample-form (comp/factory SampleForm {:keyfn :db/id}))
+;(defsc SampleForm [this
+;                   {:ui/keys [ready]
+;                    :sample/keys [SampleTypeCode
+;                                  FieldResults
+;                                  FieldObsResults
+;                                  LabResults
+;                                  uuid] :as props}
+;                   {:keys [samplingdevicelookup-options
+;                           fieldobsvarlookup-options
+;                           active-params
+;                           sv-comp
+;                           onChange]}]
+;  {:ident             [:org.riverdb.db.sample/gid :db/id]
+;   :query             [:db/id
+;                       :riverdb.entity/ns
+;                       fs/form-config-join
+;                       :ui/ready
+;                       :sample/uuid
+;                       :sample/Time
+;                       {:sample/DeviceID (comp/get-query DeviceIDForm)}
+;                       {:sample/DeviceType (comp/get-query DeviceTypeForm)}
+;                       {:sample/Constituent (comp/get-query SampleConstituentForm)}
+;                       {:sample/SampleTypeCode (comp/get-query SampleTypeCodeForm)}
+;                       {:sample/FieldResults (comp/get-query FieldResultForm)}
+;                       {:sample/FieldObsResults (comp/get-query FieldObsResultForm)}
+;                       {:sample/LabResults (comp/get-query LabResultForm)}
+;                       [:riverdb.theta.options/ns '_]]
+;
+;   ;:initLocalState    (fn [app props]
+;   ;                     (let [st {:sampleTypes
+;   ;                               {:sampletypelookup.SampleTypeCode/Grab         (lookup-db-ident {:db/ident :sampletypelookup.SampleTypeCode/Grab})
+;   ;                                :sampletypelookup.SampleTypeCode/FieldObs     (lookup-db-ident {:db/ident :sampletypelookup.SampleTypeCode/FieldObs})
+;   ;                                :sampletypelookup.SampleTypeCode/FieldMeasure (lookup-db-ident {:db/ident :sampletypelookup.SampleTypeCode/FieldMeasure})}}]
+;   ;                       (debug "INIT LOCAL STATE SampleForm" "state" st)
+;   ;                       st))
+;
+;
+;   :initial-state     (fn [{:keys [type]}]
+;                        {:db/id                 (tempid/tempid)
+;                         :sample/uuid           (tempid/uuid)
+;                         :riverdb.entity/ns     :entity.ns/sample
+;                         :ui/ready              false
+;                         :sample/SampleTypeCode (case type
+;                                                  :fieldobs
+;                                                  (lookup-db-ident {:db/ident :sampletypelookup.SampleTypeCode/FieldObs})
+;                                                  :grab
+;                                                  (lookup-db-ident {:db/ident :sampletypelookup.SampleTypeCode/Grab})
+;                                                  :fieldmeasure
+;                                                  (lookup-db-ident {:db/ident :sampletypelookup.SampleTypeCode/FieldMeasure}))})
+;   :form-fields       #{:db/id
+;                        :sample/uuid
+;                        :riverdb.entity/ns
+;                        :sample/Time
+;                        :sample/SampleDate
+;                        :sample/SampleTime
+;                        :sample/DeviceID
+;                        ;:sample/DeviceType
+;                        ;:sample/Constituent
+;                        :sample/FieldResults
+;                        :sample/FieldObsResults
+;                        :sample/LabResults
+;                        :sample/SampleTypeCode}
+;   :componentDidMount (fn [this]
+;                        (let [props    (comp/props this)
+;                              sampType (get-in props [:sample/SampleTypeCode])]
+;                          (debug "DID MOUNT SampleForm" sampType)
+;                          (fm/set-value! this :ui/ready true)))}
+;
+;  (let [sample-type      (:db/ident SampleTypeCode)
+;        filtered-params  (filter-param-typecode sample-type active-params)
+;        deviceTypeLookup (get-in props [:riverdb.theta.options/ns :entity.ns/samplingdevicelookup])
+;        deviceLookup     (get-in props [:riverdb.theta.options/ns :entity.ns/samplingdevice])]
+;    (debug "RENDER SampleForm" sample-type)
+;    (div :.ui.segment {}
+;      (case sample-type
+;        :sampletypelookup.SampleTypeCode/FieldMeasure
+;        (when true
+;          ;(debug "active-params" active-params "filtered-params" filtered-params)
+;          (ui-fieldmeasure-param-list
+;            (comp/computed
+;              {:fieldresults        FieldResults
+;               :fieldmeasure-params filtered-params}
+;              {:sv-comp          sv-comp
+;               :sample-props     props
+;               :samp-ident       (comp/get-ident this)
+;               :deviceTypeLookup deviceTypeLookup
+;               :deviceLookup     deviceLookup})))
+;        :sampletypelookup.SampleTypeCode/FieldObs
+;        (when true
+;          ;(debug "TODO: RENDER Sample->FieldObsResults" "fieldobsvarlookup-options" fieldobsvarlookup-options)
+;          (ui-fieldobs-param-form
+;            (comp/computed
+;              (tu/merge-tree
+;                (comp/get-initial-state FieldObsParamForm)
+;                {:fieldobs-results FieldObsResults})
+;              {:fieldobsvarlookup-options fieldobsvarlookup-options
+;               :sample                    this})))
+;        :sampletypelookup.SampleTypeCode/Grab
+;        (when true
+;          (debug "TODO: RENDER Sample->LabResults")
+;          (dom/h3 {} "Grabs and Labs"))
+;        (div {} "Unknown Sample Type")))))
+;
+;(def ui-sample-form (comp/factory SampleForm {:keyfn :db/id}))
 
 
 ;(defsc FieldMeasureSampleForm [this props]
@@ -804,28 +831,28 @@
 ;      (swap! state riverdb.ui.person/add-person* v target field-k options-target))))
 
 
-(fm/defmutation post-save-mutation [{:keys [form-ident field-k ent-ns orig new-id new-name options-target modal-ident]}]
-  (action [{:keys [state]}]
-    (debug "POST SAVE MUTATION" form-ident ent-ns field-k orig new-id new-name options-target)
-    (let [st            @state
-          field-val     (get-in st (conj form-ident field-k))
-          new-field-val (if (vector? field-val)
-                          (as-> field-val x
-                            (remove #(= (:db/id %) orig) x)
-                            (conj x {:db/id new-id})
-                            (vec x))
-                          {:db/id new-id})
-
-          opts          (as-> (get-in st options-target) x
-                          (remove #(= (:key %) new-id) x)
-                          (conj x {:key new-id :value new-id :text new-name}))]
-      (debug "SAVE! NEW VAL" new-field-val)
-      (swap! state
-        (fn [st]
-          (-> st
-            (merge/merge-ident form-ident {field-k new-field-val})
-            (assoc-in (conj modal-ident :ui/show) false)
-            (assoc-in options-target opts)))))))
+;(fm/defmutation post-save-mutation [{:keys [form-ident field-k ent-ns orig new-id new-name options-target modal-ident]}]
+;  (action [{:keys [state]}]
+;    (debug "POST SAVE MUTATION" form-ident ent-ns field-k orig new-id new-name options-target)
+;    (let [st            @state
+;          field-val     (get-in st (conj form-ident field-k))
+;          new-field-val (if (vector? field-val)
+;                          (as-> field-val x
+;                            (remove #(= (:db/id %) orig) x)
+;                            (conj x {:db/id new-id})
+;                            (vec x))
+;                          {:db/id new-id})
+;
+;          opts          (as-> (get-in st options-target) x
+;                          (remove #(= (:key %) new-id) x)
+;                          (conj x {:key new-id :value new-id :text new-name}))]
+;      (debug "SAVE! NEW VAL" new-field-val)
+;      (swap! state
+;        (fn [st]
+;          (-> st
+;            (merge/merge-ident form-ident {field-k new-field-val})
+;            (assoc-in (conj modal-ident :ui/show) false)
+;            (assoc-in options-target opts)))))))
 
 (fm/defmutation sv-deleted [{:keys [ident]}]
   (action [{:keys [state]}]
@@ -940,7 +967,7 @@
          stationfaillookup-options :entity.ns/stationfaillookup
          fieldobsvarlookup-options :entity.ns/fieldobsvarlookup} (:riverdb.theta.options/ns props)]
 
-    (debug "RENDER SiteVisitForm" "props" props "params" active-params)
+    ;(debug "RENDER SiteVisitForm" "props" props "params" active-params )
     (div :.dimmable.fields {:key "sv-form"}
       (ui-dimmer {:inverted true :active (or (not ready) (not props))}
         (ui-loader {:indeterminate true}))
@@ -1096,8 +1123,7 @@
                                          (log/debug "publish change" value)
                                          (set-value! this :sitevisit/QACheck value))})))
 
-          (ui-form-text-area {;:autoHeight true
-                              :label    "Notes"
+          (ui-form-text-area {:label    "Notes"
                               :value    (or Notes "")
                               :onChange #(do
                                            (debug "CHANGED Notes" (-> % .-target .-value))
@@ -1111,9 +1137,11 @@
                   samples (filter-sample-typecode sample-type Samples)]
               (ui-sample-list
                 (comp/computed
-                  {:ui/sample-type sample-type
-                   :ui/params      params
-                   :ui/samples     samples}
+                  {:sample-type              sample-type
+                   :params                   params
+                   :samples                  samples
+                   :riverdb.theta.options/ns (:riverdb.theta.options/ns props)}
+
                   {:sv-comp        this
                    :onChangeSample onChangeSample}))))
 
@@ -1188,13 +1216,16 @@
   [{:keys [route-target form-ident]}]
   (action [{:keys [state]}]
     (debug "MUTATION FORM READY" route-target form-ident)
-    (swap! state
-      (fn [st]
-        (-> st
-          (rutil/convert-db-refs* form-ident)
-          (fs/add-form-config* SiteVisitForm form-ident)
-          (fs/entity->pristine* form-ident)
-          (update-in form-ident assoc :ui/ready true))))
+    (try
+      (swap! state
+        (fn [st]
+          (-> st
+            (rutil/convert-db-refs* form-ident)
+            (fs/add-form-config* SiteVisitForm form-ident)
+            (fs/entity->pristine* form-ident)
+            (update-in form-ident assoc :ui/ready true))))
+      (catch js/Object ex (debug "FORM LOAD FAILED" ex)))
+    (debug "DONE SETTING UP SV FORM READY")
     (dr/target-ready! SPA route-target)))
 
 (fm/defmutation merge-new-sv2
@@ -1227,9 +1258,11 @@
 
 (defsc SiteVisitEditor [this {:keys                 [sitevisit session]
                               :riverdb.ui.root/keys [current-project current-agency]
-                              :ui/keys              [] :as props}]
+                              :ui/keys              [ready] :as props}]
   {:ident             (fn [] [:component/id :sitevisit-editor])
-   :query             [{:sitevisit (comp/get-query SiteVisitForm)}
+   :initial-state     {:ui/ready false}
+   :query             [:ui/ready
+                       {:sitevisit (comp/get-query SiteVisitForm)}
                        {[:riverdb.ui.root/current-agency '_] (comp/get-query looks/agencylookup-sum)}
                        {[:riverdb.ui.root/current-project '_] (comp/get-query ProjectInfo)}
                        {:session (comp/get-query Session)}
@@ -1261,7 +1294,7 @@
                             (dr/route-deferred editor-ident
                               #(let [sv-ident [ident-key sv-id]]
                                  (log/debug "LOADING AN EXISTING SITEVISIT" sv-ident)
-                                 (dr/target-ready! SPA editor-ident)
+                                 ;(dr/target-ready! SPA editor-ident)
                                  (f/load! app sv-ident SiteVisitForm
                                    {:target               (targeting/multiple-targets
                                                             [:riverdb.ui.root/current-sv]

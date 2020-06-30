@@ -148,7 +148,7 @@
         options    (into [{:text "" :value ""}] (if (and filter-key filter-val)
                                                   (filterv #(= (:filt %) filter-val) options)
                                                   options))]
-    ;(debug "RENDER ThetaOptions" theta-k "text-key:" text-key "value:" ref-id) ;"loading:" loading "query-params:" query-params "filter-key:" filter-key "filter-val:" filter-val)
+    ;(debug "RENDER ThetaOptions" theta-k "text-key:" text-key "value:" ref-id "filter-key:" filter-key "filter-val:" filter-val) ;"loading:" loading "query-params:" query-params "filter-key:" filter-key "filter-val:" filter-val)
     (ui-dropdown {:loading          (not show?)
                   :search           true
                   :selection        true

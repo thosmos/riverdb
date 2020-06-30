@@ -10,28 +10,14 @@
                    fs/form-config-join
                    :fieldresult/uuid
                    :fieldresult/Result
-                   :fieldresult/ResultTime
-                   :fieldresult/FieldReplicate
-                   :fieldresult/ConstituentRowID
-                   :fieldresult/SamplingDeviceID
-                   :fieldresult/SamplingDeviceCode
-                   :fieldresult/FieldResultComments]
+                   :fieldresult/FieldReplicate]
    :form-fields   #{:db/id
                     :riverdb.entity/ns
                     :fieldresult/uuid
                     :fieldresult/Result
-                    :fieldresult/ResultTime
-                    :fieldresult/FieldReplicate
-                    :fieldresult/ConstituentRowID
-                    :fieldresult/SamplingDeviceID
-                    :fieldresult/SamplingDeviceCode
-                    :fieldresult/FieldResultComments}
+                    :fieldresult/FieldReplicate}
    :initial-state {:db/id                          :param/id
                    :riverdb.entity/ns              :entity.ns/fieldresult
                    :fieldresult/uuid               :param/uuid
                    :fieldresult/Result             :param/result
-                   :fieldresult/ResultTime         :param/time
-                   :fieldresult/FieldReplicate     :param/rep
-                   :fieldresult/ConstituentRowID   :param/const
-                   :fieldresult/SamplingDeviceID   :param/devID
-                   :fieldresult/SamplingDeviceCode :param/devType}})
+                   :fieldresult/FieldReplicate     :param/rep}})

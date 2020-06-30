@@ -6,15 +6,15 @@
                                                 tbody th tr td form label input select
                                                 option span]]
     [riverdb.application :refer [SPA]]
-    [riverdb.ui.edit.fieldmeasure :refer [ui-fm-list]]
+    [riverdb.ui.edit.fieldmeasure :refer [ui-fm-list FieldMeasureList]]
     [theta.log :as log :refer [debug info]]))
 
 
-(defsc SampleList [this {:ui/keys [sample-type params samples] :as props} {:keys [sv-comp onChangeSample] :as comps}]
-  {:query [:ui/sample-type :ui/params :ui/samples]}
+(defsc SampleList [this {:keys [sample-type] :as props} {:keys [sv-comp onChangeSample] :as comps}]
+  {:query [:sample-type :params :samples :riverdb.theta.options/ns]}
   (case sample-type
     :sampletypelookup.SampleTypeCode/FieldMeasure
     (ui-fm-list (comp/computed props comps))
     (div {:key (str sample-type)} (str sample-type))))
 
-(def ui-sample-list (comp/factory SampleList))
+(def ui-sample-list (comp/factory SampleList {:keyfn :sample-type}))
