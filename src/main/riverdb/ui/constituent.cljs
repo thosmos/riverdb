@@ -10,7 +10,7 @@
    :query         [:db/id
                    :riverdb.entity/ns
                    :constituentlookup/Active
-                   {:constituentlookup/AnalyteCode (comp/get-query looks/matrixlookup-sum)}
+                   {:constituentlookup/AnalyteCode (comp/get-query looks/analytelookup-sum)}
                    :constituentlookup/ConstituentCode
                    :constituentlookup/DeviceType
                    {:constituentlookup/FractionCode (comp/get-query looks/fractionlookup-sum)}

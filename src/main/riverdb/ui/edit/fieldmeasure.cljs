@@ -57,7 +57,7 @@
     [riverdb.ui.session :refer [Session]]
     [riverdb.ui.inputs :refer [ui-float-input]]
     [riverdb.ui.upload :refer [ui-upload-modal]]
-    [riverdb.ui.util :as rutil :refer [walk-ident-refs* walk-ident-refs make-tempid make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save set-editing set-value set-value! set-refs! set-ref! set-ref set-refs get-ref-set-val lookup-db-ident filter-param-typecode]]
+    [riverdb.ui.util :as rutil :refer [walk-ident-refs* walk-ident-refs make-tempid make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save set-editing set-value set-value!! set-refs! set-ref! set-ref set-refs get-ref-set-val lookup-db-ident filter-param-typecode]]
     [riverdb.util :refer [paginate nest-by filter-sample-typecode]]
     [com.rpl.specter :as sp :refer [ALL LAST]]
     ;[tick.alpha.api :as t]
@@ -375,10 +375,11 @@
 
     {} samples))
 
-(defsc FieldMeasureList [this {:keys [params samples] :as props} {:keys [sv-comp onChangeSample] :as comps}]
+(defsc FieldMeasureList [this {:keys [params samples param-samples] :as props} {:keys [sv-comp onChangeSample] :as comps}]
   {:query [:sample-type
            :params
            :samples
+           :param-samples
            :riverdb.theta.options/ns]}
   (let [deviceTypeLookup (get-in props [:riverdb.theta.options/ns :entity.ns/samplingdevicelookup])
         deviceLookup     (get-in props [:riverdb.theta.options/ns :entity.ns/samplingdevice])
@@ -387,9 +388,8 @@
                              (if-let [reps (:parameter/ReplicatesEntry p)]
                                (max reps mx)
                                mx))
-                           1 params)
-        param-samps      (calc-param-samples params samples)]
-    (debug "RENDER FieldMeasureList" "param-samps" param-samps) ;"params" params "samples" samples)
+                           1 params)]
+    (debug "RENDER FieldMeasureList" "param-samps" param-samples) ;"params" params "samples" samples)
     (div :.ui.segment {:key "fm-list"}
       (ui-header {} "Field Measurements")
       (table :.ui.very.compact.mini.table {:key "wqtab"}
@@ -412,7 +412,7 @@
         (tbody {:key 2}
           (vec
             (for [param params]
-              (let [sample (get param-samps (:db/id param))
+              (let [sample (get param-samples (:db/id param))
                     #_#_sample (if sample
                                  sample
                                  (let [sa-frm (comp/get-initial-state SampleForm {:type :sampletypelookup.SampleTypeCode/FieldMeasure})]))]

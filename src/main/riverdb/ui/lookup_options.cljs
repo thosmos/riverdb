@@ -25,7 +25,7 @@
 
 
 (defmutation theta-post-load [{target-ident                          :target-ident
-                               {:keys [filter-key text-key text-fn]} :params}]
+                               {:keys [filter-key text-key text-fn sort-key]} :params}]
   (action [{:keys [state]}]
     (let [st      @state
           edges   (get-in st (into target-ident [:ui/thetas]))
@@ -38,6 +38,9 @@
                             result {:value k :text (text-fn m)}
                             result (if (and filter-key (get m filter-key))
                                      (assoc result :filt (get m filter-key))
+                                     result)
+                            result (if (and sort-key (get m sort-key))
+                                     (assoc result :sort (get m sort-key))
                                      result)]
                         result)))]
 

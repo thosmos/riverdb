@@ -56,7 +56,7 @@
     [riverdb.ui.session :refer [Session]]
     [riverdb.ui.inputs :refer [ui-float-input]]
     [riverdb.ui.upload :refer [ui-upload-modal]]
-    [riverdb.ui.util :as rutil :refer [walk-ident-refs* walk-ident-refs make-tempid make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save set-editing set-value set-value! set-refs! set-ref! set-ref set-refs get-ref-set-val lookup-db-ident filter-param-typecode]]
+    [riverdb.ui.util :as rutil :refer [walk-ident-refs* walk-ident-refs make-tempid make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save set-editing set-value set-value!! set-refs! set-ref! set-ref set-refs get-ref-set-val lookup-db-ident filter-param-typecode]]
     [riverdb.util :refer [paginate nest-by filter-sample-typecode]]
     [com.rpl.specter :as sp :refer [ALL LAST]]
     ;[tick.alpha.api :as t]
@@ -204,94 +204,6 @@
 ;                   :labresult/LabReplicate     :param/rep
 ;                   :labresult/ConstituentRowID :param/const}})
 ;
-;(fm/defmutation save-obs [{:keys [sample name text value obsvalue intval constituentlookupRef]}]
-;  (action [{:keys [state]}]
-;    (debug "SAVE OBS RESULT" "name" name "text" text "value" value "obsvalue" obsvalue "intval" intval "constituentlookupRef" constituentlookupRef)))
-;
-;
-;(defsc FieldObsParamForm
-;  [this
-;   {:keys [fieldobs-results fieldobs-params] :as props}
-;   {:keys [fieldobsvarlookup-options sample]}]
-;  {:query             [:fieldobs-results :fieldobs-params]
-;   :initial-state     {:fieldobs-params  [{:parameter/Name                 "CanopyCover"
-;                                           :parameter/Constituent {:db/id "17592186158390"}}
-;                                          {:parameter/Name                 "SkyCode"
-;                                           :parameter/Constituent {:db/id "17592186157657"}}
-;                                          {:parameter/Name                 "Precipitation"
-;                                           :parameter/Constituent {:db/id "17592186156566"}}
-;                                          {:parameter/Name                 "WaterClarity"
-;                                           :parameter/Constituent {:db/id "17592186158389"}}
-;                                          {:parameter/Name                 "WindSpeed"
-;                                           :parameter/Constituent {:db/id "17592186158388"}}]
-;                       :fieldobs-results [{:db/id                           (tempid/tempid)
-;                                           :riverdb.entity/ns               :entity.ns/fieldobsresult
-;                                           :fieldobsresult/uuid             (tempid/uuid)
-;                                           :fieldobsresult/IntResult        1
-;                                           :fieldobsresult/TextResult       "Less"
-;                                           :fieldobsresult/ConstituentRowID {:db/id "17592186158390"}}
-;                                          {:db/id                           (tempid/tempid)
-;                                           :riverdb.entity/ns               :entity.ns/fieldobsresult
-;                                           :fieldobsresult/uuid             (tempid/uuid)
-;                                           :fieldobsresult/IntResult        1
-;                                           :fieldobsresult/TextResult       "no clouds"
-;                                           :fieldobsresult/ConstituentRowID {:db/id "17592186157657"}}
-;                                          {:db/id                           (tempid/tempid)
-;                                           :riverdb.entity/ns               :entity.ns/fieldobsresult
-;                                           :fieldobsresult/uuid             (tempid/uuid)
-;                                           :fieldobsresult/IntResult        1
-;                                           :fieldobsresult/TextResult       "none"
-;                                           :fieldobsresult/ConstituentRowID {:db/id "17592186156566"}}
-;                                          {:db/id                           (tempid/tempid)
-;                                           :riverdb.entity/ns               :entity.ns/fieldobsresult
-;                                           :fieldobsresult/uuid             (tempid/uuid)
-;                                           :fieldobsresult/IntResult        1
-;                                           :fieldobsresult/TextResult       "Clear"
-;                                           :fieldobsresult/ConstituentRowID {:db/id "17592186158389"}}
-;                                          {:db/id                           (tempid/tempid)
-;                                           :riverdb.entity/ns               :entity.ns/fieldobsresult
-;                                           :fieldobsresult/uuid             (tempid/uuid)
-;                                           :fieldobsresult/IntResult        1
-;                                           :fieldobsresult/TextResult       "calm"
-;                                           :fieldobsresult/ConstituentRowID {:db/id "17592186158388"}}]}
-;   :componentDidMount (fn [this])}
-;
-;
-;  (let []
-;    (debug "RENDER SampleObsForm" fieldobsvarlookup-options fieldobs-results fieldobs-params)
-;    (div {}
-;      (dom/h3 {} "Field Observations")
-;      (vec
-;        (map-indexed
-;          (fn [i {:parameter/keys [Name Constituent]}]
-;            (let [obsresult (filter #(= (:db/id Constituent) (get-in % [:fieldobsresult/ConstituentRowID :db/id])) fieldobs-results)
-;                  obsvalue  (when (seq obsresult) (:fieldobsresult/TextResult (first obsresult)))
-;                  intval    (when (seq obsresult) (:fieldobsresult/IntResult (first obsresult)))
-;                  options   (filter #(= (:filt %) Name) (:ui/options fieldobsvarlookup-options))]
-;              (debug "Param" Name "obsvalue" obsvalue "intval" intval "fieldobs-results" fieldobs-results)
-;              (div :.fields {:key i} (str Name ": (" intval ":" obsvalue ") ")
-;                (vec
-;                  (map-indexed
-;                    (fn [j {:keys [value text]}]
-;                      (let [checked  (= obsvalue text)
-;                            ichecked (= (dec intval) j)]
-;                        (ui-checkbox
-;                          {:radio    true
-;                           :key      value
-;                           :label    text
-;                           :name     Name
-;                           :value    value
-;                           :checked  ichecked
-;                           :style    {:marginLeft 10}
-;                           :onChange #(let []
-;                                        (debug "ON CHANGE" Name value obsvalue text (not ichecked))
-;                                        (comp/transact! this `[(save-obs {:sample ~sample :name ~Name :text ~text :value ~value :obsvalue ~obsvalue :intval ~intval :const ~Constituent})])
-;                                        #_(fm/set-value! this :fieldobsresult/TextResult text))})))
-;                    options)))))
-;          fieldobs-params)))))
-;
-;
-;(def ui-fieldobs-param-form (comp/factory FieldObsParamForm))
 
 
 ;(defn set-in* [state path val]
@@ -1041,7 +953,7 @@
               (ui-datepicker {:selected (or sv-date "")
                               :onChange #(when (inst? %)
                                            (log/debug "date change" %)
-                                           (set-value! this :sitevisit/SiteVisitDate %))}))
+                                           (set-value!! this :sitevisit/SiteVisitDate %))}))
 
 
             (ui-form-input
@@ -1050,7 +962,7 @@
                :style    {:width 168}
                :onChange #(do
                             (log/debug "Time change" (-> % .-target .-value))
-                            (set-value! this :sitevisit/Time (-> % .-target .-value)))})
+                            (set-value!! this :sitevisit/Time (-> % .-target .-value)))})
 
             (div :.field {:key "enterer"}
               (label {:style {}} "Entered By")
@@ -1077,7 +989,7 @@
                 (ui-datepicker {:selected DataEntryDate
                                 :onChange #(when (inst? %)
                                              (log/debug "date change" %)
-                                             (set-value! this :sitevisit/DataEntryDate %))}))))
+                                             (set-value!! this :sitevisit/DataEntryDate %))}))))
 
 
 
@@ -1109,11 +1021,11 @@
 
 
             (div :.field {:key "qadate" :style {:width 180}}
-              (label {:style {} :onClick #(set-value! this :sitevisit/QADate nil)} "QA Date")
+              (label {:style {} :onClick #(set-value!! this :sitevisit/QADate nil)} "QA Date")
               (ui-datepicker {:selected QADate
                               :onChange #(when (inst? %)
                                            (log/debug "QADate change" %)
-                                           (set-value! this :sitevisit/QADate %))}))
+                                           (set-value!! this :sitevisit/QADate %))}))
 
             (div :.field {:key "publish"}
               (label {:style {}} "Publish?")
@@ -1121,13 +1033,13 @@
                             :checked  (or QACheck false)
                             :onChange #(let [value (not QACheck)]
                                          (log/debug "publish change" value)
-                                         (set-value! this :sitevisit/QACheck value))})))
+                                         (set-value!! this :sitevisit/QACheck value))})))
 
           (ui-form-text-area {:label    "Notes"
                               :value    (or Notes "")
                               :onChange #(do
                                            (debug "CHANGED Notes" (-> % .-target .-value))
-                                           (set-value! this :sitevisit/Notes (-> % .-target .-value)))})
+                                           (set-value!! this :sitevisit/Notes (-> % .-target .-value)))})
 
 
 
@@ -1137,7 +1049,8 @@
                   samples (filter-sample-typecode sample-type Samples)]
               (ui-sample-list
                 (comp/computed
-                  {:sample-type              sample-type
+                  {:sv-ident                 this-ident
+                   :sample-type              sample-type
                    :params                   params
                    :samples                  samples
                    :riverdb.theta.options/ns (:riverdb.theta.options/ns props)}
@@ -1329,7 +1242,9 @@
                           (preload-options :entity.ns/stationfaillookup)
                           (preload-options :entity.ns/samplingdevice {:filter-key :samplingdevice/DeviceType})
                           (preload-options :entity.ns/samplingdevicelookup)
-                          (preload-options :entity.ns/fieldobsvarlookup {:filter-key :fieldobsvarlookup/AnalyteName})))
+                          (preload-options :entity.ns/fieldobsvarlookup
+                            {:filter-key :fieldobsvarlookup/Analyte
+                             :sort-key :fieldobsvarlookup/IntCode})))
 
    :css               [[:.floating-menu {:position "absolute !important"
                                          :z-index  1000

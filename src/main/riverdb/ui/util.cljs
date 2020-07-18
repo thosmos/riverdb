@@ -190,6 +190,17 @@
     :else
     thing))
 
+(defn thing->id [thing]
+  (let [thing' (thing->ident thing)]
+   (cond
+     (eql/ident? thing')
+     (second thing')
+
+     (and (map? thing') (:db/id thing'))
+     (:db/id thing'))))
+
+
+
 (defn convert-db-refs [thing]
   (let [ent-ns (:riverdb.entity/ns thing)
         ent-spec (get look/specs-map ent-ns)
@@ -306,12 +317,17 @@
     (debug "MUTATION set-value" ident k v)
     (swap! state set-value* ident k v)))
 
+(defn set-value!! [this k value]
+  (let [ident (comp/get-ident this)]
+    (comp/transact!! this `[(set-value {:ident ~ident :k ~k :v ~value})])
+    (comp/transact! this `[(fs/mark-complete! {:entity-ident ~ident :field ~k})])))
+
 (defn set-value! [this k value]
   (let [ident (comp/get-ident this)]
-    (comp/transact!! this `[(set-value {:ident ~ident :k ~k :v ~value})])))
+    (comp/transact! this `[(set-value {:ident ~ident :k ~k :v ~value})])))
 
 (defn set-ident-value! [ident k value]
-  (comp/transact!! SPA `[(set-value {:ident ~ident :k ~k :v ~value})]))
+  (comp/transact! SPA `[(set-value {:ident ~ident :k ~k :v ~value})]))
 
 (fm/defmutation set-ref [{:keys [ident k v]}]
   (action [{:keys [state]}]
@@ -320,7 +336,7 @@
       (swap! state set-value* ident k v))))
 
 (defn set-ref! [this k id]
-  (comp/transact!! this `[(set-ref {:ident ~(comp/get-ident this) :k ~k :v ~id})]))
+  (comp/transact! this `[(set-ref {:ident ~(comp/get-ident this) :k ~k :v ~id})]))
 
 (fm/defmutation set-refs [{:keys [ident k v]}]
   (action [{:keys [state]}]
@@ -329,7 +345,7 @@
       (swap! state set-value* ident k v))))
 
 (defn set-refs! [this k ids]
-  (comp/transact!! this `[(set-refs {:ident ~(comp/get-ident this) :k ~k :v ~ids})]))
+  (comp/transact! this `[(set-refs {:ident ~(comp/get-ident this) :k ~k :v ~ids})]))
 
 
 
@@ -383,7 +399,7 @@
            :onChange (fn [e]
                        (let [new-v (.. e -target -value)]
                          (debug "rui-input" k new-v)
-                         (set-value! this k new-v)))})))))
+                         (set-value!! this k new-v)))})))))
 
 (defn rui-ident-input [ident k value opts]
   (let [label   (get opts :label (clojure.string/capitalize (name k)))
@@ -419,7 +435,23 @@
                                      nil
                                      val)]
                          (debug "Set BigDecimal" k new-v
-                           (set-value! this k new-v))))})))))
+                           (set-value!! this k new-v))))})))))
+
+(defn rui-bigdec-input [{:keys [value onChange] :as opts}]
+  (let []
+    (ui-input
+      (merge opts
+        {:value    (if (transit/bigdec? value)
+                     (.-rep value)
+                     (or value ""))
+         :onChange (fn [e]
+                     (let [val   (transit/bigdec (.. e -target -value))
+                           new-v (if (= (.-rep val) "")
+                                   nil
+                                   val)]
+                       (debug "onChange BigDecimal" new-v)
+                       (when onChange
+                         (onChange new-v))))}))))
 
 (defn rui-int [this k opts]
   (let [props (comp/props this)
@@ -438,7 +470,7 @@
                        (let [val   (js/parseInt (.. e -target -value))
                              new-v (if (js/Number.isNaN val) nil val)]
                          (debug "Set Integer" k new-v
-                           (set-value! this k new-v))))})))))
+                           (set-value!! this k new-v))))})))))
 
 (defn rui-checkbox [this k opts]
   (let [props (comp/props this)
@@ -452,7 +484,7 @@
                       :checked  (or value false)
                       :onChange #(let [value (not value)]
                                    (log/debug "change" k value)
-                                   (set-value! this k value))})))))
+                                   (set-value!! this k value))})))))
 
 (defn parse-float [str]
   (let [res (js/parseFloat str)]

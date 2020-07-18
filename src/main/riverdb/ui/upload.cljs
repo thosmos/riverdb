@@ -65,7 +65,7 @@
     [riverdb.ui.session :refer [ui-session Session]]
     [riverdb.ui.util :as ui-util :refer
      [make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save
-      set-editing set-value set-value! set-refs! set-ref! set-ref set-refs get-ref-val
+      set-editing set-value set-value!! set-refs! set-ref! set-ref set-refs get-ref-val
       get-ref-set-val lookup-db-ident db-ident->db-ref filter-param-typecode]]
     [riverdb.util :refer [nest-by]]
     [theta.log :as log :refer [debug]]

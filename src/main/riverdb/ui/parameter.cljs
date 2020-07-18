@@ -20,6 +20,7 @@
            :parameter/Replicates
            :parameter/ReplicatesEntry
            :parameter/ReplicatesElide
+           :parameter/FieldObsType
            :parameter/uuid
            {:parameter/Constituent (comp/get-query Constituent)}
            {:parameter/DeviceType (comp/get-query looks/samplingdevicelookup-sum)}

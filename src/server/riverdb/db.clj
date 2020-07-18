@@ -52,17 +52,24 @@
 
 (defn pull-entities
   ([attr]
-   (d/q '[:find [(pull ?e [*]) ...]
-          :in $ ?attr
-          :where
-          [?e ?attr]]
-     (db) attr))
-  ([attr value]
-   (d/q '[:find [(pull ?e [*]) ...]
-          :in $ ?attr ?value
-          :where
-          [?e ?attr ?value]]
-     (db) attr value)))
+   (pull-entities attr {}))
+  ([attr {:keys [value query] :as opts}]
+   (let [find (if value
+                '[:find [(pull ?e qu) ...]
+                  :in $ ?attr qu ?value
+                  :where
+                  [?e ?attr ?value]]
+                '[:find [(pull ?e qu) ...]
+                  :in $ ?attr qu
+                  :where
+                  [?e ?attr]])
+         qu (if query
+              query
+              '[*])]
+     (if value
+       (d/q find (db) attr qu value)
+       (d/q find (db) attr qu)))))
+
 
 (defn rpull
   ([eid]

@@ -55,7 +55,7 @@
     [riverdb.ui.session :refer [Session]]
     [riverdb.ui.inputs :refer [ui-float-input]]
     [riverdb.ui.upload :refer [ui-upload-modal]]
-    [riverdb.ui.util :as rutil :refer [walk-ident-refs* walk-ident-refs make-tempid make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save set-editing set-value set-value! set-refs! set-ref! set-ref set-refs get-ref-set-val lookup-db-ident filter-param-typecode]]
+    [riverdb.ui.util :as rutil :refer [walk-ident-refs* walk-ident-refs make-tempid make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save set-editing set-value set-value!! set-refs! set-ref! set-ref set-refs get-ref-set-val lookup-db-ident filter-param-typecode]]
     [riverdb.util :refer [paginate nest-by filter-sample-typecode]]
     [com.rpl.specter :as sp :refer [ALL LAST]]
     ;[tick.alpha.api :as t]
@@ -67,18 +67,32 @@
     [tick.core :as t]
     [testdouble.cljs.csv :as csv]))
 
+(defsc AnalyteRefForm [this props]
+  {:ident [:org.riverdb.db.analytelookup/gid :db/id]
+   :query [:db/id
+           :riverdb.entity/ns
+           :analytelookup/AnalyteCode
+           :analytelookup/AnalyteDescr
+           :analytelookup/AnalyteName
+           :analytelookup/AnalyteShort
+           fs/form-config-join]
+   :form-fields #{:db/id}})
 
 (defsc Constituent [this props]
   {:ident [:org.riverdb.db.constituentlookup/gid :db/id]
    :query [:db/id
+           :riverdb.entity/ns
            :constituentlookup/Name
+           :constituentlookup/Analyte
            fs/form-config-join]})
 
-(defsc ConstituentForm [this props]
-  {:ident [:org.riverdb.db.constituentlookup/gid :db/id]
-   :query [:db/id
-           :constituentlookup/Name
-           fs/form-config-join]
+(defsc ConstituentRefForm [this props]
+  {:ident       [:org.riverdb.db.constituentlookup/gid :db/id]
+   :query       [:db/id
+                 :riverdb.entity/ns
+                 :constituentlookup/Name
+                 {:constituentlookup/AnalyteCode (comp/get-query AnalyteRefForm)}
+                 fs/form-config-join]
    :form-fields #{:db/id}})
 
 (defsc DeviceTypeForm [_ _]
@@ -139,8 +153,9 @@
                      :parameter/ReplicatesElide
                      ;; passed to lookup dropdowns
                      :parameter/uuid
+                     :parameter/FieldObsType
                      {:parameter/DeviceType (comp/get-query DeviceTypeForm)}
-                     {:parameter/Constituent (comp/get-query ConstituentForm)}
+                     {:parameter/Constituent (comp/get-query ConstituentRefForm)}
                      {:parameter/SampleType (comp/get-query SampleTypeForm)}])
 
    :initial-state (fn [{:keys [type]}]
@@ -152,7 +167,9 @@
                      :ui/saving            false
                      :parameter/Active     false
                      :parameter/Order      999
-                     :parameter/SampleType type})
+                     :parameter/SampleType type
+                     :parameter/FieldObsType :text})
+
    :form-fields   #{:db/id
                     :riverdb.entity/ns
                     :parameter/uuid
@@ -170,8 +187,28 @@
                     :parameter/Replicates
                     :parameter/ReplicatesEntry
                     :parameter/ReplicatesElide
-                    :parameter/PrecisionCode}})
+                    :parameter/PrecisionCode
+                    :parameter/FieldObsType}})
 
+(defsc FieldObsVarForm [_ _]
+  {:ident       [:org.riverdb.db.fieldobsvarlookup/gid :db/id]
+   :query       [fs/form-config-join
+                 :db/id
+                 :riverdb.entity/ns
+                 :fieldobsvarlookup/uuid
+                 :fieldobsvarlookup/Active
+                 :fieldobsvarlookup/AnalyteName
+                 :fieldobsvarlookup/IntCode
+                 :fieldobsvarlookup/ValueCode
+                 :fieldobsvarlookup/ValueCodeDescr]
+   :form-fields #{:db/id
+                  :riverdb.entity/ns
+                  :fieldobsvarlookup/uuid
+                  :fieldobsvarlookup/Active
+                  :fieldobsvarlookup/AnalyteName
+                  :fieldobsvarlookup/IntCode
+                  :fieldobsvarlookup/ValueCode
+                  :fieldobsvarlookup/ValueCodeDescr}})
 
 (defsc FieldResultForm [this {:keys [] :as props}]
   {:ident         [:org.riverdb.db.fieldresult/gid :db/id]
@@ -214,20 +251,26 @@
                    :fieldobsresult/uuid
                    :fieldobsresult/IntResult
                    :fieldobsresult/TextResult
-                   :fieldobsresult/FieldObsResultComments
-                   {:fieldobsresult/ConstituentRowID
-                    (comp/get-query Constituent)}]
+                   :fieldobsresult/RefResult
+                   :fieldobsresult/RefResults
+                   :fieldobsresult/BigDecResult
+                   :fieldobsresult/FieldObsResultComments]
    :form-fields   #{:riverdb.entity/ns
                     :fieldobsresult/uuid
                     :fieldobsresult/IntResult
                     :fieldobsresult/TextResult
+                    :fieldobsresult/RefResult
+                    :fieldobsresult/RefResults
+                    :fieldobsresult/BigDecResult
                     :fieldobsresult/FieldObsResultComments}
    :initial-state {:riverdb.entity/ns               :entity.ns/fieldobsresult
                    :db/id                           :param/id
                    :fieldobsresult/uuid             :param/uuid
                    :fieldobsresult/IntResult        :param/int
                    :fieldobsresult/TextResult       :param/text
-                   :fieldobsresult/ConstituentRowID :param/const}})
+                   :fieldobsresult/RefResult        :param/ref
+                   :fieldobsresult/RefResults       :param/refs
+                   :fieldobsresult/BigDecResult     :param/bigdec}})
 
 (defsc LabResultForm [this {:keys [] :as props}]
   {:ident         [:org.riverdb.db.labresult/gid :db/id]
@@ -279,13 +322,13 @@
                    :sample/Time
                    {:sample/DeviceID (comp/get-query DeviceIDForm)}
                    {:sample/DeviceType (comp/get-query DeviceTypeForm)}
-                   {:sample/Constituent (comp/get-query ConstituentForm)}
+                   {:sample/Constituent (comp/get-query ConstituentRefForm)}
                    {:sample/Parameter (comp/get-query ParameterForm)}
                    {:sample/SampleTypeCode (comp/get-query SampleTypeForm)}
                    {:sample/FieldResults (comp/get-query FieldResultForm)}
                    {:sample/FieldObsResults (comp/get-query FieldObsResultForm)}
-                   {:sample/LabResults (comp/get-query LabResultForm)}
-                   [:riverdb.theta.options/ns '_]]
+                   {:sample/LabResults (comp/get-query LabResultForm)}]
+                   ;[:riverdb.theta.options/ns '_]]
 
 
    :initial-state (fn [{:keys [sampType devType devID const param]}]
@@ -298,7 +341,6 @@
                         {:db/id                 (tempid/tempid)
                          :sample/uuid           (tempid/uuid)
                          :riverdb.entity/ns     :entity.ns/sample
-                         :ui/ready              false
                          :sample/Constituent    const
                          :sample/SampleTypeCode sampType}
                         devType
