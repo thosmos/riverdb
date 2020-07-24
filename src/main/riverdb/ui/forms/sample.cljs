@@ -360,6 +360,7 @@
                     :sample/DeviceID
                     :sample/Constituent
                     :sample/SampleTypeCode
-                    :sample/Parameter}})
+                    :sample/Parameter
+                    :sample/Time}})
 
 (def ui-sample-form (comp/factory SampleForm {:keyfn :db/id}))

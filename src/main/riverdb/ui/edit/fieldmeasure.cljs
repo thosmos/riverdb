@@ -87,8 +87,8 @@
             s dbids))))))
 
 (defn create-samp-ident [state sv-ident param]
-  (let [sa (comp/get-initial-state SampleForm {:param param})
-        sa-frm (fs/add-form-config SampleForm sa)
+  (let [sa       (comp/get-initial-state SampleForm {:param param})
+        sa-frm   (fs/add-form-config SampleForm sa)
         sa-ident (rutil/thing->ident sa)]
     (swap! state
       (fn [st]
@@ -143,8 +143,8 @@
 
 (fm/defmutation set-field-result [{:keys [val i samp-ident rs-map param sv-ident]}]
   (action [{:keys [state]}]
-    (let [current  (get-in rs-map [i])
-          db-id    (:db/id current)
+    (let [current    (get-in rs-map [i])
+          db-id      (:db/id current)
           samp-ident (or samp-ident (create-samp-ident state sv-ident param))]
 
       (debug "MUTATION set-field-result" "samp-ident" samp-ident i val "current" current "rs-m" rs-map)
@@ -166,7 +166,7 @@
                          {:id new-id :uuid (tempid/uuid) :rep i :result val})
               new-form (fs/add-form-config FieldResultForm new-fr)
               rs-map'  (assoc-in rs-map [i] new-form)
-              frs (->> rs-map' (map second) (mapv rutil/thing->ident))]
+              frs      (->> rs-map' (map second) (mapv rutil/thing->ident))]
           (debug "CREATE NEW FieldResult" new-id val) ;"rs-map'" rs-map' "frs" frs)
           (swap! state
             (fn [st]
@@ -199,13 +199,12 @@
                      ;(debug "INIT LOCAL STATE FieldMeasureParamForm" props)
                      (let [;comps  (:fulcro.client.primitives/computed props)
                            sample (:sample props)
-                           stuff {:time          (:sample/Time sample)
-                                  :setDeviceType #(do
-                                                    (debug "SET STATE :devType" %)
-                                                    (comp/set-state! this {:devType %}))
-                                  :setDeviceID   #(do
-                                                    (debug "SET STATE :devID" %)
-                                                    (comp/set-state! this {:devID %}))}]
+                           stuff  {:setDeviceType #(do
+                                                     (debug "SET STATE :devType" %)
+                                                     (comp/set-state! this {:devType %}))
+                                   :setDeviceID   #(do
+                                                     (debug "SET STATE :devID" %)
+                                                     (comp/set-state! this {:devID %}))}]
                        ;(debug "INIT LOCAL STATE FieldMeasureSampleForm" stuff)
                        stuff))}
 
@@ -223,8 +222,8 @@
         rslts         (->> (mapv :fieldresult/Result results)
                         (mapv parse-float)
                         (remove nil?))
-        _ (debug "rs-map" rs-map "rslts" rslts)
-        {:keys [time setDeviceType setDeviceID devType devID] :as state} (comp/get-state this)
+        _             (debug "rs-map" rs-map "rslts" rslts)
+        {:keys [setDeviceType setDeviceID devType devID] :as state} (comp/get-state this)
 
         ;fst           (first results)
         ;devFst        (:fieldresult/SamplingDeviceCode fst)
@@ -243,7 +242,7 @@
         ;                devID)
         ;devID         (rutil/map->ident devID :org.riverdb.db.samplingdevice/gid)
 
-        devID        (rutil/map->ident (:sample/DeviceID sample) :org.riverdb.db.samplingdevice/gid)
+        devID         (rutil/map->ident (:sample/DeviceID sample) :org.riverdb.db.samplingdevice/gid)
 
         mean          (/ (reduce + rslts) (count rslts))
         stddev        (tu/std-dev rslts)
@@ -281,7 +280,7 @@
                             (> rsd precRSD))
                           (> rsd precRSD)))
         ;time          (or time (:fieldresult/ResultTime (first results)))
-        time          (or time (:sample/Time sample))
+        time          (:sample/Time sample)
         unit          (get-in p-const [:constituentlookup/UnitCode :unitlookup/Unit])]
     (debug "RENDER FieldMeasureSampleForm" p-name p-id "sample?" samp-ident) ;"props" props) ; "devType" devType "devID" devID "p-const" p-const "fieldresults" fieldresults)
 
@@ -332,9 +331,11 @@
                                     :style    {:width "80px" :paddingLeft 7 :paddingRight 7}
                                     :value    (or (str time) "")
                                     :onChange #(let [value (-> % .-target .-value)]
-                                                 (comp/transact! this `[(set-all {:dbids ~(mapv :db/id results)
-                                                                                  :k     :fieldresult/ResultTime
-                                                                                  :v     ~value})]))}))
+                                                 (comp/transact! this `[(set-sample ~{:samp-ident samp-ident
+                                                                                      :sv-ident   sv-ident
+                                                                                      :param      param
+                                                                                      :k          :sample/Time
+                                                                                      :v          value})]))}))
       (td {:key "reps" :style {:color (if (< (count rslts) Replicates) "red" "black")}} (or (str (count rslts)) ""))
       (ui-popup
         {:open    false
@@ -365,8 +366,8 @@
                            (and
                              (= sa-const (get-in param [:parameter/Constituent :db/id]))
                              (= sa-devType (get-in param [:parameter/DeviceType :db/id]))))
-                filt-fn2  (fn [param]
-                            (= sa-const (get-in param [:parameter/Constituent :db/id])))
+                filt-fn2 (fn [param]
+                           (= sa-const (get-in param [:parameter/Constituent :db/id])))
                 match-ps (filter filt-fn2 params)]
             ;; if one matches, link them, otherwise, add to :other
             (if (seq match-ps)
