@@ -89,8 +89,6 @@
       (debug "LOAD OBSVARS" this-ident const-ident ana-ident ana-name)
       (df/load! app :org.riverdb.db.fieldobsvarlookup FieldObsVarForm
         {:params  {:filter {:fieldobsvarlookup/AnalyteName ana-name}}
-         ;:post-mutation        `init-projects-forms
-         ;:post-mutation-params {:ids proj-ids}
          :target               (conj this-ident :ui/obsvars)
          :marker  ::obsvars
          :without #{}}))))
@@ -109,53 +107,55 @@
 
 (fm/defmutation save-obs [{:keys [sv-ident sample obsresult value param intval]}]
   (action [{:keys [state]}]
-    (debug "SAVE OBS RESULT" "value" value "intval" intval "sv-ident" sv-ident "sample" sample "obsresult" obsresult "param" param)
+    #_(debug "SAVE OBS RESULT" "value" value "intval" intval "sv-ident" sv-ident "sample" sample "obsresult" obsresult "param" param)
     ;; are we dealing with an existing observation or a new one?
-    (if (some? obsresult)
+    (try
+      (if obsresult
 
-      ;; are we updating or deleting?
-      (if (or (nil? value) (= value "") (empty? value))
+        ;; are we updating or deleting?
+        (let [rm (or (nil? value) (= value ""))]
 
-        ;; value is missing so we remove the sample
-        (let [sample-ident (rutil/thing->ident sample)
-              path (conj sv-ident :sitevisit/Samples)]
-          (debug "REMOVE SAMPLE" sample-ident)
-          (swap! state merge/remove-ident* sample-ident path))
+          (if rm
 
-        ;; update the existing observation
-        (let [obs-ident (rutil/thing->ident obsresult)
-              obs-type  (:parameter/FieldObsType param)]
-          (debug "UPDATE OBS")
-          (swap! state
-            (fn [st]
-              (-> st
-                (update-in obs-ident
-                  (fn [obs]
-                    (cond->
-                      (-> obs
-                        (dissoc :fieldobsresult/TextResult)
-                        (dissoc :fieldobsresult/ConstituentRowID))
+            ;; value is missing so we remove the sample
+            (let [sample-ident (rutil/thing->ident sample)
+                  path         (conj sv-ident :sitevisit/Samples)]
+              (debug "REMOVE SAMPLE" sample-ident)
+              (swap! state merge/remove-ident* sample-ident path))
 
-                      (= obs-type :ref)
-                      (->
-                        (assoc :fieldobsresult/RefResult
-                               (rutil/ent-ns->ident :entity.ns/fieldobsvarlookup value))
-                        (assoc :fieldobsresult/IntResult intval))
+            ;; update the existing observation
+            (let [obs-ident (rutil/thing->ident obsresult)
+                  obs-type  (:parameter/FieldObsType param)]
+              (debug "UPDATE OBS!" "value" value)
+              (swap! state
+                (fn [st]
+                  (-> st
+                    (update-in obs-ident
+                      (fn [obs]
+                        (cond->
+                          (-> obs
+                            (dissoc :fieldobsresult/TextResult)
+                            (dissoc :fieldobsresult/ConstituentRowID))
 
-                      (= obs-type :refs)
-                      (assoc :fieldobsresult/RefResults
-                        (mapv #(rutil/ent-ns->ident :entity.ns/fieldobsvarlookup %) value))
+                          (= obs-type :ref)
+                          (->
+                            (assoc :fieldobsresult/RefResult
+                                   (rutil/ent-ns->ident :entity.ns/fieldobsvarlookup value))
+                            (assoc :fieldobsresult/IntResult intval))
 
-                      (= obs-type :bigdec)
-                      (assoc :fieldobsresult/BigDecResult value)
+                          (= obs-type :refs)
+                          (assoc :fieldobsresult/RefResults
+                                 (mapv #(rutil/ent-ns->ident :entity.ns/fieldobsvarlookup %) value))
 
-                      (= obs-type :text)
-                      (assoc :fieldobsresult/TextResult value))))
+                          (= obs-type :bigdec)
+                          (assoc :fieldobsresult/BigDecResult value)
 
-                (fs/mark-complete* obs-ident))))))
+                          (= obs-type :text)
+                          (assoc :fieldobsresult/TextResult value))))
 
-      ;; we don't have an existing observation, so create a new sample & obs
-      (try
+                    (fs/mark-complete* obs-ident)))))))
+
+        ;; we don't have an existing observation, so create a new sample & obs
         (let [new-id   (tempid/tempid)
               obs-type (:parameter/FieldObsType param)
               init-obs (cond-> {:id new-id :uuid (tempid/uuid)}
@@ -180,8 +180,8 @@
             (fn [st]
               (-> st
                 (merge/merge-component SampleForm new-form :append (conj sv-ident :sitevisit/Samples))
-                (fs/mark-complete* sv-ident :sitevisit/Samples)))))
-        (catch js/Object ex (log/error "um uh" ex))))))
+                (fs/mark-complete* sv-ident :sitevisit/Samples))))))
+      (catch js/Object ex (log/error "OBS UPDATE ERROR" ex)))))
 
 
 
@@ -194,12 +194,8 @@
            :param-samples
            {:ui/obsvars (comp/get-query FieldObsVarForm)}
            :riverdb.theta.options/ns]}
-   ;:componentDidMount (fn [this]
-   ;                     (let [props (comp/props this)
-   ;                           this-ident (comp/get-ident this)]
-   ;                       (load-all-obsvars this (conj this-ident :ui/obsvars))))}
   (let [fieldobsvarlookup-options (get-in props [:riverdb.theta.options/ns :entity.ns/fieldobsvarlookup])]
-    (debug "RENDER FieldObsList" "param-samps" param-samples "fieldobsvarlookup-options" fieldobsvarlookup-options) ;"params" params "samples" samples)
+    #_(debug "RENDER FieldObsList" "param-samps" param-samples "fieldobsvarlookup-options" fieldobsvarlookup-options)
 
     (div :.ui.segment {:key "fm-list"}
       (ui-header {} "Field Observations")
@@ -208,7 +204,6 @@
         (thead {:key 1}
           (tr {}
             (th {:key "nm"} "Parameter")
-            ;(th {:key "val"} "Value")
             (th {:key "opts"} "Value")))
         (tbody {:key 2}
           (vec
@@ -241,7 +236,6 @@
 
                 (tr {:key (:db/id param)}
                   (td {:key "pm"} Name)
-                  ;(td {:key "val"} (str obsvalue " " intval))
                   (td {:key "vars"}
                     (cond
                       (= obstype :bigdec)
@@ -249,15 +243,8 @@
                         {:value decvalue
                          :style {:width 80}
                          :onChange (fn [v]
-                                     (debug "BigDec CHANGE" v)
+                                     (debug "BigDec CHANGE" v "obsresult" obsresult)
                                      (comp/transact! this `[(save-obs {:sv-ident ~sv-ident :sample ~sample :obsresult ~obsresult :value ~v :param ~param})]))})
-                      #_(ui-float-input
-                          {:type     "text"
-                           :style    {:width "100px" :paddingLeft 7 :paddingRight 7}
-                           :value    decvalue
-                           :onChange (fn [v]
-                                       (debug "BigDec CHANGE" v)
-                                       (comp/transact! this `[(save-obs {:sv-ident ~sv-ident :sample ~sample :obsresult ~obsresult :value ~v :param ~param})]))})
                       (= obstype :text)
                       (ui-input
                         {:value    textvalue
@@ -290,17 +277,12 @@
                                                              (if checked
                                                                (vec (set (conj refsvalue value)))
                                                                (vec (remove #(= % value) refsvalue)))
-                                                             value)]
+                                                             value)
+                                                   val     (if (and (= obstype :refs) (empty? val))
+                                                             nil
+                                                             val)]
                                                (debug "ON CHANGE" Name "sample:" (:db/id sample) "value:" val "intval:" sort "checked:" checked)
                                                (comp/transact! this `[(save-obs {:sv-ident ~sv-ident :sample ~sample :obsresult ~obsresult :value ~val :intval ~sort :param ~param :checked ~checked})])))})))
-                          options)))))
-
-                #_(ui-fieldmeasure-sample-form
-                    (comp/computed {:key (:db/id param) :param param :sample sample}
-                      {:onChangeSample   onChangeSample
-                       :deviceTypeLookup deviceTypeLookup
-                       :deviceLookup     deviceLookup
-                       :sv-comp          sv-comp
-                       :reps             max-reps}))))))))))
+                          options)))))))))))))
 
 (def ui-fo-list (comp/factory FieldObsList {:keyfn :sample-type}))

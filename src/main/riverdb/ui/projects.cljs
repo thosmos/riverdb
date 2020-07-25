@@ -511,9 +511,6 @@
                           (fn [var]
                             (let [code (:fieldobsvarlookup/ValueCode var)]
                               (dom/li {:key (:db/id var)} code))))))))
-                      ;(str "fieldobsvarlookup" ", Constituent: " Constituent)
-                      ;(str field-obs))))
-
 
                 #_(div :.field {}
                     (label {} "Chart Lines")
