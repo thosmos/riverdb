@@ -13,7 +13,7 @@
                       :main-opts   ["-m" "kaocha.runner"]
                       :extra-deps  {lambdaisland/kaocha {:mvn/version "0.0-529"}}}
          :dev        {:extra-paths ["src/dev"]
-                      :extra-deps  {expound                      {:mvn/version "0.8.4"}
+                      :extra-deps  {expound/expound              {:mvn/version "0.8.4"}
                                     org.clojure/tools.namespace  {:mvn/version "1.0.0"}
                                     org.clojure/tools.deps.alpha {:mvn/version "0.8.666"}
                                     vlaaad/reveal                {:mvn/version "0.1.0-ea1"}}}
@@ -22,7 +22,7 @@
                       {thosmos/util           {:local/root "/Users/thomas/Develop/clojure/thosmos.util"
                                                :exclusions [com.datomic/datomic-free]}
                        com.fulcrologic/fulcro {:local/root "/Users/thomas/Develop/cljs/fulcro/fulcro"}}}
-         :bench      {:extra-deps {criterium {:mvn/version "0.4.5"}}}
+         :bench      {:extra-deps {criterium/criterium {:mvn/version "0.4.5"}}}
 
          :guardrail  {:extra-deps {com.fulcrologic/guardrails {:mvn/version "0.0.10"}}
                       :jvm-opts   ["-XX:-OmitStackTraceInFastThrow" "-Dguardrails.enabled=true"]}
@@ -46,30 +46,30 @@
 
          :server     {:extra-paths ["src/server"]
                       :extra-deps  {
-                                    vvvvalvalval/datomock            {:mvn/version "0.2.2"}
-                                    buddy/buddy-hashers              {:mvn/version "1.4.0"}
-                                    buddy/buddy-sign                 {:mvn/version "3.1.0"}
-                                    clj-mailgun                      {:mvn/version "0.2.0"}
-                                    clojure-csv                      {:mvn/version "2.0.2"}
+                                    vvvvalvalval/datomock               {:mvn/version "0.2.2"}
+                                    buddy/buddy-hashers                 {:mvn/version "1.4.0"}
+                                    buddy/buddy-sign                    {:mvn/version "3.1.0"}
+                                    clj-mailgun/clj-mailgun             {:mvn/version "0.2.0"}
+                                    clojure-csv/clojure-csv             {:mvn/version "2.0.2"}
                                     ;com.datomic/datomic-free         {:mvn/version "0.9.5697" :exclusions [org.slf4j/slf4j-nop org.slf4j/jul-to-slf4j org.slf4j/log4j-over-slf4j org.slf4j/jcl-over-slf4j]}
-                                    com.datomic/datomic-pro          {:mvn/version "1.0.6165" :exclusions [org.slf4j/slf4j-nop org.slf4j/jul-to-slf4j org.slf4j/log4j-over-slf4j org.slf4j/jcl-over-slf4j]}
+                                    com.datomic/datomic-pro             {:mvn/version "1.0.6165" :exclusions [org.slf4j/slf4j-nop org.slf4j/jul-to-slf4j org.slf4j/log4j-over-slf4j org.slf4j/jcl-over-slf4j]}
                                     ;mysql/mysql-connector-java       {:mvn/version "8.0.18"}
-                                    com.walmartlabs/lacinia-pedestal {:mvn/version "0.12.0" :exclusions [clojure-future-spec org.clojure/spec.alpha org.clojure/tools.reader]}
-                                    datomic-schema                   {:mvn/version "1.3.1"}
-                                    io.pedestal/pedestal.jetty       {:mvn/version "0.5.8"}
-                                    io.pedestal/pedestal.service     {:mvn/version "0.5.8" :exclusions [org.slf4j/slf4j-api org.slf4j/slf4j-nop]}
-                                    org.clojure/core.async           {:mvn/version "0.7.559"}
-                                    org.clojure/core.rrb-vector      {:mvn/version "0.1.1"}
-                                    thosmos/domain-spec              {:mvn/version "0.1.2" :exclusions [com.datomic/datomic-free]}
-                                    javax.servlet/servlet-api        {:mvn/version "2.5"}
-                                    ring/ring-core                   {:mvn/version "1.8.0"}
-                                    ring/ring-defaults               {:mvn/version "0.3.2"}
-                                    commons-codec                    {:mvn/version "1.13"}
-                                    bk/ring-gzip                     {:mvn/version "0.3.0"}
-                                    mount                            {:mvn/version "0.1.16"}
-                                    hiccup                           {:mvn/version "1.0.5"}
-                                    clj-time/clj-time                {:mvn/version "0.15.2"}
-                                    clojure.java-time                {:mvn/version "0.3.2"}}}
+                                    com.walmartlabs/lacinia-pedestal    {:mvn/version "0.12.0" :exclusions [clojure-future-spec/clojure-future-spec org.clojure/spec.alpha org.clojure/tools.reader]}
+                                    datomic-schema/datomic-schema       {:mvn/version "1.3.1"}
+                                    io.pedestal/pedestal.jetty          {:mvn/version "0.5.8"}
+                                    io.pedestal/pedestal.service        {:mvn/version "0.5.8" :exclusions [org.slf4j/slf4j-api org.slf4j/slf4j-nop]}
+                                    org.clojure/core.async              {:mvn/version "0.7.559"}
+                                    org.clojure/core.rrb-vector         {:mvn/version "0.1.1"}
+                                    thosmos/domain-spec                 {:mvn/version "0.1.2" :exclusions [com.datomic/datomic-free]}
+                                    javax.servlet/servlet-api           {:mvn/version "2.5"}
+                                    ring/ring-core                      {:mvn/version "1.8.0"}
+                                    ring/ring-defaults                  {:mvn/version "0.3.2"}
+                                    commons-codec/commons-codec         {:mvn/version "1.13"}
+                                    bk/ring-gzip                        {:mvn/version "0.3.0"}
+                                    mount/mount                         {:mvn/version "0.1.16"}
+                                    hiccup/hiccup                       {:mvn/version "1.0.5"}
+                                    clj-time/clj-time                   {:mvn/version "0.15.2"}
+                                    clojure.java-time/clojure.java-time {:mvn/version "0.3.2"}}}
          :import     {:extra-paths ["src/import"]
                       :extra-deps  {;; geotools
                                     org.geotools/gt-shapefile {:mvn/version "22.2"}
@@ -82,38 +82,41 @@
          :repl       {:jvm-opts ["-server" "-Dclojure.server.repl={:port,5555,:accept,clojure.core.server/repl}"]}}
  ;["-Xms512m" "-Xmx512m" "-server" "-Dclojure.server.repl={:port,5555,:accept,clojure.core.server/repl}"]}},
  :deps
-        {org.clojure/clojure                 {:mvn/version "1.10.1"}
+        {org.clojure/clojure                    {:mvn/version "1.10.1"}
 
          ;thosmos/util                        {:local/root "../../clojure/thosmos.util"}
-         thosmos/util                        {:mvn/version "0.2.1"}
+         thosmos/util                           {:mvn/version "0.2.1"}
 
          ;; time
-         tick                                {:mvn/version "0.4.25-alpha"}
+         tick/tick                              {:mvn/version "0.4.25-alpha"}
 
          ;; Plain data Schemas for Clojure/Script
          ;metosin/malli                       {:mvn/version "0.0.1-SNAPSHOT"}
 
          ;; needed during cljs build for setting :LOG_LEVEL in theta.log
-         lynxeyes/dotenv                     {:mvn/version "1.0.3"}
+         lynxeyes/dotenv                        {:mvn/version "1.0.3"}
 
          ;; needed during cljs build for setting :LOG_LEVEL in theta.log
-         org.clojure/tools.logging           {:mvn/version "1.1.0"}
-         ch.qos.logback/logback-classic      {:mvn/version "1.2.3"}
+         org.clojure/tools.logging              {:mvn/version "1.1.0"}
+         ch.qos.logback/logback-classic         {:mvn/version "1.2.3"}
 
          ;; minimal react wrapper
          ;hicada                              {:mvn/version "0.1.8"}
 
-         com.rpl/specter                     {:mvn/version "1.1.3"}
+         com.rpl/specter                        {:mvn/version "1.1.3"}
 
          ;; fulcro
-         com.fulcrologic/fulcro              {:mvn/version "3.2.11"}
+         com.fulcrologic/fulcro                 {:mvn/version "3.3.0"}
 
-         garden                              {:mvn/version "1.3.10"}
-         com.fulcrologic/fulcro-garden-css   {:mvn/version "3.0.7" :exclusions [garden]}
-         com.fulcrologic/semantic-ui-wrapper {:mvn/version "1.0.1"}
-         com.taoensso/timbre                 {:mvn/version "4.10.0"}
+         com.fulcrologic/fulcro-rad             {:mvn/version "1.0.4"}
+         com.fulcrologic/fulcro-rad-semantic-ui {:mvn/version "1.0.0"}
+
+         garden/garden                          {:mvn/version "1.3.10"}
+         com.fulcrologic/fulcro-garden-css      {:mvn/version "3.0.7" :exclusions [garden/garden]}
+         com.fulcrologic/semantic-ui-wrapper    {:mvn/version "1.0.1"}
+         com.taoensso/timbre                    {:mvn/version "4.10.0"}
          ;com.taoensso/tufte                  {:mvn/version "2.1.0"}
-         com.wsscode/pathom                  {:mvn/version "2.2.31"}}
+         com.wsscode/pathom                     {:mvn/version "2.2.31"}}
 
  ;;com.influxdb/influxdb-client-java   {:mvn/version "1.3.0"}}
 
