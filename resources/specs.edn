@@ -1433,6 +1433,30 @@
           :identity true,
           :cardinality :one,
           :type :uuid}]}
+ {:db/id "monitorhours"
+  :entity/name "Monitor Hours"
+  :entity/ns :entity.ns/monitorhours
+  :entity/pks [:monitorhours/uuid]
+  :entity/prKeys [:monitorhours/hours]
+  :entity/nameKey [:monitorhours/hours]
+  :entity/attrs
+  [#:attr{:name "Sitevisit",
+          :key :monitorhours/sitevisit,
+          :cardinality :one,
+          :type :ref,
+          :ref #:entity{:ns :entity.ns/sitevisit}
+          :doc "Sitevisit reference"}
+   #:attr{:name "Monitor",
+          :key :monitorhours/monitor,
+          :cardinality :one,
+          :type :ref,
+          :ref #:entity{:ns :entity.ns/person}
+          :doc "Person reference"}
+   #:attr{:name "Hours",
+          :key :monitorhours/hours,
+          :cardinality :one,
+          :type :string,
+          :doc "Volunteer Hours"}]}
  {:db/id "paramline",
   :entity/name "Param Line",
   :entity/ns :entity.ns/paramline,

@@ -91,6 +91,32 @@
            :constituentlookup/Name
            fs/form-config-join]})
 
+(defsc MonitorHours [this props]
+  {:ident [:org.riverdb.db.monitorhours/gid :db/id]
+   :query [:db/id
+           :riverdb.entity/ns
+           fs/form-config-join
+           :monitorhours/sitevisit
+           :monitorhours/monitor
+           :monitorhours/hours]}
+
+  ())
+
+(defsc MonitorHoursList [this props]
+  {}
+  (dom/table :.ui.table
+    (dom/thead
+      (dom/tr
+        (dom/th "Monitor")
+        (dom/th "Hours")))
+    (dom/tbody
+      (dom/tr
+        (dom/td "Thomas")
+        (dom/td 5.34)))))
+
+(def ui-monitorhours-list
+  (comp/factory MonitorHoursList))
+
 (fm/defmutation sv-deleted [{:keys [ident]}]
   (action [{:keys [state]}]
     (debug "SV deleted" ident)
@@ -154,6 +180,7 @@
                            :sitevisit/uuid
                            :sitevisit/Visitors
                            {:sitevisit/Samples (comp/get-query SampleForm)}
+                           {:monitorhours/_sitevisit (comp/get-query MonitorHours)}
                            {:ui/globals (comp/get-query Globals)}
                            [:riverdb.theta.options/ns '_]])
 
@@ -210,157 +237,167 @@
         (ui-loader {:indeterminate true}))
       (when props
         (ui-form {:key "form" :size "tiny"}
-          (div :.dimmable.fields {:key "visitors"}
-            (div :.field {:key "people"}
-              (label {:style {}} "Monitors")
-              (ui-theta-options
-                (comp/computed
-                  (merge
-                    person-options
-                    {:riverdb.entity/ns :entity.ns/person
-                     :value             (or Visitors [])
-                     :opts              (merge
-                                          default-opts
-                                          {:multiple true})})
-                  {:changeMutation `set-value
-                   :changeParams   {:ident this-ident
-                                    :k     :sitevisit/Visitors}})))
-            ;:onAddItem      `add-option
-            ;:addParams      {:field-k :sitevisit/Visitors
-            ;                 :ent-ns  :entity.ns/person
-            ;                 :target  (conj this-ident :ui/add-person-modal)}
+          (div :.ui.grid {:key "sv-fields"}
+            (div :.eleven.wide.column
+              (div :.dimmable.fields
+                (div :.field {:key "people"}
+                  (label {:style {}} "Monitors")
+                  (ui-theta-options
+                    (comp/computed
+                      (merge
+                        person-options
+                        {:riverdb.entity/ns :entity.ns/person
+                         :value             (or Visitors [])
+                         :opts              (merge
+                                              default-opts
+                                              {:multiple true})})
+                      {:changeMutation `set-value
+                       :changeParams   {:ident this-ident
+                                        :k     :sitevisit/Visitors}})))
+                ;:onAddItem      `add-option
+                ;:addParams      {:field-k :sitevisit/Visitors
+                ;                 :ent-ns  :entity.ns/person
+                ;                 :target  (conj this-ident :ui/add-person-modal)}
 
 
-            (div :.field {:key "site"}
-              (label {:style {}} "Station ID")
-              (ui-theta-options
-                (comp/computed
-                  (merge
-                    stationlookup-options
-                    {:riverdb.entity/ns :entity.ns/stationlookup
-                     :value             StationID
-                     :opts              default-opts})
-                  {:changeMutation `set-value
-                   :changeParams   {:ident this-ident
-                                    :k     :sitevisit/StationID}})))
+                (div :.field {:key "site"}
+                  (label {:style {}} "Station ID")
+                  (ui-theta-options
+                    (comp/computed
+                      (merge
+                        stationlookup-options
+                        {:riverdb.entity/ns :entity.ns/stationlookup
+                         :value             StationID
+                         :opts              default-opts})
+                      {:changeMutation `set-value
+                       :changeParams   {:ident this-ident
+                                        :k     :sitevisit/StationID}})))
 
-            (div :.field {:key "visittype"}
-              (label {:style {}} "Visit Type")
-              (ui-theta-options
-                (comp/computed
-                  (merge
-                    sitevisittype-options
-                    {:riverdb.entity/ns :entity.ns/sitevisittype
-                     :value             VisitType
-                     :opts              default-opts})
-                  {:changeMutation `set-value
-                   :changeParams   {:ident this-ident
-                                    :k     :sitevisit/VisitType}})))
-
-
-            (div :.field {:key "sitefail"}
-              (label {:style {}} "Failure?")
-              (ui-theta-options
-                (comp/computed
-                  (merge
-                    stationfaillookup-options
-                    {:riverdb.entity/ns :entity.ns/stationfaillookup
-                     :value             StationFailCode
-                     :opts              default-opts})
-                  {:changeMutation `set-value
-                   :changeParams   {:ident this-ident
-                                    :k     :sitevisit/StationFailCode}}))))
+                (div :.field {:key "visittype"}
+                  (label {:style {}} "Visit Type")
+                  (ui-theta-options
+                    (comp/computed
+                      (merge
+                        sitevisittype-options
+                        {:riverdb.entity/ns :entity.ns/sitevisittype
+                         :value             VisitType
+                         :opts              default-opts})
+                      {:changeMutation `set-value
+                       :changeParams   {:ident this-ident
+                                        :k     :sitevisit/VisitType}})))
 
 
-          (div :.dimmable.fields {:key "dates"}
-            (div :.field {:key "svdate" :style {:width 180}}
-              (label {} "Site Visit Date")
-              (ui-datepicker {:selected (or sv-date "")
-                              :onChange #(when (inst? %)
-                                           (log/debug "date change" %)
-                                           (set-value!! this :sitevisit/SiteVisitDate %))}))
+                (div :.field {:key "sitefail"}
+                  (label {:style {}} "Failure?")
+                  (ui-theta-options
+                    (comp/computed
+                      (merge
+                        stationfaillookup-options
+                        {:riverdb.entity/ns :entity.ns/stationfaillookup
+                         :value             StationFailCode
+                         :opts              default-opts})
+                      {:changeMutation `set-value
+                       :changeParams   {:ident this-ident
+                                        :k     :sitevisit/StationFailCode}}))))
 
 
-            (ui-form-input
-              {:label    "Start Time"
-               :value    (or sv-time "")
-               :style    {:width 168}
-               :onChange #(do
-                            (log/debug "Time change" (-> % .-target .-value))
-                            (set-value!! this :sitevisit/Time (-> % .-target .-value)))})
-
-            (div :.field {:key "enterer"}
-              (label {:style {}} "Entered By")
-              (ui-theta-options
-                (comp/computed
-                  (merge person-options
-                    {:riverdb.entity/ns :entity.ns/person
-                     :value             DataEntryPersonRef
-                     :opts              default-opts})
-                  {:changeMutation `set-value
-                   :changeParams   {:ident this-ident
-                                    :k     :sitevisit/DataEntryPersonRef}})))
-            ;:onChange  #(do
-            ;              (log/debug "data person changed" %)
-            ;              (set-ref! this :sitevisit/DataEntryPersonRef %))
-            ;:onAddItem #(do
-            ;              (debug "ADD Entry Person" %))
+              (div :.dimmable.fields {:key "dates"}
+                (div :.field {:key "svdate" :style {:width 180}}
+                  (label {} "Site Visit Date")
+                  (ui-datepicker {:selected (or sv-date "")
+                                  :onChange #(when (inst? %)
+                                               (log/debug "date change" %)
+                                               (set-value!! this :sitevisit/SiteVisitDate %))}))
 
 
-            (div :.field {:key "dedate" :style {:width 180}}
-              (label {:style {}} "Data Entry Date")
-              (do
-                ;(debug "RENDER DataEntryDate" DataEntryDate)
-                (ui-datepicker {:selected DataEntryDate
-                                :onChange #(when (inst? %)
-                                             (log/debug "date change" %)
-                                             (set-value!! this :sitevisit/DataEntryDate %))}))))
+                (ui-form-input
+                  {:label    "Start Time"
+                   :value    (or sv-time "")
+                   :style    {:width 168}
+                   :onChange #(do
+                                (log/debug "Time change" (-> % .-target .-value))
+                                (set-value!! this :sitevisit/Time (-> % .-target .-value)))})
+
+                (div :.field {:key "enterer"}
+                  (label {:style {}} "Entered By")
+                  (ui-theta-options
+                    (comp/computed
+                      (merge person-options
+                        {:riverdb.entity/ns :entity.ns/person
+                         :value             DataEntryPersonRef
+                         :opts              default-opts})
+                      {:changeMutation `set-value
+                       :changeParams   {:ident this-ident
+                                        :k     :sitevisit/DataEntryPersonRef}})))
+                ;:onChange  #(do
+                ;              (log/debug "data person changed" %)
+                ;              (set-ref! this :sitevisit/DataEntryPersonRef %))
+                ;:onAddItem #(do
+                ;              (debug "ADD Entry Person" %))
+
+
+                (div :.field {:key "dedate" :style {:width 180}}
+                  (label {:style {}} "Data Entry Date")
+                  (do
+                    ;(debug "RENDER DataEntryDate" DataEntryDate)
+                    (ui-datepicker {:selected DataEntryDate
+                                    :onChange #(when (inst? %)
+                                                 (log/debug "date change" %)
+                                                 (set-value!! this :sitevisit/DataEntryDate %))}))))
 
 
 
-          (div :.dimmable.fields {:key "qa"}
-            (div :.field {:key "checker"}
-              (label {:style {}} "Checked By")
-              (ui-theta-options
-                (comp/computed
-                  (merge person-options
-                    {:riverdb.entity/ns :entity.ns/person
-                     :value             CheckPersonRef
-                     :opts              default-opts})
-                  {:changeMutation `set-value
-                   :changeParams   {:ident this-ident
-                                    :k     :sitevisit/CheckPersonRef}})))
+              (div :.dimmable.fields {:key "qa"}
+                (div :.field {:key "checker"}
+                  (label {:style {}} "Checked By")
+                  (ui-theta-options
+                    (comp/computed
+                      (merge person-options
+                        {:riverdb.entity/ns :entity.ns/person
+                         :value             CheckPersonRef
+                         :opts              default-opts})
+                      {:changeMutation `set-value
+                       :changeParams   {:ident this-ident
+                                        :k     :sitevisit/CheckPersonRef}})))
 
 
-            (div :.field {:key "qcer"}
-              (label {:style {}} "QA'd By")
-              (ui-theta-options
-                (comp/computed
-                  (merge person-options
-                    {:riverdb.entity/ns :entity.ns/person
-                     :value             QAPersonRef
-                     :opts              default-opts})
-                  {:changeMutation `set-value
-                   :changeParams   {:ident this-ident
-                                    :k     :sitevisit/QAPersonRef}})))
+                (div :.field {:key "qcer"}
+                  (label {:style {}} "QA'd By")
+                  (ui-theta-options
+                    (comp/computed
+                      (merge person-options
+                        {:riverdb.entity/ns :entity.ns/person
+                         :value             QAPersonRef
+                         :opts              default-opts})
+                      {:changeMutation `set-value
+                       :changeParams   {:ident this-ident
+                                        :k     :sitevisit/QAPersonRef}})))
 
 
-            (div :.field {:key "qadate" :style {:width 180}}
-              (label {:style {} :onClick #(set-value!! this :sitevisit/QADate nil)} "QA Date")
-              (ui-datepicker {:selected QADate
-                              :onChange #(when (inst? %)
-                                           (log/debug "QADate change" %)
-                                           (set-value!! this :sitevisit/QADate %))}))
+                (div :.field {:key "qadate" :style {:width 180}}
+                  (label {:style {} :onClick #(set-value!! this :sitevisit/QADate nil)} "QA Date")
+                  (ui-datepicker {:selected QADate
+                                  :onChange #(when (inst? %)
+                                               (log/debug "QADate change" %)
+                                               (set-value!! this :sitevisit/QADate %))}))
 
-            (div :.field {:key "publish"}
-              (label {:style {}} "Publish?")
-              (ui-checkbox {:size     "big" :fitted true :label "" :type "checkbox" :toggle true
-                            :checked  (or QACheck false)
-                            :onChange #(let [value (not QACheck)]
-                                         (log/debug "publish change" value)
-                                         (set-value!! this :sitevisit/QACheck value))})))
+                (div :.field {:key "publish"}
+                  (label {:style {}} "Publish?")
+                  (ui-checkbox {:size     "big" :fitted true :label "" :type "checkbox" :toggle true
+                                :checked  (or QACheck false)
+                                :onChange #(let [value (not QACheck)]
+                                             (log/debug "publish change" value)
+                                             (set-value!! this :sitevisit/QACheck value))}))))
 
-          (ui-form-text-area {:label    "Notes"
+            (div :.four.wide.column
+              (div :.field {:key "monitor hours"}
+                (label {:style {}} "Monitor Hours")
+                (ui-monitorhours-list))))
+
+
+
+          (ui-form-text-area {:key "sv-notes"
+                              :label    "Notes"
                               :value    (or Notes "")
                               :onChange #(do
                                            (debug "CHANGED Notes" (-> % .-target .-value))
@@ -368,7 +405,6 @@
 
 
 
-          (div (str param-types))
           (for [sample-type param-types]
             (let [params (filter-param-typecode sample-type active-params)
                   samples (filter-sample-typecode sample-type Samples)]
