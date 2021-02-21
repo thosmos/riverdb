@@ -1,23 +1,29 @@
 {;; Legal Origins for API request.
  :legal-origins                     #{"localhost" "dev.lvh.me"}
 
+ :com.fulcrologic.rad.database-adapters.datomic/databases
+                                    {:main {:datomic/schema   :production
+                                            :datomic/driver   :dev ;; OR :mysql :free :mem
+                                            :datomic/database "riverdb"
+                                            ;:datomic/prevent-changes? true
+                                            ;:postgresql/host          "localhost"
+                                            ;:postgresql/port          5432
+                                            ;:postgresql/user          "datomic"
+                                            ;:postgresql/password      "datomic"
+                                            ;:postgresql/database      "datomic"
+                                            ;:mysql/host               "localhost"
+                                            ;:mysql/port               3306
+                                            ;:mysql/user               "datomic"
+                                            ;:mysql/password           "datomic"
+                                            ;:mysql/database           "datomic"
+                                            :dev/host        "localhost"
+                                            :dev/port        4334}}
+
  ;:com.fulcrologic.rad.database-adapters.datomic/databases
- ;                                   {:main {:datomic/schema   :production
- ;                                           :datomic/driver   :free ;; OR :mysql :free :mem
- ;                                           :datomic/database "riverdb"
- ;                                           ;:datomic/prevent-changes? true
- ;                                           ;:postgresql/host          "localhost"
- ;                                           ;:postgresql/port          5432
- ;                                           ;:postgresql/user          "datomic"
- ;                                           ;:postgresql/password      "datomic"
- ;                                           ;:postgresql/database      "datomic"
- ;                                           ;:mysql/host               "localhost"
- ;                                           ;:mysql/port               3306
- ;                                           ;:mysql/user               "datomic"
- ;                                           ;:mysql/password           "datomic"
- ;                                           ;:mysql/database           "datomic"
- ;                                           :free/host        "localhost"
- ;                                           :free/port        4334}}
+ ;                                   {:main {:datomic/schema           :production
+ ;                                           :datomic/driver           :mem
+ ;                                           :datomic/database         "example"
+ ;                                           :datomic/prevent-changes? true}}
 
  ;:com.fulcrologic.rad.pathom/config {:trace?         false
  ;                                    ;; TODO: Elide params and such in logging

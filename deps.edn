@@ -40,13 +40,12 @@
                                     org.clojure/tools.deps.alpha {:mvn/version "0.8.666"}}}
 
          :rad        {:extra-paths ["src/rad"]
-                      :extra-deps  {com.fulcrologic/fulcro-rad {:local/root "/Users/thomas/Develop/cljs/fulcro/fulcro-rad"}}}
+                      #_:extra-deps  #_{com.fulcrologic/fulcro-rad {:local/root "/Users/thomas/Develop/cljs/fulcro/fulcro-rad"}}}
          :rad-server {:extra-deps {com.fulcrologic/fulcro-rad-datomic
                                    {:local/root "/Users/thomas/Develop/cljs/fulcro/fulcro-rad-datomic"}}}
 
          :server     {:extra-paths ["src/server"]
-                      :extra-deps  {
-                                    vvvvalvalval/datomock               {:mvn/version "0.2.2"}
+                      :extra-deps  {vvvvalvalval/datomock               {:mvn/version "0.2.2"}
                                     buddy/buddy-hashers                 {:mvn/version "1.4.0"}
                                     buddy/buddy-sign                    {:mvn/version "3.1.0"}
                                     clj-mailgun/clj-mailgun             {:mvn/version "0.2.0"}
@@ -99,23 +98,19 @@
          ;; needed during cljs build for setting :LOG_LEVEL in theta.log
          org.clojure/tools.logging              {:mvn/version "1.1.0"}
          ch.qos.logback/logback-classic         {:mvn/version "1.2.3"}
-
          ;; minimal react wrapper
-         ;hicada                              {:mvn/version "0.1.8"}
 
          com.rpl/specter                        {:mvn/version "1.1.3"}
 
          ;; fulcro
-         com.fulcrologic/fulcro                 {:mvn/version "3.3.0"}
-
-         com.fulcrologic/fulcro-rad             {:mvn/version "1.0.4"}
-         com.fulcrologic/fulcro-rad-semantic-ui {:mvn/version "1.0.0"}
-
+         com.fulcrologic/fulcro                 {:mvn/version "3.4.16"}
+         com.fulcrologic/fulcro-rad             {:mvn/version "1.0.8"}
+         com.fulcrologic/fulcro-rad-semantic-ui {:mvn/version "1.0.4"}
+         com.fulcrologic/fulcro-rad-datomic     {:mvn/version "1.0.5"}
          garden/garden                          {:mvn/version "1.3.10"}
          com.fulcrologic/fulcro-garden-css      {:mvn/version "3.0.7" :exclusions [garden/garden]}
          com.fulcrologic/semantic-ui-wrapper    {:mvn/version "1.0.1"}
          com.taoensso/timbre                    {:mvn/version "4.10.0"}
-         ;com.taoensso/tufte                  {:mvn/version "2.1.0"}
          com.wsscode/pathom                     {:mvn/version "2.2.31"}}
 
  ;;com.influxdb/influxdb-client-java   {:mvn/version "1.3.0"}}
