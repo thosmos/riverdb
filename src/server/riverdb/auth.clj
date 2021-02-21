@@ -1,17 +1,11 @@
 (ns riverdb.auth
   (:require [buddy.sign.jwt :as jwt]
-            [buddy.core.hash :as hash]
             [buddy.hashers :as hashers]
             [clojure.string :as str]
             [clojure.spec.alpha :as s]
-            [clojure.spec.test.alpha :as stest]
             [clojure.tools.logging :as log :refer [debug info warn error]]
-            [clojure.walk :as walk]
-            [datomic.api :as d]
             [dotenv]
-            [riverdb.model.user :as user]
-            [riverdb.state :as st :refer [db cx]]
-            [thosmos.util :as tu :refer [check]]))
+            [thosmos.util :refer [check]]))
 
 (def email-regex #"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,63}$")
 
