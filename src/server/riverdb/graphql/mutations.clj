@@ -27,7 +27,7 @@
 
 (defn resolve-set-password [context {:keys [password] :as args} _]
   (debug "CHANGE PASSWORD!" args (:user context))
-  (let [result (user/set-password (:user context) (auth/hash-password password))]
+  (let [result (user/set-password (:user context) password)]
     (debug "CHANGE RESULT: " result)
     (tu/walk-remove-ns result)))
 
