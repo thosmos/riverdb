@@ -383,7 +383,7 @@
 
 
             (div :.item.right
-              (button {:disabled true :key "create" :onClick #(debug "CREATE")} (str "New " entity-nm))))
+              (button {:disabled false :key "create" :onClick #(debug "CREATE")} (str "New " entity-nm))))
 
 
           (div :.ui.segment {}
