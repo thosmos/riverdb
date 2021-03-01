@@ -1437,7 +1437,7 @@
   :entity/name "Monitor Hours"
   :entity/ns :entity.ns/monitorhours
   :entity/pks [:monitorhours/uuid]
-  :entity/prKeys [:monitorhours/hours]
+  :entity/prKeys [:monitorhours/hours :monitorhours/task]
   :entity/nameKey [:monitorhours/hours]
   :entity/attrs
   [#:attr{:name "Sitevisit",
@@ -1456,7 +1456,12 @@
           :key :monitorhours/hours,
           :cardinality :one,
           :type :string,
-          :doc "Volunteer Hours"}]}
+          :doc "Volunteer Hours"}
+   #:attr{:name "Task",
+          :key :monitorhours/task,
+          :cardinality :one,
+          :type :string,
+          :doc "Task (optional)"}]}
  {:db/id "paramline",
   :entity/name "Param Line",
   :entity/ns :entity.ns/paramline,

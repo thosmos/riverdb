@@ -86,6 +86,12 @@
 (defn filter-sample-typecode [type samples]
   (filter #(= type (get-in % [:sample/SampleTypeCode :db/ident])) samples))
 
+(defn cond->scond
+  "Given Temp (t) in °Celsius, and Conductivity (c), return Specific Conductivity"
+  [t c]
+  (let [TC 0.0191]
+    (/ c (+ 1 (* TC (- t 25))))))
+
 ;(defn history-view
 ;  "Return a function that will display transaction history with
 ;  pagination."

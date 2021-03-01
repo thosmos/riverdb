@@ -9,7 +9,8 @@
             [buddy.hashers :as hashers]
             [clojure.string :as str]
             [clojure.spec.alpha :as s]
-            [thosmos.util :as tu]))
+            [thosmos.util :as tu]
+            [riverdb.auth :as auth]))
 
 (defn return-user [user]
   (-> user
@@ -44,7 +45,8 @@
 (defn set-password
   ([current-user password]
    (if-let [email (:user/email current-user)]
-     (let [tx   (try @(d/transact (cx) [{:user/email email :user/password password}])
+     (let [password (auth/hash-password password)
+           tx   (try @(d/transact (cx) [{:user/email email :user/password password}])
                      (catch Exception ex (.getMessage ex)))
            user (when (map? tx)
                   (return-user current-user))]
@@ -56,6 +58,16 @@
           :msg     (str "DB TX failed: " tx)}))
      {:success false
       :msg     "unauthorized access"})))
+
+(defn new-user
+  ([user-data]
+   (let [{:user/keys [email password]} user-data]
+     (if-not (and email password)
+       (throw (Exception. "user must have both an email and a password"))
+       (let [user (merge user-data {:user/uuid (d/squuid)
+                                    :user/password (auth/hash-password password)})]
+         (log/debug "NEW USER" user)
+         (d/transact (cx) [user]))))))
 
 (>defn all-user-ids
   "Returns a sequence of UUIDs for all of the active accounts in the system"
