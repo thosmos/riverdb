@@ -6,8 +6,11 @@
     [com.fulcrologic.rad.blob :as blob]
     [riverdb.rad.model :as model]))
 
-(def middleware
+(def save
   (->
     (datomic/wrap-datomic-save)
-    (datomic/wrap-datomic-delete)
     (r.s.middleware/wrap-rewrite-values)))
+
+(def delete
+  (->
+    (datomic/wrap-datomic-delete)))

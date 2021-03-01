@@ -1,6 +1,6 @@
 (ns riverdb.server-components.auto-resolvers
   (:require
-    [riverdb.model :refer [all-attributes]]
+    [riverdb.rad.model :refer [all-attributes]]
     [mount.core :refer [defstate]]
     [com.fulcrologic.rad.resolvers :as res]
     [com.fulcrologic.rad.database-adapters.datomic :as datomic]

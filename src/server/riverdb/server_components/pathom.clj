@@ -13,7 +13,8 @@
     [riverdb.api.resolvers :as resolvers]
     [riverdb.model.session :as session]
     [riverdb.model.user :as user]
-    [riverdb.model :refer [all-attributes]]
+    [riverdb.rad.model :refer [all-attributes]]
+    [riverdb.rad.middleware :as middleware]
     [riverdb.server-components.config :refer [config]]
     [riverdb.server-components.auto-resolvers :refer [automatic-resolvers]]
     [riverdb.server-components.datomic :refer [datomic-connections]]
@@ -31,8 +32,8 @@
 (def all-resolvers [user/resolvers session/resolvers resolvers/resolvers
                     resolvers/lookup-resolvers resolvers/id-resolvers index-explorer
                     mutations/mutations
-                    automatic-resolvers
-                    #_form/save-form
+                    #_automatic-resolvers
+                    form/save-form
                     #_form/delete-entity])
 
 (defn preprocess-parser-plugin
@@ -76,8 +77,8 @@
                                     (preprocess-parser-plugin log-requests)
 
                                     (attr/pathom-plugin all-attributes) ; required to populate standard things in the parsing env
-                                    #_(form/pathom-plugin) ; installs form save/delete middleware
-                                    ;(datomic/pathom-plugin (fn [env] {:production (:main datomic-connections)})) ; db-specific adapter
+                                    (form/pathom-plugin middleware/save middleware/delete) ; installs form save/delete middleware
+                                    (datomic/pathom-plugin (fn [env] {:production (:main datomic-connections)})) ; db-specific adapter
 
                                     p/error-handler-plugin
                                     p/request-cache-plugin

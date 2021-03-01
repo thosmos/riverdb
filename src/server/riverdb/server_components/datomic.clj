@@ -2,7 +2,7 @@
   (:require
     [com.fulcrologic.rad.database-adapters.datomic :as datomic]
     [mount.core :refer [defstate]]
-    [riverdb.model :refer [all-attributes]]
+    [riverdb.rad.model :refer [all-attributes]]
     [riverdb.server-components.config :refer [config]]))
 
 (defstate ^{:on-reload :noop} datomic-connections

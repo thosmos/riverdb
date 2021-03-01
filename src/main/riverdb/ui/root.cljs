@@ -15,6 +15,10 @@
     [com.fulcrologic.fulcro-css.css :as css]
     [com.fulcrologic.fulcro-css.css-injection :as inj]
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
+    [com.fulcrologic.rad.authorization :as auth]
+    [com.fulcrologic.rad.form :as form]
+    [com.fulcrologic.rad.ids :refer [new-uuid]]
+    [com.fulcrologic.rad.routing :as rroute]
     [com.fulcrologic.semantic-ui.elements.loader.ui-loader :refer [ui-loader]]
     [com.fulcrologic.semantic-ui.modules.dimmer.ui-dimmer :refer [ui-dimmer]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form :refer [ui-form]]
@@ -42,8 +46,8 @@
     [theta.log :as log :refer [debug]]
     [theta.util :as tutil]
     [com.fulcrologic.fulcro.components :as om]
-    [com.fulcrologic.fulcro.data-fetch :as f]))
-
+    [com.fulcrologic.fulcro.data-fetch :as f]
+    [riverdb.rad.ui.person :refer [PersonForm]]))
 
 (defn field [{:keys [label valid? error-message] :as props}]
   (let [input-props (-> props (assoc :name label) (dissoc :label :valid? :error-message))]
@@ -113,6 +117,7 @@
                    [::uism/asm-id ::session/session]]
    :initial-state {:account/email "" :ui/error ""}}
   (let [current-state (uism/get-active-state this ::session/session)
+        _ (debug "login state" current-state)
         ;{current-user :account/name} (get props [:component/id :session])
         ;initial?      (= :initial current-state)
         loading?      (= :state/checking-session current-state)
@@ -242,14 +247,16 @@
               (dom/li (dom/a {:href "/dataviz"} "Summary Table"))
               (dom/li (dom/a {:href "/projects"} "Edit Projects"))
               (dom/li (dom/a {:href "/sitevisit/list"} "Site Visits"))
-              (dom/li (dom/a {:href "/upload"} "Bulk Import Data")))))))))
+              (dom/li (dom/a {:href "/upload"} "Bulk Import Data"))
+              (dom/li (dom/a {:href "/person"} "Person Form"))
+              (dom/li {:onClick (fn [] (form/create! this PersonForm))} "New Person"))))))))
 
 
 
 
 (dr/defrouter TopRouter [this props]
   {:router-targets        [Main Signup SignupSuccess ThetaRoot Projects TacReportPage
-                           DataVizPage SiteVisitsPage UploadPage]
+                           DataVizPage SiteVisitsPage UploadPage PersonForm]
    :shouldComponentUpdate (fn [_ _ _] true)})
 (def ui-top-router (comp/factory TopRouter))
 

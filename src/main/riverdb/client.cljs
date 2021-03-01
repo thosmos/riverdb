@@ -1,30 +1,38 @@
 (ns riverdb.client
   (:require
-    [riverdb.application :refer [SPA]]
+    [com.fulcrologic.fulcro.algorithms.denormalize :as fdn]
     [com.fulcrologic.fulcro.application :as app]
-    [riverdb.ui.root :as root]
-    [com.fulcrologic.fulcro.networking.http-remote :as net]
-    [com.fulcrologic.fulcro.data-fetch :as df]
-    [com.fulcrologic.fulcro.ui-state-machines :as uism]
     [com.fulcrologic.fulcro.components :as comp]
     [com.fulcrologic.fulcro-css.css-injection :as cssi]
+    [com.fulcrologic.fulcro.data-fetch :as df]
+    [com.fulcrologic.fulcro.inspect.inspect-client :as inspect]
+    [com.fulcrologic.fulcro.networking.http-remote :as net]
+    [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
+    [com.fulcrologic.fulcro.ui-state-machines :as uism]
+    [com.fulcrologic.rad.application :as rad-app]
+    [com.fulcrologic.rad.rendering.semantic-ui.semantic-ui-controls :as sui]
+    [riverdb.application :refer [SPA]]
     [riverdb.model.session :as session]
     [riverdb.ui.globals :as globals]
+    [riverdb.ui.root :as root]
+    ;[riverdb.model :as model]
     [riverdb.ui.session :as ui-session]
     [riverdb.ui.routes :as routes]
     [riverdb.ui.project-years :as py]
-    ;[riverdb.model :as model]
-    [theta.log :as log]
-    [com.fulcrologic.fulcro.algorithms.denormalize :as fdn]
-    [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
-    [com.fulcrologic.fulcro.inspect.inspect-client :as inspect]))
+    [theta.log :as log]))
     ;[com.fulcrologic.rad.attributes :as attr]
     ;[com.fulcrologic.rad.form :as form]
     ;[com.fulcrologic.rad.rendering.semantic-ui.semantic-ui-controls :as sui]))
 
+(defn setup-RAD [app]
+  (rad-app/install-ui-controls! app sui/all-controls)
+  #_(report/install-formatter! app :boolean :affirmation (fn [_ value] (if value "yes" "no"))))
+
 (defn ^:export refresh []
   (log/info "Hot code Remount")
   (cssi/upsert-css "componentcss" {:component root/Root})
+  (setup-RAD SPA)
+  (comp/refresh-dynamic-queries! SPA)
   (app/mount! SPA root/Root "app"))
 
 (defn ^:export init []
@@ -38,6 +46,7 @@
   ;(routes/start-routing SPA {:use-fragment false})
   (log/info "Initializing Fulcro Dynamic Routing")
   (dr/initialize! SPA)
+  (setup-RAD SPA)
   (log/info "Starting Session Machine.")
   (uism/begin! SPA session/session-machine ::session/session
     {:actor/login-form      root/LoginForm

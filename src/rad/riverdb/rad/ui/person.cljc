@@ -10,6 +10,7 @@
        :cljs [com.fulcrologic.fulcro.dom :as dom :refer [div label input]])
     [com.fulcrologic.rad.authorization :as auth]
     [com.fulcrologic.rad.form :as form]
+    [com.fulcrologic.rad.form-options :as fo]
     [com.fulcrologic.rad.ids :refer [new-uuid]]
     [com.fulcrologic.rad.rendering.semantic-ui.components :refer [ui-wrapped-dropdown]]
     [com.fulcrologic.rad.report :as report]
@@ -18,23 +19,23 @@
     [com.fulcrologic.rad.type-support.date-time :as datetime]))
 
 (form/defsc-form PersonForm [this props]
-  {::form/id                person/uid
-   ::form/attributes        [person/uid person/Name person/IsStaff person/Agency]
-   ::form/default           {:person/IsStaff false}
+  {fo/id                person/uid
+   fo/attributes        [person/uid person/Name person/IsStaff #_person/Agency]
+   fo/default-values           {:person/IsStaff false}
    ::form/enumeration-order :person/Name
-   ::form/cancel-route      ["people"]
-   ::form/route-prefix      "person"
-   ::form/title             "Edit Person"
-   ::form/layout            [[:person/Name :person/Agency :person/IsStaff]]
-   ::form/subforms          {:person/Agency {::form/ui            form/ToOneEntityPicker
-                                             ::form/pick-one      {:options/query-key :org.riverdb.db.agencylookup
-                                                                   :options/params    {:limit -1 :filter {:agencylookup/Active true}}
-                                                                   :options/subquery  [:agencylookup/uuid :agencylookup/AgencyCode]
-                                                                   :options/transform (fn [{:agencylookup/keys [uuid AgencyCode]}]
-                                                                                        {:text AgencyCode :value [:agencylookup/uuid uuid]})}
-                                             ::form/label         "Agency"
-                                             ;; Use computed props to inform subform of its role.
-                                             ::form/subform-style :inline}}})
+   ;;::form/cancel-route      ["people"]
+   fo/route-prefix      "person"
+   fo/title             "Edit Person"
+   fo/layout            [[:person/Name #_:person/Agency :person/IsStaff]]
+   #_::form/subforms          #_{:person/Agency {::form/ui            form/ToOneEntityPicker
+                                                 ::form/pick-one      {:options/query-key :org.riverdb.db.agencylookup
+                                                                       :options/params    {:limit -1 :filter {:agencylookup/Active true}}
+                                                                       :options/subquery  [:agencylookup/uuid :agencylookup/AgencyCode]
+                                                                       :options/transform (fn [{:agencylookup/keys [uuid AgencyCode]}]
+                                                                                            {:text AgencyCode :value [:agencylookup/uuid uuid]})}
+                                                 ::form/label         "Agency"
+                                                 ;; Use computed props to inform subform of its role.
+                                                 ::form/subform-style :inline}}})
 
 ;(def account-validator (fs/make-validator (fn [form field]
 ;                                            (case field
@@ -48,12 +49,12 @@
 ;                                                               (str/starts-with? (get form field) prefix))
 ;                                              (= :valid (model/all-attribute-validator form field))))))
 
-(defsc PersonListItem [this {:person/keys [uuid Name Agency IsStaff] :as props}]
-  {::report/columns         [:person/Name :person/Agency :person/IsStaff]
-   ::report/column-headings ["Name" "Agency" "IsStaff"]
+(defsc PersonListItem [this {:person/keys [uuid Name #_Agency IsStaff] :as props}]
+  {::report/columns         [:person/Name #_:person/Agency :person/IsStaff]
+   ::report/column-headings ["Name" #_"Agency" "IsStaff"]
    ::report/row-actions     {:delete (fn [this id] (form/delete! this :person/uuid id))}
    ::report/edit-form       PersonForm
-   :query                   [:person/uuid :person/Name :person/IsStaff :person/Agency]
+   :query                   [:person/uuid :person/Name :person/IsStaff #_:person/Agency]
    :ident                   :person/uuid}
   #_(dom/div :.item
       (dom/i :.large.github.middle.aligned.icon)
@@ -64,8 +65,13 @@
 
 (def ui-person-list-item (comp/factory PersonListItem {:keyfn :person/uuid}))
 
-(report/defsc-report PersonList [this props]
-  {::report/BodyItem         PersonListItem
-   ::report/source-attribute :org.riverdb.db.person
-   ::report/parameters       {}
-   ::report/route            "people"})
+;(report/defsc-report PersonList [this props]
+;  {
+;   ;::report/columns         [:person/Name]
+;   ;::report/column-headings ["Name"]
+;   ::report/BodyItem         PersonListItem
+;   ::report/create-form      PersonForm
+;   ::report/layout-style     :default
+;   ::report/source-attribute :org.riverdb.db.person
+;   ::report/parameters       {}
+;   ::report/route-segment    ["people"]})

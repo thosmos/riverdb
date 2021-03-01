@@ -63,6 +63,7 @@
       (let [r-segments   (vec (rest (str/split p "/")))
             target       (find-route-target SPA
                            (comp/registry-key->class :riverdb.ui.root/TopRouter) r-segments)
+            _ (debug "router target" target)
             target-opts  (comp/component-options target)
             check-fn     (:check-session target-opts)
             session      (get-in (fapp/current-state SPA) [:component/id :session])
