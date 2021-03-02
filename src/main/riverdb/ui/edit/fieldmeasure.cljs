@@ -222,7 +222,7 @@
         rslts         (->> (mapv :fieldresult/Result results)
                         (mapv parse-float)
                         (remove nil?))
-        _             (debug "rs-map" rs-map "rslts" rslts)
+        ;_             (debug "rs-map" rs-map "rslts" rslts)
         {:keys [setDeviceType setDeviceID devType devID] :as state} (comp/get-state this)
 
         ;fst           (first results)
@@ -282,7 +282,7 @@
         ;time          (or time (:fieldresult/ResultTime (first results)))
         time          (:sample/Time sample)
         unit          (get-in p-const [:constituentlookup/UnitCode :unitlookup/Unit])]
-    (debug "RENDER FieldMeasureSampleForm" p-name p-id "sample?" samp-ident) ;"props" props) ; "devType" devType "devID" devID "p-const" p-const "fieldresults" fieldresults)
+    ;(debug "RENDER FieldMeasureSampleForm" p-name p-id "sample?" samp-ident) ;"props" props) ; "devType" devType "devID" devID "p-const" p-const "fieldresults" fieldresults)
 
     (tr {:key p-id}
       (td {:key "name"} p-name)
@@ -390,7 +390,7 @@
                                (max reps mx)
                                mx))
                            1 params)]
-    (debug "RENDER FieldMeasureList" "param-samps" param-samples) ;"params" params "samples" samples)
+    ;(debug "RENDER FieldMeasureList" "param-samps" param-samples) ;"params" params "samples" samples)
     (div :.ui.segment {:key "fm-list"}
       (ui-header {} "Field Measurements")
       (table :.ui.very.compact.mini.table {:key "wqtab"}

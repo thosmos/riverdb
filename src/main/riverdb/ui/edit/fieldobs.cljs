@@ -220,7 +220,7 @@
                     RefResults (:fieldobsresult/RefResults obsresult)
                     refsvalue (when (= obstype :refs)
                                 (let [refsvalue (mapv #(rutil/thing->id %) (or RefResults []))]
-                                  (debug "REFS VALUE" refsvalue)
+                                  (debug "FieldObs refsvalue" refsvalue)
                                   refsvalue))
 
                     ana       (select-keys (:constituentlookup/AnalyteCode Constituent) [:db/id])
