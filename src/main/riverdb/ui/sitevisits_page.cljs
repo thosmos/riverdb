@@ -38,7 +38,7 @@
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal-content :refer [ui-modal-content]]
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal-actions :refer [ui-modal-actions]]
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal-description :refer [ui-modal-description]]
-
+    [goog.object :as gobj]
     [riverdb.application :refer [SPA]]
     [riverdb.api.mutations :as rm]
     [riverdb.util :refer [sort-maps-by with-index]]
@@ -56,7 +56,7 @@
     [riverdb.ui.session :refer [Session]]
     [riverdb.ui.inputs :refer [ui-float-input]]
     [riverdb.ui.upload :refer [ui-upload-modal]]
-    [riverdb.ui.util :as rutil :refer [walk-ident-refs* walk-ident-refs make-tempid make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save set-editing set-value set-value!! set-refs! set-ref! set-ref set-refs get-ref-set-val lookup-db-ident filter-param-typecode]]
+    [riverdb.ui.util :as rutil :refer [walk-ident-refs* walk-ident-refs make-tempid make-validator parse-float rui-checkbox rui-int rui-bigdec rui-bigdec-input rui-input ui-cancel-save set-editing set-value set-value!! set-refs! set-ref! set-ref set-refs get-ref-set-val lookup-db-ident filter-param-typecode]]
     [riverdb.util :refer [paginate nest-by filter-sample-typecode]]
     [com.rpl.specter :as sp :refer [ALL LAST]]
     ;[tick.alpha.api :as t]
@@ -91,28 +91,53 @@
            :constituentlookup/Name
            fs/form-config-join]})
 
-(defsc MonitorHours [this props]
+(defsc Monitor [this props]
+  {:ident [:org.riverdb.db.person/gid :db/id]
+   :query [:db/id
+           :riverdb.entity/ns
+           fs/form-config-join
+           :person/Name
+           :person/FName
+           :person/LName]})
+
+(defsc MonitorHours [this {:monitorhours/keys [hours monitor] :as props}]
   {:ident [:org.riverdb.db.monitorhours/gid :db/id]
    :query [:db/id
            :riverdb.entity/ns
            fs/form-config-join
            :monitorhours/sitevisit
-           :monitorhours/monitor
-           :monitorhours/hours]}
+           {:monitorhours/monitor (comp/get-query Monitor)}
+           :monitorhours/hours]
+   :form-fields    #{:db/id
+                     :riverdb.entity/ns
+                     :monitorhours/hours}}
 
-  ())
+  (let [name (:person/Name monitor)]
+        ;hrs  (.-rep hours)]
+    (dom/tr
+      (dom/td name)
+      (dom/td
+        (rui-bigdec-input
+          {:value hours
+           :onChange (fn [new-v]
+                       (when new-v
+                         (set-value!! this :monitorhours/hours new-v)))})))))
+                       
+
+(def ui-monitorhours-item (comp/factory MonitorHours {:keyfn :db/id}))
 
 (defsc MonitorHoursList [this props]
   {}
-  (dom/table :.ui.table
-    (dom/thead
-      (dom/tr
-        (dom/th "Monitor")
-        (dom/th "Hours")))
-    (dom/tbody
-      (dom/tr
-        (dom/td "Thomas")
-        (dom/td 5.34)))))
+  (let [hours (:monitorhours props)
+        _ (debug "monitor hours" hours)]
+    (dom/table :.ui.table
+      (dom/thead
+        (dom/tr
+          (dom/th "Monitor")
+          (dom/th "Hours")))
+      (dom/tbody
+        (for [hour hours]
+          (ui-monitorhours-item hour))))))
 
 (def ui-monitorhours-list
   (comp/factory MonitorHoursList))
@@ -207,7 +232,8 @@
                      :sitevisit/StationID :sitevisit/DataEntryDate :sitevisit/SiteVisitDate :sitevisit/Time
                      :sitevisit/Visitors :sitevisit/VisitType :sitevisit/StationFailCode
                      :sitevisit/DataEntryPersonRef :sitevisit/CheckPersonRef
-                     :sitevisit/QAPersonRef :sitevisit/QACheck :sitevisit/QADate :sitevisit/Samples}}
+                     :sitevisit/QAPersonRef :sitevisit/QACheck :sitevisit/QADate :sitevisit/Samples
+                     :monitorhours/_sitevisit}}
 
   :componentDidMount (fn [this]
                        (debug "DID MOUNT SiteVisitForm" (comp/props this)))
@@ -225,6 +251,9 @@
                        :style     {:maxWidth 168 :minWidth 168}}
         sv-time       (:sitevisit/Time props)
         sv-date       (:sitevisit/SiteVisitDate props)
+        monitorhours         (:monitorhours/_sitevisit props)
+        ;_ (debug "monitor hours" hours)
+
         {person-options            :entity.ns/person
          stationlookup-options     :entity.ns/stationlookup
          sitevisittype-options     :entity.ns/sitevisittype
@@ -392,7 +421,7 @@
             (div :.four.wide.column
               (div :.field {:key "monitor hours"}
                 (label {:style {}} "Monitor Hours")
-                (ui-monitorhours-list))))
+                (ui-monitorhours-list {:monitorhours monitorhours}))))
 
 
 

@@ -1458,7 +1458,7 @@
    #:attr{:name "Hours",
           :key :monitorhours/hours,
           :cardinality :one,
-          :type :string,
+          :type :bigdec,
           :doc "Volunteer Hours"}
    #:attr{:name "Task",
           :key :monitorhours/task,
