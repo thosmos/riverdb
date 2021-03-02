@@ -54,7 +54,8 @@
 
 (defsc ThetaOption [_ props]
   {:ident (fn []
-            (let [ent-nm  (name (get props :riverdb.entity/ns))
+            (let [ent-nm  (when-let [ent-k (:riverdb.entity/ns props)]
+                            (name ent-k))
                   ident-k (keyword (str "org.riverdb.db." ent-nm) "gid")
                   ident-v (:db/id props)
                   ident   [ident-k ident-v]]

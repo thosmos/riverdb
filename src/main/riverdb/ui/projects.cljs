@@ -468,8 +468,7 @@
                       (when (not (#{:sampletypelookup.SampleTypeCode/FieldObs
                                     :sampletypelookup.SampleTypeCode/Grab}
                                   sample-type))
-                        [
-                         (div :.field {:key "reps"}
+                        [(div :.field {:key "reps"}
                            (ui-popup
                              {:trigger (rui-int this :parameter/Replicates {:style {:width 80} :label (label {} "Required Replicates" info-icon)})}
                              (get-in param-specs [:parameter/Replicates :attr/doc])))
