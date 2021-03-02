@@ -9,6 +9,7 @@
       <sourceFolder url="file://$MODULE_DIR$/src/import" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/main" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src/server" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/src/rad" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/.cpcache" />
       <excludeFolder url="file://$MODULE_DIR$/.idea" />
       <excludeFolder url="file://$MODULE_DIR$/.shadow-cljs" />
@@ -39,8 +40,10 @@
     <orderEntry type="library" name="Deps: commons-codec:1.13" level="project" />
     <orderEntry type="library" name="Deps: com.cognitect.aws/api:0.8.408" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/tools.analyzer:0.7.0" level="project" />
+    <orderEntry type="library" name="Deps: com.fulcrologic/fulcro-rad-semantic-ui:1.0.0" level="project" />
     <orderEntry type="library" name="Deps: cljfx/cljfx$jdk11:1.6.2" level="project" />
     <orderEntry type="library" name="Deps: com.bhauman/cljs-test-display:0.1.1" level="project" />
+    <orderEntry type="library" name="Deps: Local com.fulcrologic/fulcro-rad" level="project" />
     <orderEntry type="library" name="Deps: com.fulcrologic/guardrails:0.0.12" level="project" />
     <orderEntry type="library" name="Deps: org.eclipse.jetty/jetty-xml:9.4.18.v20190429" level="project" />
     <orderEntry type="library" name="Deps: org.apache.tomcat/tomcat-juli:7.0.27" level="project" />
@@ -54,7 +57,7 @@
     <orderEntry type="library" name="Deps: org.clojure/core.specs.alpha:0.2.44" level="project" />
     <orderEntry type="library" name="Deps: org.bouncycastle/bcpkix-jdk15on:1.62" level="project" />
     <orderEntry type="library" name="Deps: io.pedestal/pedestal.jetty:0.5.8" level="project" />
-    <orderEntry type="library" name="Deps: edn-query-language/eql:0.0.9" level="project" />
+    <orderEntry type="library" name="Deps: edn-query-language/eql:1.0.0" level="project" />
     <orderEntry type="library" name="Deps: io.undertow/undertow-core:2.1.1.Final" level="project" />
     <orderEntry type="library" name="Deps: com.vividsolutions/jts:1.13" level="project" />
     <orderEntry type="library" name="Deps: javax/javaee-api:7.0" level="project" />
@@ -73,7 +76,7 @@
     <orderEntry type="library" name="Deps: henryw374/js-joda:1.12.0-1" level="project" />
     <orderEntry type="library" name="Deps: org.eclipse.jetty/jetty-http:9.4.18.v20190429" level="project" />
     <orderEntry type="library" name="Deps: org.eclipse.jetty/jetty-util:9.4.18.v20190429" level="project" />
-    <orderEntry type="library" name="Deps: com.taoensso/encore:2.117.0" level="project" />
+    <orderEntry type="library" name="Deps: com.taoensso/encore:2.120.0" level="project" />
     <orderEntry type="library" name="Deps: org.slf4j/jcl-over-slf4j:1.7.25" level="project" />
     <orderEntry type="library" name="Deps: javax.media/jai_core:1.1.3" level="project" />
     <orderEntry type="library" name="Deps: datomic-schema:1.3.1" level="project" />
@@ -84,9 +87,11 @@
     <orderEntry type="library" name="Deps: vlaaad/reveal:0.1.0-ea1" level="project" />
     <orderEntry type="library" name="Deps: net.incongru.watchservice/barbary-watchservice:1.0" level="project" />
     <orderEntry type="library" name="Deps: org.wildfly.common/wildfly-common:1.5.2.Final" level="project" />
+    <orderEntry type="library" name="Deps: com.fulcrologic/fulcro-i18n:0.0.5-alpha" level="project" />
     <orderEntry type="library" name="Deps: cljfx/css:1.1.0" level="project" />
     <orderEntry type="library" name="Deps: com.jcraft/jsch.agentproxy.sshagent:0.0.9" level="project" />
     <orderEntry type="library" name="Deps: cljsjs/react-dom:16.13.0-0" level="project" />
+    <orderEntry type="library" name="Deps: com.taoensso/tufte:2.1.0" level="project" />
     <orderEntry type="library" name="Deps: io.pedestal/pedestal.log:0.5.8" level="project" />
     <orderEntry type="library" name="Deps: systems.uom/systems-common-java8:0.7.2" level="project" />
     <orderEntry type="library" name="Deps: com.fasterxml.jackson.dataformat/jackson-dataformat-cbor:2.9.6" level="project" />
@@ -115,6 +120,7 @@
     <orderEntry type="library" name="Deps: org.eclipse.jetty.websocket/websocket-api:9.4.18.v20190429" level="project" />
     <orderEntry type="library" name="Deps: org.locationtech.jts/jts-core:1.16.1" level="project" />
     <orderEntry type="library" name="Deps: org.eclipse.jetty.alpn/alpn-api:1.1.3.v20160715" level="project" />
+    <orderEntry type="library" name="Deps: cljsjs/js-joda:1.10.1-0" level="project" />
     <orderEntry type="library" name="Deps: com.yahoo.platform.yui/yuicompressor:2.4.8" level="project" />
     <orderEntry type="library" name="Deps: spec-coerce:1.0.0-alpha6" level="project" />
     <orderEntry type="library" name="Deps: com.jcraft/jsch.agentproxy.usocket-jna:0.0.9" level="project" />
@@ -166,7 +172,7 @@
     <orderEntry type="library" name="Deps: ring/ring-headers:0.3.0" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/google-closure-library-third-party:0.0-20191016-6ae1f72f" level="project" />
     <orderEntry type="library" name="Deps: org.apache.maven.resolver/maven-resolver-api:1.4.1" level="project" />
-    <orderEntry type="library" name="Deps: com.fulcrologic/fulcro:3.2.11" level="project" />
+    <orderEntry type="library" name="Deps: com.fulcrologic/fulcro:3.3.0" level="project" />
     <orderEntry type="library" name="Deps: hiccup:1.0.5" level="project" />
     <orderEntry type="library" name="Deps: javax.annotation/jsr250-api:1.0" level="project" />
     <orderEntry type="library" name="Deps: riddley:0.1.12" level="project" />
@@ -179,7 +185,7 @@
     <orderEntry type="library" name="Deps: org.jboss.xnio/xnio-nio:3.8.0.Final" level="project" />
     <orderEntry type="library" name="Deps: org.apache.maven.shared/maven-shared-utils:3.2.1" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/java.classpath:1.0.0" level="project" />
-    <orderEntry type="library" name="Deps: com.taoensso/sente:1.15.0" level="project" />
+    <orderEntry type="library" name="Deps: com.taoensso/sente:1.16.0-alpha1" level="project" />
     <orderEntry type="library" name="Deps: net.sf.geographiclib/GeographicLib-Java:1.49" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/tools.deps.alpha:0.8.666" level="project" />
     <orderEntry type="library" name="Deps: com.google.guava/guava:25.1-jre" level="project" />
