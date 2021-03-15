@@ -554,26 +554,42 @@
 
             (dom/button :.ui.right.floated.button.primary
               {:disabled (not dirty?)
-               :onClick  #(let [dirty-fields (fs/dirty-fields props true)
-                                form-fields  (fs/get-form-fields SiteVisitForm)
-                                form-props   (select-keys props form-fields)]
+               :onClick  #(let [dirty-fields  (fs/dirty-fields props true)
+                                form-fields   (fs/get-form-fields SiteVisitForm)
+                                form-props    (select-keys props form-fields)
+                                worktimes     (:sitevisit/WorkTimes (-> dirty-fields first last))
+                                del-worktimes (when worktimes
+                                                (not-empty
+                                                  (clojure.set/difference
+                                                    (set (:before worktimes))
+                                                    (set (:after worktimes)))))]
                             (debug "SAVE!" "dirty?" dirty? "dirty-fields" dirty-fields "form-props" form-props)
                             (debug "DIFF" (tu/ppstr dirty-fields))
                             (comp/transact! this
                               `[(rm/save-entity ~{:ident this-ident
-                                                  :diff  dirty-fields})]))}
+                                                  :diff  dirty-fields})])
+                            (debug "DEL WORKTIMES" del-worktimes)
+                            (when del-worktimes
+                              (doseq [delwt del-worktimes]
+                                (comp/transact! this
+                                  `[(rm/save-entity ~{:ident delwt
+                                                      :delete true})]))))}
               "Save")
 
             #_(dom/button :.ui.button.primary
                 {:disabled (not dirty?)
-                 :onClick  #(let [dirty-fields (fs/dirty-fields props true)
-                                  form-fields  (fs/get-form-fields SiteVisitForm)
-                                  form-props   (select-keys props form-fields)]
+                 :onClick  #(let [dirty-fields  (fs/dirty-fields props true)
+                                  form-fields   (fs/get-form-fields SiteVisitForm)
+                                  form-props    (select-keys props form-fields)
+                                  worktimes     (:sitevisit/WorkTimes (-> dirty-fields first last))
+                                  del-worktimes (when worktimes
+                                                  (not-empty
+                                                    (clojure.set/difference
+                                                      (set (:before worktimes))
+                                                      (set (:after worktimes)))))]
                               (debug "SAVE!" "dirty?" dirty? "dirty-fields" dirty-fields "form-props" form-props)
                               (debug "DIFF" (tu/ppstr dirty-fields))
-                              #_(comp/transact! this
-                                  `[(rm/save-entity ~{:ident this-ident
-                                                      :diff  dirty-fields})]))}
+                              (debug "DEL WORKTIMES" del-worktimes))}
                 "Dirty")
 
             (dom/button :.ui.negative.button
