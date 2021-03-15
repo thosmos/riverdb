@@ -42,7 +42,7 @@
     "react": "^16.6.8",
     "react-dom": "^16.6.8",
     "shadow-cljs": "^2.8.90",
-    "showdown": "^1.8.7"
+    "showdown": "^1.9.1"
   },
   "scripts": {
     "dev": "APP_ENV=dev LOG_LEVEL=0 npx shadow-cljs -A:cljs-dev server",
