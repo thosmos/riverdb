@@ -1434,37 +1434,42 @@
           :identity true,
           :cardinality :one,
           :type :uuid}]}
- {:db/id "monitorhours"
-  :entity/name "Monitor Hours"
-  :entity/ns :entity.ns/monitorhours
-  :entity/pks [:monitorhours/uuid]
-  :entity/prKeys [:monitorhours/hours :monitorhours/task]
-  :entity/nameKey [:monitorhours/hours]
+ {:db/id "worktime"
+  :entity/name "Work Time"
+  :entity/ns :entity.ns/worktime
+  :entity/pks [:worktime/uuid]
+  :entity/prKeys [:worktime/hours :worktime/task]
+  :entity/nameKey [:worktime/hours]
   :entity/attrs
   [#:attr{:name "Sitevisit",
-          :key :monitorhours/sitevisit,
+          :key :worktime/sitevisit,
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/sitevisit}
           :refKey :entity.ns/sitevisit
           :doc "Sitevisit reference"}
-   #:attr{:name "Monitor",
-          :key :monitorhours/monitor,
+   #:attr{:name "Person",
+          :key :worktime/person,
           :cardinality :one,
           :type :ref,
           :ref #:entity{:ns :entity.ns/person}
           :refKey :entity.ns/person
           :doc "Person reference"}
    #:attr{:name "Hours",
-          :key :monitorhours/hours,
+          :key :worktime/hours,
           :cardinality :one,
           :type :bigdec,
           :doc "Volunteer Hours"}
    #:attr{:name "Task",
-          :key :monitorhours/task,
+          :key :worktime/task,
           :cardinality :one,
           :type :string,
-          :doc "Task (optional)"}]}
+          :doc "Task (optional)"}
+   #:attr{:name "uuid",
+          :key :worktime/uuid,
+          :identity true,
+          :cardinality :one,
+          :type :uuid}]}
  {:db/id "paramline",
   :entity/name "Param Line",
   :entity/ns :entity.ns/paramline,
@@ -2404,7 +2409,12 @@
   :entity/prKeys [:samplingdevice/CommonID :samplingdevice/DeviceType],
   :entity/nameKey :samplingdevice/CommonID,
   :entity/attrs
-  [#:attr{:name "CommonID",
+  [#:attr{:name "Active",
+          :key :samplingdevice/Active,
+          :position 0,
+          :cardinality :one,
+          :type :boolean}
+   #:attr{:name "CommonID",
           :key :samplingdevice/CommonID,
           :position 2,
           :cardinality :one,
@@ -2767,6 +2777,12 @@
           :type :ref,
           :ref #:entity{:ns :entity.ns/sitevisittype},
           :refKey :entity.ns/sitevisittype}
+   #:attr{:name "Visitors",
+          :key :sitevisit/Visitors,
+          :type :ref,
+          :ref #:entity{:ns :entity.ns/person},
+          :cardinality :many,
+          :refKey :entity.ns/person}
    #:attr{:name "Water Depth",
           :key :sitevisit/WaterDepth,
           :position 11,
@@ -2777,6 +2793,13 @@
           :position 32,
           :cardinality :one,
           :type :boolean}
+   #:attr{:name "WorkTimes",
+          :key :sitevisit/WorkTimes,
+          :type :ref,
+          :ref #:entity{:ns :entity.ns/worktime},
+          :component true,
+          :cardinality :many,
+          :refKey :entity.ns/worktime}
    #:attr{:name "uuid",
           :key :sitevisit/uuid,
           :identity true,

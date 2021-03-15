@@ -16,7 +16,8 @@
     [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
     [com.fulcrologic.fulcro.dom :as dom :refer [div]]
     [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
-    [riverdb.ui.routes :as routes]))
+    [riverdb.ui.routes :as routes]
+    [com.rpl.specter :as sp]))
 
 ;;;  CLIENT
 
@@ -371,7 +372,7 @@
   (action [{:keys [state]}]
     (if delete
       (debug "DELETE ENTITY" ident)
-      (debug "SAVE ENTITY DIFF" ident diff))
+      (debug "SAVE ENTITY" ident))
     (swap! state set-saving* ident true))
   (remote [env]
     (-> env
@@ -379,6 +380,15 @@
                                    (dissoc :post-mutation)
                                    (dissoc :post-params)
                                    (dissoc :success-msg)))
+      ;; remove reverse keys
+      (update-in [:ast :params :diff]
+        (fn [diff]
+          (let [new-diff (sp/transform
+                           [sp/ALL sp/LAST sp/ALL]
+                           #(when (not (and (keyword? (first %)) (= "_" (first (name (first %)))))) %)
+                           diff)]
+            (debug "DIFF" new-diff)
+            new-diff)))
       (fm/returning TxResult)
       (fm/with-target [:root/tx-result])))
   (ok-action [{:keys [state result] :as env}]
