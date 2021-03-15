@@ -68,7 +68,8 @@
                                     mount/mount                         {:mvn/version "0.1.16"}
                                     hiccup/hiccup                       {:mvn/version "1.0.5"}
                                     clj-time/clj-time                   {:mvn/version "0.15.2"}
-                                    clojure.java-time/clojure.java-time {:mvn/version "0.3.2"}}}
+                                    clojure.java-time/clojure.java-time {:mvn/version "0.3.2"}
+                                    com.fulcrologic/fulcro-rad-datomic  {:mvn/version "1.0.5"}}}
          :import     {:extra-paths ["src/import"]
                       :extra-deps  {;; geotools
                                     org.geotools/gt-shapefile {:mvn/version "22.2"}
@@ -103,10 +104,12 @@
          com.rpl/specter                        {:mvn/version "1.1.3"}
 
          ;; fulcro
-         com.fulcrologic/fulcro                 {:mvn/version "3.4.16"}
+         com.fulcrologic/fulcro                 {:mvn/version "3.4.20"}
+
          com.fulcrologic/fulcro-rad             {:mvn/version "1.0.8"}
          com.fulcrologic/fulcro-rad-semantic-ui {:mvn/version "1.0.4"}
-         com.fulcrologic/fulcro-rad-datomic     {:mvn/version "1.0.5"}
+
+
          garden/garden                          {:mvn/version "1.3.10"}
          com.fulcrologic/fulcro-garden-css      {:mvn/version "3.0.7" :exclusions [garden/garden]}
          com.fulcrologic/semantic-ui-wrapper    {:mvn/version "1.0.1"}

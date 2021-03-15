@@ -99,7 +99,7 @@
                                              (comp (map ref->ident) (remove nil?))
                                              after)
                                   retracts (set/difference before after)
-                                  adds     (set/difference after before)
+                                  adds     after
                                   eid      id]
                               (vec
                                 (concat
@@ -114,7 +114,7 @@
                                              (comp (remove nil?))
                                              after)
                                   retracts (set/difference before after)
-                                  adds     (set/difference after before)
+                                  adds     after
                                   eid      id]
                               (vec
                                 (concat

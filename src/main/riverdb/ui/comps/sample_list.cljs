@@ -5,6 +5,7 @@
     [com.fulcrologic.fulcro.dom :as dom :refer [div ul li a p h2 h3 button table thead
                                                 tbody th tr td form label input select
                                                 option span]]
+    [com.fulcrologic.semantic-ui.elements.header.ui-header :refer [ui-header]]
     [riverdb.application :refer [SPA]]
     [riverdb.ui.edit.fieldmeasure :refer [ui-fm-list FieldMeasureList]]
     [riverdb.ui.edit.fieldobs :refer [ui-fo-list]]
@@ -36,6 +37,8 @@
       :sampletypelookup.SampleTypeCode/FieldObs
       (ui-fo-list (comp/computed props comps))
 
-      (div {:key (str sample-type)} (str sample-type)))))
+      (div {:key (str sample-type)}
+        (div :.ui.segment {:key "fm-list"}
+          (ui-header {} (str (name sample-type))))))))
 
 (def ui-sample-list (comp/factory SampleList {:keyfn :sample-type}))

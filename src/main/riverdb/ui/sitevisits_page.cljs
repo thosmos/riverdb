@@ -3,6 +3,7 @@
     [clojure.string :as str]
     [clojure.edn :as edn]
     [clojure.data]
+    [cognitect.transit :as transit]
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
@@ -11,8 +12,7 @@
     [com.fulcrologic.fulcro.components :as comp :refer [defsc transact!]]
     [com.fulcrologic.fulcro.data-fetch :as f]
     [com.fulcrologic.fulcro.dom :as dom :refer [div ul li a p h2 h3 button table thead
-                                                tbody th tr td form label input select
-                                                option span]]
+                                                tbody th tr td form label input option span]]
     [com.fulcrologic.fulcro.mutations :as fm]
     [com.fulcrologic.fulcro.networking.file-upload :as file-upload]
     [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
@@ -38,9 +38,10 @@
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal-content :refer [ui-modal-content]]
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal-actions :refer [ui-modal-actions]]
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal-description :refer [ui-modal-description]]
-
+    [goog.object :as gobj]
     [riverdb.application :refer [SPA]]
     [riverdb.api.mutations :as rm]
+    [riverdb.model.sitevisit :as rmsv]
     [riverdb.util :refer [sort-maps-by with-index]]
     [riverdb.ui.agency :refer [preload-agency Agency]]
     [riverdb.ui.components :refer [ui-datepicker]]
@@ -56,9 +57,9 @@
     [riverdb.ui.session :refer [Session]]
     [riverdb.ui.inputs :refer [ui-float-input]]
     [riverdb.ui.upload :refer [ui-upload-modal]]
-    [riverdb.ui.util :as rutil :refer [walk-ident-refs* walk-ident-refs make-tempid make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save set-editing set-value set-value!! set-refs! set-ref! set-ref set-refs get-ref-set-val lookup-db-ident filter-param-typecode]]
+    [riverdb.ui.util :as rutil :refer [walk-ident-refs* walk-ident-refs make-tempid make-validator parse-float rui-checkbox rui-int rui-bigdec rui-bigdec-input rui-input ui-cancel-save set-editing set-value set-value!! set-refs! set-ref! set-ref set-refs get-ref-set-val lookup-db-ident filter-param-typecode]]
     [riverdb.util :refer [paginate nest-by filter-sample-typecode]]
-    [com.rpl.specter :as sp :refer [ALL LAST]]
+    [com.rpl.specter :as sp :refer [select ALL LAST]]
     ;[tick.alpha.api :as t]
     [theta.log :as log :refer [debug info]]
     [thosmos.util :as tu]
@@ -91,126 +92,227 @@
            :constituentlookup/Name
            fs/form-config-join]})
 
-(defsc MonitorHours [this props]
-  {:ident [:org.riverdb.db.monitorhours/gid :db/id]
+(defsc Monitor [this props]
+  {:ident [:org.riverdb.db.person/gid :db/id]
    :query [:db/id
            :riverdb.entity/ns
            fs/form-config-join
-           :monitorhours/sitevisit
-           :monitorhours/monitor
-           :monitorhours/hours]}
+           :person/Name
+           :person/FName
+           :person/LName]
+   :form-fields   #{:db/id}})
 
-  ())
+(defsc SV [this props]
+  {:ident [:org.riverdb.db.sitevisit/gid :db/id]
+   :query [:db/id
+           fs/form-config-join]
+   :form-fields   #{:db/id}})
 
-(defsc MonitorHoursList [this props]
-  {}
-  (dom/table :.ui.table
-    (dom/thead
-      (dom/tr
-        (dom/th "Monitor")
-        (dom/th "Hours")))
-    (dom/tbody
-      (dom/tr
-        (dom/td "Thomas")
-        (dom/td 5.34)))))
+(defsc WorkTime [this {:worktime/keys [hours person] :as props}]
+  {:ident         [:org.riverdb.db.worktime/gid :db/id]
+   :query         [:db/id
+                   :riverdb.entity/ns
+                   fs/form-config-join
+                   :worktime/sitevisit
+                   {:worktime/person (comp/get-query Monitor)}
+                   :worktime/hours
+                   :worktime/uuid
+                   :worktime/task]
+   :initial-state (fn [{:keys [person sitevisit] :as params}]
+                    {:db/id              (tempid/tempid)
+                     :riverdb.entity/ns  :entity.ns/worktime
+                     :worktime/uuid      (tempid/uuid)
+                     :worktime/sitevisit sitevisit
+                     :worktime/person    person
+                     :worktime/hours     (transit/bigdec "1")
+                     :worktime/task      "sitevisit"})
+   :form-fields   #{:db/id
+                    :riverdb.entity/ns
+                    :worktime/uuid
+                    :worktime/hours
+                    :worktime/sitevisit
+                    :worktime/person
+                    :worktime/task}}
 
-(def ui-monitorhours-list
-  (comp/factory MonitorHoursList))
+  (let [name (:person/Name person)]
+    (dom/tr
+      (dom/td name)
+      (dom/td
+        (rui-bigdec-input
+          {:value    hours
+           :style    {:width "5rem"}
+           :onChange (fn [new-v]
+                       (set-value!! this :worktime/hours new-v))})))))
+
+(def ui-worktime-item (comp/factory WorkTime {:keyfn :db/id}))
+
+(defsc WorkTimeList [this props]
+  {:query [:visitors :worktimes]}
+  (let [worktimes (:worktimes props)]
+    (dom/table :.ui.table
+      (dom/thead
+        (dom/tr
+          (dom/th "Monitor")
+          (dom/th "Hours")))
+      (dom/tbody
+        (for [worktime worktimes]
+          (ui-worktime-item worktime))))))
+
+(def ui-worktime-list
+  (comp/factory WorkTimeList))
 
 (fm/defmutation sv-deleted [{:keys [ident]}]
   (action [{:keys [state]}]
     (debug "SV deleted" ident)
     (routes/route-to! "/sitevisit/list")))
 
+(fm/defmutation add-worktime [{:keys [sitevisit person]}]
+  (action [{:keys [state]}]
+    (debug "ADD worktime")
+    (let [wt (comp/get-initial-state WorkTime {:sitevisit sitevisit :person person})
+          wt (fs/add-form-config WorkTime wt)]
+      (debug "New worktime" wt)
+      (swap! state
+        (fn [st]
+          (-> st
+            (merge/merge-component WorkTime wt
+              :append (conj sitevisit :sitevisit/WorkTimes))))))))
+
+(fm/defmutation del-worktime [{:keys [sitevisit worktime]}]
+  (action [{:keys [state]}]
+    (debug "DEL worktime" worktime)
+    (let []
+      (swap! state
+        (fn [st]
+          (-> st
+            (update-in (conj sitevisit :sitevisit/WorkTimes)
+              (fn [wktms]
+                (vec (remove #{worktime} wktms))))))))))
+
+;(comp/transact! this `[(rm/save-entity ~{:ident         this-ident
+;                                         :delete        true
+;                                         :post-mutation `sv-deleted
+;                                         :post-params   {}})])
+
+(defn sync-worktimes [this visitors worktimes]
+  (let [props          (comp/props this)
+        sv-id          (:db/id props)
+        visitor-ids    (set (select [ALL LAST] visitors))
+        worker-ids     (set (select [ALL :worktime/person :db/id] worktimes))
+        add-workers    (clojure.set/difference visitor-ids worker-ids)
+        delete-workers (clojure.set/difference worker-ids visitor-ids)]
+    (debug "Sync WorkTimes" "add-workers" add-workers "del-workers" delete-workers)
+    ;; add new workers
+    (doseq [add-id add-workers]
+      (let [args {:person    {:db/id add-id}
+                  :sitevisit [:org.riverdb.db.sitevisit/gid sv-id]}]
+        (comp/transact! this `[(add-worktime ~args)])))
+
+    ;; remove missing workers
+    (doseq [del-id delete-workers]
+      (let [worktime (first (select [ALL #(= del-id (get-in % [:worktime/person :db/id])) ] worktimes))
+            worktime-id (:db/id worktime)
+            args {:worktime [:org.riverdb.db.worktime/gid worktime-id]
+                  :sitevisit [:org.riverdb.db.sitevisit/gid sv-id]}]
+        ;(debug "REMOVE WORKTIME" worktime-id)
+        (comp/transact! this `[(del-worktime ~args)])))))
+
+
 (defsc SiteVisitForm [this
-                      {:ui/keys [ready create globals add-person-modal]
+                      {:ui/keys [ready create globals add-person-modal error]
                        :db/keys [id]
                        :sitevisit/keys [CheckPersonRef DataEntryDate DataEntryPersonRef
                                         Notes QAPersonRef QACheck QADate
                                         Samples SiteVisitDate StationID StationFailCode
-                                        Visitors VisitType] :as props}
+                                        Visitors VisitType WorkTimes] :as props}
                       {:keys [station-options person-options sitevisittype-options
                               stationfaillookup-options
                               current-project parameters current-agency person-lookup] :as cprops}]
-  {:ident          [:org.riverdb.db.sitevisit/gid :db/id]
-   :query          (fn [] [:db/id
-                           :riverdb.entity/ns
-                           fs/form-config-join
-                           :ui/ready
-                           :ui/create
-                           :sitevisit/AgencyCode
-                           :sitevisit/BacteriaCollected
-                           :sitevisit/BacteriaTime
-                           :sitevisit/CheckPersonRef
-                           :sitevisit/CreationTimestamp
-                           :sitevisit/DataEntryDate
-                           :sitevisit/DataEntryNotes
-                           :sitevisit/DataEntryPersonRef
-                           :sitevisit/Datum
-                           :sitevisit/DepthMeasured
-                           :sitevisit/GPSDeviceCode
-                           :sitevisit/HydroMod
-                           :sitevisit/HydroModLoc
-                           :sitevisit/Lat
-                           :sitevisit/Lon
-                           :sitevisit/MetalCollected
-                           :sitevisit/MetalTime
-                           :sitevisit/Notes
-                           :sitevisit/PointID
-                           :sitevisit/ProjectID
-                           :sitevisit/QACheck
-                           :sitevisit/QADate
-                           :sitevisit/QAPersonRef
-                           :sitevisit/SeasonCode
-                           :sitevisit/SiteVisitDate
-                           :sitevisit/SiteVisitID
-                           :sitevisit/StationFailCode
-                           :sitevisit/StationID
-                           :sitevisit/StreamWidth
-                           :sitevisit/Time
-                           :sitevisit/TssCollected
-                           :sitevisit/TssTime
-                           :sitevisit/TurbidityCollected
-                           :sitevisit/TurbidityTime
-                           :sitevisit/UnitStreamWidth
-                           :sitevisit/UnitWaterDepth
-                           :sitevisit/VisitType
-                           :sitevisit/WaterDepth
-                           :sitevisit/WidthMeasured
-                           :sitevisit/uuid
-                           :sitevisit/Visitors
-                           {:sitevisit/Samples (comp/get-query SampleForm)}
-                           {:monitorhours/_sitevisit (comp/get-query MonitorHours)}
-                           {:ui/globals (comp/get-query Globals)}
-                           [:riverdb.theta.options/ns '_]])
+  {:ident             [:org.riverdb.db.sitevisit/gid :db/id]
+   :query             (fn [] [:db/id
+                              :riverdb.entity/ns
+                              fs/form-config-join
+                              :ui/ready
+                              :ui/create
+                              :ui/error
+                              :sitevisit/AgencyCode
+                              :sitevisit/BacteriaCollected
+                              :sitevisit/BacteriaTime
+                              :sitevisit/CheckPersonRef
+                              :sitevisit/CreationTimestamp
+                              :sitevisit/DataEntryDate
+                              :sitevisit/DataEntryNotes
+                              :sitevisit/DataEntryPersonRef
+                              :sitevisit/Datum
+                              :sitevisit/DepthMeasured
+                              :sitevisit/GPSDeviceCode
+                              :sitevisit/HydroMod
+                              :sitevisit/HydroModLoc
+                              :sitevisit/Lat
+                              :sitevisit/Lon
+                              :sitevisit/MetalCollected
+                              :sitevisit/MetalTime
+                              :sitevisit/Notes
+                              :sitevisit/PointID
+                              :sitevisit/ProjectID
+                              :sitevisit/QACheck
+                              :sitevisit/QADate
+                              :sitevisit/QAPersonRef
+                              :sitevisit/SeasonCode
+                              :sitevisit/SiteVisitDate
+                              :sitevisit/SiteVisitID
+                              :sitevisit/StationFailCode
+                              :sitevisit/StationID
+                              :sitevisit/StreamWidth
+                              :sitevisit/Time
+                              :sitevisit/TssCollected
+                              :sitevisit/TssTime
+                              :sitevisit/TurbidityCollected
+                              :sitevisit/TurbidityTime
+                              :sitevisit/UnitStreamWidth
+                              :sitevisit/UnitWaterDepth
+                              :sitevisit/VisitType
+                              :sitevisit/WaterDepth
+                              :sitevisit/WidthMeasured
+                              :sitevisit/uuid
+                              :sitevisit/Visitors
+                              {:sitevisit/Samples (comp/get-query SampleForm)}
+                              {:sitevisit/WorkTimes (comp/get-query WorkTime)}
+                              {:ui/globals (comp/get-query Globals)}
+                              [:riverdb.theta.options/ns '_]])
 
-   :initial-state  (fn [{:keys [id agency project uuid VisitType StationFailCode] :as params}]
-                     {:db/id                       (tempid/tempid)
-                      :ui/ready                    true
-                      :ui/create                   true
-                      :riverdb.entity/ns           :entity.ns/sitevisit
-                      :sitevisit/AgencyCode        agency
-                      :sitevisit/ProjectID         project
-                      :sitevisit/uuid              (or uuid (tempid/uuid))
-                      :sitevisit/CreationTimestamp (js/Date.)
-                      :sitevisit/Visitors          []
-                      :sitevisit/Samples           []
-                      :sitevisit/VisitType         (or VisitType {:db/ident :sitevisittype/Monthly})
-                      :sitevisit/StationFailCode   (or StationFailCode {:db/ident :stationfaillookup/None})})
+   :initial-state     (fn [{:keys [id agency project uuid VisitType StationFailCode] :as params}]
+                        {:db/id                       (tempid/tempid)
+                         :ui/ready                    true
+                         :ui/create                   true
+                         :riverdb.entity/ns           :entity.ns/sitevisit
+                         :sitevisit/AgencyCode        agency
+                         :sitevisit/ProjectID         project
+                         :sitevisit/uuid              (or uuid (tempid/uuid))
+                         :sitevisit/CreationTimestamp (js/Date.)
+                         :sitevisit/Visitors          []
+                         :sitevisit/Samples           []
+                         :sitevisit/VisitType         (or VisitType {:db/ident :sitevisittype/Monthly})
+                         :sitevisit/StationFailCode   (or StationFailCode {:db/ident :stationfaillookup/None})})
 
-   :initLocalState (fn [this props]
-                     {:onChangeSample #(debug "ON CHANGE SAMPLE" %)})
+   :initLocalState    (fn [this props]
+                        {:onChangeSample #(debug "ON CHANGE SAMPLE" %)})
 
-   :form-fields    #{:riverdb.entity/ns
-                     :sitevisit/uuid
-                     :sitevisit/AgencyCode :sitevisit/ProjectID :sitevisit/Notes
-                     :sitevisit/StationID :sitevisit/DataEntryDate :sitevisit/SiteVisitDate :sitevisit/Time
-                     :sitevisit/Visitors :sitevisit/VisitType :sitevisit/StationFailCode
-                     :sitevisit/DataEntryPersonRef :sitevisit/CheckPersonRef
-                     :sitevisit/QAPersonRef :sitevisit/QACheck :sitevisit/QADate :sitevisit/Samples}}
+   :form-fields       #{:riverdb.entity/ns
+                        :sitevisit/uuid
+                        :sitevisit/AgencyCode :sitevisit/ProjectID :sitevisit/Notes
+                        :sitevisit/StationID :sitevisit/DataEntryDate :sitevisit/SiteVisitDate :sitevisit/Time
+                        :sitevisit/Visitors :sitevisit/VisitType :sitevisit/StationFailCode
+                        :sitevisit/DataEntryPersonRef :sitevisit/CheckPersonRef
+                        :sitevisit/QAPersonRef :sitevisit/QACheck :sitevisit/QADate :sitevisit/Samples
+                        :sitevisit/WorkTimes}
 
-  :componentDidMount (fn [this]
-                       (debug "DID MOUNT SiteVisitForm" (comp/props this)))
+   :componentDidMount (fn [this]
+                        (debug "DID MOUNT SiteVisitForm")
+                        ;; start state machine
+                        (uism/begin! this rmsv/sv-sm ::uism-sv {:actor/sv (comp/get-ident this)}))}
+
+
 
   (let [{:keys [onChangeSample]} (comp/get-state this)
         dirty-fields  (fs/dirty-fields props false)
@@ -225,6 +327,9 @@
                        :style     {:maxWidth 168 :minWidth 168}}
         sv-time       (:sitevisit/Time props)
         sv-date       (:sitevisit/SiteVisitDate props)
+        ;worktimes     (:worktime/_sitevisit props)
+        _ (debug "monitor hours" WorkTimes)
+
         {person-options            :entity.ns/person
          stationlookup-options     :entity.ns/stationlookup
          sitevisittype-options     :entity.ns/sitevisittype
@@ -235,6 +340,12 @@
     (div :.dimmable.fields {:key "sv-form"}
       (ui-dimmer {:inverted true :active (or (not ready) (not props))}
         (ui-loader {:indeterminate true}))
+      #_(button :.ui.button
+          {:onClick (fn []
+                      (sync-worktimes this Visitors WorkTimes)
+                      (debug "CLICK")
+                      #_(uism/trigger! this ::uism-sv :event/begin-edit))}
+          "SYNC")
       (when props
         (ui-form {:key "form" :size "tiny"}
           (div :.ui.grid {:key "sv-fields"}
@@ -253,7 +364,11 @@
                                               {:multiple true})})
                       {:changeMutation `set-value
                        :changeParams   {:ident this-ident
-                                        :k     :sitevisit/Visitors}})))
+                                        :k     :sitevisit/Visitors}
+                       :onChange       (fn [ref-val]
+                                         (debug "person list changed" ref-val)
+                                         (sync-worktimes this ref-val WorkTimes))})))
+
                 ;:onAddItem      `add-option
                 ;:addParams      {:field-k :sitevisit/Visitors
                 ;                 :ent-ns  :entity.ns/person
@@ -389,14 +504,16 @@
                                              (log/debug "publish change" value)
                                              (set-value!! this :sitevisit/QACheck value))}))))
 
-            (div :.four.wide.column
+            (div :.two.wide.column
               (div :.field {:key "monitor hours"}
                 (label {:style {}} "Monitor Hours")
-                (ui-monitorhours-list))))
+                (ui-worktime-list
+                  {:worktimes WorkTimes
+                   :visitors  Visitors}))))
 
 
 
-          (ui-form-text-area {:key "sv-notes"
+          (ui-form-text-area {:key      "sv-notes"
                               :label    "Notes"
                               :value    (or Notes "")
                               :onChange #(do
@@ -406,7 +523,7 @@
 
 
           (for [sample-type param-types]
-            (let [params (filter-param-typecode sample-type active-params)
+            (let [params  (filter-param-typecode sample-type active-params)
                   samples (filter-sample-typecode sample-type Samples)]
               (ui-sample-list
                 (comp/computed
@@ -435,22 +552,50 @@
                          :content       "Are you sure?"
                          :confirmButton (dom/button :.ui.negative.button {} "Delete")})
 
+            (dom/button :.ui.right.floated.button.primary
+              {:disabled (not dirty?)
+               :onClick  #(let [dirty-fields  (fs/dirty-fields props true)
+                                form-fields   (fs/get-form-fields SiteVisitForm)
+                                form-props    (select-keys props form-fields)
+                                worktimes     (:sitevisit/WorkTimes (-> dirty-fields first last))
+                                del-worktimes (when worktimes
+                                                (not-empty
+                                                  (clojure.set/difference
+                                                    (set (:before worktimes))
+                                                    (set (:after worktimes)))))]
+                            (debug "SAVE!" "dirty?" dirty? "dirty-fields" dirty-fields "form-props" form-props)
+                            (debug "DIFF" (tu/ppstr dirty-fields))
+                            (comp/transact! this
+                              `[(rm/save-entity ~{:ident this-ident
+                                                  :diff  dirty-fields})])
+                            (debug "DEL WORKTIMES" del-worktimes)
+                            (when del-worktimes
+                              (doseq [delwt del-worktimes]
+                                (comp/transact! this
+                                  `[(rm/save-entity ~{:ident delwt
+                                                      :delete true})]))))}
+              "Save")
+
+            #_(dom/button :.ui.button.primary
+                {:disabled (not dirty?)
+                 :onClick  #(let [dirty-fields  (fs/dirty-fields props true)
+                                  form-fields   (fs/get-form-fields SiteVisitForm)
+                                  form-props    (select-keys props form-fields)
+                                  worktimes     (:sitevisit/WorkTimes (-> dirty-fields first last))
+                                  del-worktimes (when worktimes
+                                                  (not-empty
+                                                    (clojure.set/difference
+                                                      (set (:before worktimes))
+                                                      (set (:after worktimes)))))]
+                              (debug "SAVE!" "dirty?" dirty? "dirty-fields" dirty-fields "form-props" form-props)
+                              (debug "DIFF" (tu/ppstr dirty-fields))
+                              (debug "DEL WORKTIMES" del-worktimes))}
+                "Dirty")
+
             (dom/button :.ui.negative.button
               {:disabled (tempid/tempid? (second this-ident))
                :onClick  #(comp/set-state! this {:confirm-delete true})}
               "Delete")
-
-            (dom/button :.ui.right.floated.button.primary
-              {:disabled (not dirty?)
-               :onClick  #(let [dirty-fields (fs/dirty-fields props true)
-                                form-fields  (fs/get-form-fields SiteVisitForm)
-                                form-props   (select-keys props form-fields)]
-                            (debug "SAVE!" dirty? "dirty-fields" dirty-fields "form-props" form-props)
-                            (debug "DIFF" (tu/ppstr dirty-fields))
-                            (comp/transact! this
-                              `[(rm/save-entity ~{:ident this-ident
-                                                  :diff  dirty-fields})]))}
-              "Save")
 
             (dom/button :.ui.right.floated.button.secondary
               {:onClick #(do
@@ -483,8 +628,6 @@
                      (-> st
                        (assoc-in target (into {} ms))
                        (assoc-in select-target opts)))))))
-
-
 
 (fm/defmutation form-ready
   [{:keys [route-target form-ident]}]
@@ -605,7 +748,7 @@
                           (preload-options :entity.ns/samplingdevicelookup)
                           (preload-options :entity.ns/fieldobsvarlookup
                             {:filter-key :fieldobsvarlookup/Analyte
-                             :sort-key :fieldobsvarlookup/IntCode})))
+                             :sort-key   :fieldobsvarlookup/IntCode})))
 
    :css               [[:.floating-menu {:position "absolute !important"
                                          :z-index  1000
@@ -620,6 +763,11 @@
         marker     (get props [df/marker-table ::sv])]
     (debug "RENDER SiteVisitsEditor")
     (div {}
+      #_(button
+          {:onClick
+           (fn []
+             (debug "CLICK")
+             (uism/trigger! this ::uism-sv :event/begin-edit))} "EDIT")
       (if marker
         (ui-loader {:active true})
         (when sitevisit
@@ -853,15 +1001,15 @@
           (when sites
             (span {:key "site" :style {}}
               "Site: "
-              (select {:style    {:width "150px"}
-                       :value    (or site "")
-                       :onChange #(let [st (.. % -target -value)
-                                        st (if (= st "")
-                                             nil
-                                             st)]
-                                    (debug "set site" st)
-                                    (fm/set-value! this :ui/offset 0)
-                                    (fm/set-value! this :ui/site st))}
+              (dom/select {:style    {:width "150px"}
+                           :value    (or site "")
+                           :onChange #(let [st (.. % -target -value)
+                                            st (if (= st "")
+                                                 nil
+                                                 st)]
+                                        (debug "set site" st)
+                                        (fm/set-value! this :ui/offset 0)
+                                        (fm/set-value! this :ui/site st))}
                 (into
                   [(option {:value "" :key "none"} "")]
                   (doall
@@ -930,7 +1078,11 @@
    :initial-state         {:svrouter      {}
                            :project-years {}}
    :route-segment         ["sitevisit"]
-   :shouldComponentUpdate (fn [_ _ _] true)}
+   :shouldComponentUpdate (fn [_ _ _] true)
+   :componentDidMount     (fn [this]
+                            (debug "SV Page mounted")
+                            (uism/begin! this rmsv/sv-sm ::uism-sv {:actor/sv-form (comp/get-ident this)})
+                            #_(uism/trigger! this rmsv/sv-sm :event/edit))}
 
   (let [{:keys [ui/ui-year ui/ui-project agency-project-years]} project-years
         proj          (get agency-project-years (keyword ui-project))

@@ -87,7 +87,7 @@
     <orderEntry type="library" name="Deps: vlaaad/reveal:0.1.0-ea1" level="project" />
     <orderEntry type="library" name="Deps: net.incongru.watchservice/barbary-watchservice:1.0" level="project" />
     <orderEntry type="library" name="Deps: org.wildfly.common/wildfly-common:1.5.2.Final" level="project" />
-    <orderEntry type="library" name="Deps: com.fulcrologic/fulcro-i18n:0.0.4-alpha" level="project" />
+    <orderEntry type="library" name="Deps: com.fulcrologic/fulcro-i18n:0.0.5-alpha" level="project" />
     <orderEntry type="library" name="Deps: cljfx/css:1.1.0" level="project" />
     <orderEntry type="library" name="Deps: com.jcraft/jsch.agentproxy.sshagent:0.0.9" level="project" />
     <orderEntry type="library" name="Deps: cljsjs/react-dom:16.13.0-0" level="project" />
@@ -172,7 +172,7 @@
     <orderEntry type="library" name="Deps: ring/ring-headers:0.3.0" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/google-closure-library-third-party:0.0-20191016-6ae1f72f" level="project" />
     <orderEntry type="library" name="Deps: org.apache.maven.resolver/maven-resolver-api:1.4.1" level="project" />
-    <orderEntry type="library" name="Deps: com.fulcrologic/fulcro:3.4.16" level="project" />
+    <orderEntry type="library" name="Deps: com.fulcrologic/fulcro:3.4.20" level="project" />
     <orderEntry type="library" name="Deps: hiccup:1.0.5" level="project" />
     <orderEntry type="library" name="Deps: javax.annotation/jsr250-api:1.0" level="project" />
     <orderEntry type="library" name="Deps: riddley:0.1.12" level="project" />

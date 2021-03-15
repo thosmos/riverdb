@@ -143,11 +143,11 @@
 
 
 
-
-
-(defsc ThetaRow [this {:keys [] :as props} {:keys [prKeys refNameKeys]}]
+(defsc ThetaRow [this {:keys [] :as props} {:keys [prKeys refNameKeys] :as computed}]
   {:ident (fn []
-            (let [ent-nm  (name (get props :riverdb.entity/ns))
+            (println "ThetaRow props" props)
+            (let [ent-nm  (when-let [ent-k (:riverdb.entity/ns props)]
+                            (name ent-k))
                   ident-k (keyword (str "org.riverdb.db." ent-nm) "gid")
                   ident-v (:db/id props)
                   ident   [ident-k ident-v]]
