@@ -40,11 +40,11 @@
     <orderEntry type="library" name="Deps: commons-codec:1.13" level="project" />
     <orderEntry type="library" name="Deps: com.cognitect.aws/api:0.8.408" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/tools.analyzer:0.7.0" level="project" />
-    <orderEntry type="library" name="Deps: com.fulcrologic/fulcro-rad-semantic-ui:1.0.4" level="project" />
+    <orderEntry type="library" name="Deps: Local com.fulcrologic/fulcro-rad-semantic-ui" level="project" />
     <orderEntry type="library" name="Deps: cljfx/cljfx$jdk11:1.6.2" level="project" />
     <orderEntry type="library" name="Deps: com.bhauman/cljs-test-display:0.1.1" level="project" />
-    <orderEntry type="library" name="Deps: com.fulcrologic/fulcro-rad:1.0.8" level="project" />
-    <orderEntry type="library" name="Deps: com.fulcrologic/guardrails:0.0.12" level="project" />
+    <orderEntry type="library" name="Deps: Local com.fulcrologic/fulcro-rad" level="project" />
+    <orderEntry type="library" name="Deps: com.fulcrologic/guardrails:1.0.0-SNAPSHOT" level="project" />
     <orderEntry type="library" name="Deps: org.eclipse.jetty/jetty-xml:9.4.18.v20190429" level="project" />
     <orderEntry type="library" name="Deps: org.apache.tomcat/tomcat-juli:7.0.27" level="project" />
     <orderEntry type="library" name="Deps: org.eclipse.jetty/jetty-servlet:9.4.18.v20190429" level="project" />
@@ -252,7 +252,7 @@
     <orderEntry type="library" name="Deps: si.uom/si-quantity:0.7.1" level="project" />
     <orderEntry type="library" name="Deps: nrepl:0.7.0" level="project" />
     <orderEntry type="library" name="Deps: mount:0.1.16" level="project" />
-    <orderEntry type="library" name="Deps: com.fulcrologic/fulcro-rad-datomic:1.0.5" level="project" />
+    <orderEntry type="library" name="Deps: Local com.fulcrologic/fulcro-rad-datomic" level="project" />
     <orderEntry type="library" name="Deps: org.apache.maven.resolver/maven-resolver-connector-basic:1.4.1" level="project" />
     <orderEntry type="library" name="Deps: com.rpl/specter:1.1.3" level="project" />
     <orderEntry type="library" name="Deps: com.cognitect.aws/s3:784.2.593.0" level="project" />

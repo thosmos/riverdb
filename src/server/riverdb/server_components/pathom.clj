@@ -1,7 +1,7 @@
 (ns riverdb.server-components.pathom
   (:require
     [com.fulcrologic.rad.database-adapters.datomic :as datomic]
-    [com.fulcrologic.rad.pathom :as pathom]
+    [com.fulcrologic.rad.pathom :as radpm]
     [com.fulcrologic.rad.form :as form]
     [com.fulcrologic.rad.attributes :as attr]
     [com.wsscode.pathom.connect :as pc]
@@ -18,8 +18,7 @@
     [riverdb.server-components.config :refer [config]]
     [riverdb.server-components.auto-resolvers :refer [automatic-resolvers]]
     [riverdb.server-components.datomic :refer [datomic-connections]]
-    [riverdb.state :refer [db cx]]
-    [theta.log :as log]))
+    [riverdb.state :refer [db cx]]))
 
 (pc/defresolver index-explorer [env _]
   {::pc/input  #{:com.wsscode.pathom.viz.index-explorer/id}
@@ -75,6 +74,8 @@
                                                              :config config)
                                                            #_(datomic/add-datomic-env {:production (:main datomic-connections)}))))
                                     (preprocess-parser-plugin log-requests)
+
+                                    radpm/query-params-to-env-plugin
 
                                     (attr/pathom-plugin all-attributes) ; required to populate standard things in the parsing env
                                     (form/pathom-plugin middleware/save middleware/delete) ; installs form save/delete middleware

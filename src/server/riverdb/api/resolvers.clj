@@ -1,25 +1,22 @@
 (ns riverdb.api.resolvers
   (:require
-    [riverdb.state :refer [db cx]]
+    [com.fulcrologic.fulcro.components :as comp]
+    [com.fulcrologic.fulcro.server.api-middleware :as fmw]
     [com.fulcrologic.guardrails.core :refer [>defn => | ?]]
+    [com.rpl.specter :as sp]
     [com.wsscode.pathom.connect :as pc :refer [defresolver defmutation]]
     [com.wsscode.pathom.core :as p]
-    [taoensso.timbre :as log :refer [debug]]
+    [clojure.edn :as edn]
     [clojure.spec.alpha :as s]
-    [com.fulcrologic.fulcro.server.api-middleware :as fmw]
+    [clojure.string :as st]
+    [clojure.walk :as walk]
     [datomic.api :as d]
+    [datascript.core :as ds]
+    [riverdb.state :refer [db cx]]
     [riverdb.api.tac-report :as tac]
     [riverdb.graphql.schema :refer [table-specs-ds specs-sorted specs-map]]
-    [datascript.core :as ds]
-    [thosmos.util :as tu :refer [walk-modify-k-vals limit-fn]]
-    [clojure.walk :as walk]
-    [clojure.string :as st]
-    [com.fulcrologic.fulcro.components :as comp]
-    [clojure.edn :as edn]
-    [com.rpl.specter :as sp]))
-
-
-
+    [taoensso.timbre :as log :refer [debug]]
+    [thosmos.util :as tu :refer [walk-modify-k-vals limit-fn]]))
 
 
 (defn add-conditions
@@ -342,17 +339,34 @@
          ::pc/resolve   (id-resolve-factory gid-k)
          ::pc/transform pc/transform-batch-resolver}))))
 
-(def derived-resolvers
+
+(defn uuid-resolve-factory [uuid-key]
+  (fn [env input]
+    (log/debug "UUID PULL RESOLVER" uuid-key input)
+    (try
+      (let [query   (-> env ::p/parent-query)
+            _       (log/debug "Lookup Resolver Key" uuid-key "Input" input "QUERY" query)
+            id-val? (try
+                      (get input uuid-key)
+                      (catch IllegalArgumentException _ nil))
+            result  (when id-val?
+                      (d/pull (db) query [uuid-key id-val?]))]
+        (log/debug "RESULT" result)
+        result)
+      (catch Exception ex (log/error ex)))))
+
+
+(def uuid-resolvers
   (vec
     (for [spec specs-sorted]
       (let [{:entity/keys [ns attrs]} spec
-            aks   (mapv :attr/key attrs)
-            nm    (name ns)
-            gid-k (keyword (str "org.riverdb.db." nm) "gid")]
-        {::pc/sym       (symbol (str nm "GID"))
-         ::pc/input     #{gid-k}
+            aks    (mapv :attr/key attrs)
+            nm     (name ns)
+            uuid-k (keyword nm "uuid")]
+        {::pc/sym       (symbol (str nm "UUID"))
+         ::pc/input     #{uuid-k}
          ::pc/output    (into [:db/id :riverdb.entity/ns] aks)
-         ::pc/resolve   (id-resolve-factory gid-k)
+         ::pc/resolve   (uuid-resolve-factory uuid-k)
          ::pc/transform pc/transform-batch-resolver}))))
 
 
@@ -443,6 +457,25 @@
     (log/debug "Agency Lookup Input" input "Params?" params)
     {:all-agencies (all-agencies db)}))
 
+(def people-query [:person/uuid :person/Name :person/IsStaff :person/Agency])
+
+(defn all-people-ids
+  "Returns a sequence of entities for all of the active persons in the system"
+  [db query-params]
+  (let [find '[:find [(pull ?e qu) ...]
+               :in $ qu
+               :where]
+        find (add-filters '?e find query-params)
+        find (conj find '[?e :person/uuid])]
+    (log/debug "ALL PEOPLE PARAMS" query-params find)
+    (d/q find db people-query)))
+
+(defresolver all-people-resolver [{:keys [db query-params] :as env} input]
+  {;;GIVEN nothing (e.g. this is usable as a root query)
+   ::pc/output [{:all-people people-query}]}
+  {:all-people (all-people-ids db query-params)})
+
+
 (defresolver index-explorer [env _]
   {::pc/input  #{:com.wsscode.pathom.viz.index-explorer/id}
    ::pc/output [:com.wsscode.pathom.viz.index-explorer/index]}
@@ -454,4 +487,4 @@
   {::pc/output [:test-meta]}
   {:test-meta (with-meta {:some :data} {:some :meta})})
 
-(def resolvers [globals db-ident db-idents meta-entities meta-global-attrs agencylookup-resolver agency-project-years tac-report-data dataviz-data meta-resolvers index-explorer test-meta])
+(def resolvers [globals db-ident db-idents meta-entities meta-global-attrs agencylookup-resolver agency-project-years tac-report-data dataviz-data meta-resolvers index-explorer test-meta all-people-resolver uuid-resolvers])

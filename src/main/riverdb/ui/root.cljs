@@ -17,6 +17,7 @@
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
     [com.fulcrologic.rad.authorization :as auth]
     [com.fulcrologic.rad.form :as form]
+    [com.fulcrologic.rad.report :as report]
     [com.fulcrologic.rad.ids :refer [new-uuid]]
     [com.fulcrologic.rad.routing :as rroute]
     [com.fulcrologic.semantic-ui.elements.loader.ui-loader :refer [ui-loader]]
@@ -24,6 +25,9 @@
     [com.fulcrologic.semantic-ui.collections.form.ui-form :refer [ui-form]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-input :refer [ui-form-input]]
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal :refer [ui-modal]]
+    [com.fulcrologic.semantic-ui.modules.dropdown.ui-dropdown :refer [ui-dropdown]]
+    [com.fulcrologic.semantic-ui.modules.dropdown.ui-dropdown-menu :refer [ui-dropdown-menu]]
+    [com.fulcrologic.semantic-ui.modules.dropdown.ui-dropdown-item :refer [ui-dropdown-item]]
     [riverdb.application :refer [SPA]]
     [riverdb.model.session :as session]
     [riverdb.roles :as roles]
@@ -35,9 +39,9 @@
     [riverdb.ui.globals :refer [DBIdents Globals]]
     [riverdb.ui.routes]
     [riverdb.ui.lookup-options :refer [ui-theta-options preload-options]]
-    [riverdb.ui.sitevisits-page :refer [SiteVisitsPage]]
-    [riverdb.ui.session :refer [ui-session Session]]
     [riverdb.ui.projects :refer [Projects ui-projects]]
+    [riverdb.ui.sitevisits-page :refer [SiteVisitsPage SiteVisitEditor]]
+    [riverdb.ui.session :refer [ui-session Session]]
     [riverdb.ui.tac-report-page :refer [TacReportPage]]
     [riverdb.ui.theta :refer [ThetaRoot]]
     [riverdb.ui.upload :refer [UploadPage]]
@@ -47,7 +51,7 @@
     [theta.util :as tutil]
     [com.fulcrologic.fulcro.components :as om]
     [com.fulcrologic.fulcro.data-fetch :as f]
-    [riverdb.rad.ui.person :refer [PersonForm]]))
+    [riverdb.rad.ui.person :refer [PersonForm PersonList]]))
 
 (defn field [{:keys [label valid? error-message] :as props}]
   (let [input-props (-> props (assoc :name label) (dissoc :label :valid? :error-message))]
@@ -249,14 +253,16 @@
               (dom/li (dom/a {:href "/sitevisit/list"} "Site Visits"))
               (dom/li (dom/a {:href "/upload"} "Bulk Import Data"))
               (dom/li (dom/a {:href "/person"} "Person Form"))
-              (dom/li {:onClick (fn [] (form/create! this PersonForm))} "New Person"))))))))
+              (dom/li (dom/a {:href "/people"} "People"))
+              (dom/li (dom/a {:href "" :onClick (fn [] (report/start-report! this PersonList {:route-params {:person/Agency "12345"}}))} "People"))
+              (dom/li {:onClick (fn [] (form/create! this PersonForm {:initial-state {:person/Agency "12345"}}))} "New Person"))))))))
 
 
 
 
 (dr/defrouter TopRouter [this props]
   {:router-targets        [Main Signup SignupSuccess ThetaRoot Projects TacReportPage
-                           DataVizPage SiteVisitsPage UploadPage PersonForm]
+                           DataVizPage SiteVisitsPage UploadPage PersonForm PersonList]
    :shouldComponentUpdate (fn [_ _ _] true)})
 (def ui-top-router (comp/factory TopRouter))
 
@@ -313,20 +319,36 @@
         (dom/a :.item {:classes [(when (= :main current-tab) "active")]
                        :href    "/"} "RiverDB Admin")
         (when (and ready logged-in?)
-          [(when rdb-admin?
-             (dom/a :.item {:key  "theta" :classes [(when (= :theta current-tab) "active")]
-                            :href "/theta/index"} "Tables"))
-           (dom/a :.item {:key  "projects" :classes [(when (= :projects current-tab) "active")]
-                          :href "/projects"} "Edit Projects")
-           (dom/a :.item {:key  "sitevisit" :classes [(when (= :sitevisit current-tab) "active")]
-                          :href "/sitevisit/list"} "Site Visits")
-           (dom/a :.item {:key  "upload" :classes [(when (= :upload current-tab) "active")]
-                          :href "/upload"} "Import Data")])
-        (when (and ready logged-in?)
-          [(dom/a :.item {:key  "qc" :classes [(when (= :qc-report current-tab) "active")]
-                          :href "/qc-report"} "QC Report")
-           (dom/a :.item {:key  "dataviz" :classes [(when (= :dataviz current-tab) "active")]
-                          :href "/dataviz"} "Summary Table")])
+          (comp/fragment
+            (ui-dropdown {:className "item" :text "Data Entry"}
+              (ui-dropdown-menu {}
+                #_(ui-dropdown-item {:onClick (fn [] (form/create! this SiteVisitEditor))} "New Site Visit")
+                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this SiteVisitsPage {}))} "Site Visits")
+                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this UploadPage {}) )} "Import CSV")
+                (ui-dropdown-item {:onClick (fn [] (form/create! this PersonForm {:initial-state {}}))} "Add Person")))
+            (ui-dropdown {:className "item" :text "Reports"}
+              (ui-dropdown-menu {}
+                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this TacReportPage {}))} "QC Report")
+
+                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this DataVizPage {}))} "Data Table")))
+            (ui-dropdown {:className "item" :text "Admin"}
+              (ui-dropdown-menu {}
+                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this PersonList {}))} "People")
+                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this Projects {}))} "Projects"))))
+          #_[(when rdb-admin?
+               (dom/a :.item {:key  "theta" :classes [(when (= :theta current-tab) "active")]
+                              :href "/theta/index"} "Tables"))
+             (dom/a :.item {:key  "projects" :classes [(when (= :projects current-tab) "active")]
+                            :href "/projects"} "Edit Projects")
+             (dom/a :.item {:key  "sitevisit" :classes [(when (= :sitevisit current-tab) "active")]
+                            :href "/sitevisit/list"} "Site Visits")
+             (dom/a :.item {:key  "upload" :classes [(when (= :upload current-tab) "active")]
+                            :href "/upload"} "Import Data")])
+        #_(when (and ready logged-in?)
+            [(dom/a :.item {:key  "qc" :classes [(when (= :qc-report current-tab) "active")]
+                            :href "/qc-report"} "QC Report")
+             (dom/a :.item {:key  "dataviz" :classes [(when (= :dataviz current-tab) "active")]
+                            :href "/dataviz"} "Summary Table")])
         (div :.right.menu
           ;(div :.item (ui-activity {}))
           (ui-agency-menu agency-menu)

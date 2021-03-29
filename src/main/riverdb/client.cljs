@@ -11,6 +11,8 @@
     [com.fulcrologic.fulcro.ui-state-machines :as uism]
     [com.fulcrologic.rad.application :as rad-app]
     [com.fulcrologic.rad.rendering.semantic-ui.semantic-ui-controls :as sui]
+    [com.fulcrologic.rad.routing.html5-history :refer [html5-history]]
+    [com.fulcrologic.rad.routing.history :as history]
     [riverdb.application :refer [SPA]]
     [riverdb.model.session :as session]
     [riverdb.ui.globals :as globals]
@@ -25,7 +27,9 @@
     ;[com.fulcrologic.rad.rendering.semantic-ui.semantic-ui-controls :as sui]))
 
 (defn setup-RAD [app]
+  (history/install-route-history! app (html5-history))
   (rad-app/install-ui-controls! app sui/all-controls)
+
   #_(report/install-formatter! app :boolean :affirmation (fn [_ value] (if value "yes" "no"))))
 
 (defn ^:export refresh []
@@ -55,11 +59,9 @@
      :actor/project-years   py/ProjectYears
      :actor/globals         globals/Globals}
     {:desired-path (some-> js/window .-location .-pathname)})
-  (log/info "Starting Pushy")
+  ;(log/info "Starting Pushy")
   (routes/start!)
 
-  ;(form/install-ui-controls! SPA sui/all-controls)
-  ;(attr/register-attributes! model/all-attributes)
   (log/info "Mounting Root")
   (app/mount! SPA root/Root "app" {:initialize-state? false}))
 
