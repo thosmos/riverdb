@@ -12,7 +12,9 @@
     [thosmos.util :as tu]
     [clojure.pprint :as pprint])
   (:import (java.io Writer)
-           (java.time ZonedDateTime)))
+           (java.time ZonedDateTime)
+           [java.math RoundingMode]
+           [java.math BigDecimal]))
 
 
 (defn time-from-instant [^java.util.Date ins]
@@ -694,6 +696,57 @@
      :max    _max
      :min    _min
      :rsd    rsd}))
+
+(defn get-scale [vals]
+  (apply
+    max (for [val vals]
+          (.scale (bigdec val)))))
+
+(defn max-precision [bigvals]
+  (->> bigvals
+    (map #(.precision %))
+    (apply max)))
+
+(defn bigmean [prec bigvals]
+  (let [cnt (count bigvals)]
+    (with-precision prec :rounding RoundingMode/HALF_UP
+      (->> bigvals
+        (apply +)
+        (#(/ % cnt))))))
+
+(defn bigstddev
+  [prec vals]
+ (let [mn (bigmean prec vals)]
+   (with-precision prec :rounding RoundingMode/HALF_UP
+                        (/ (reduce #(+ %1 (square (- %2 mn))) 0 vals)
+                          (dec (count vals))))))
+
+(defn calc3 [scale vals]
+  (let [bigvals  (vec (map #(.setScale (bigdec %) scale) vals))
+        prec     (max-precision bigvals)
+        mn       (.setScale (bigmean prec bigvals) scale)
+        _min     (apply min bigvals)
+        _max     (apply max bigvals)
+        plus     (- _max mn)
+        minus    (- mn _min)
+        pm       (max plus minus)
+        plus%    (with-precision prec :rounding RoundingMode/HALF_UP (* 100 (/ plus mn)))
+        minus%   (with-precision prec :rounding RoundingMode/HALF_UP (* 100 (/ minus mn)))
+        pm%      (max plus% minus%)
+        stddev   (with-precision prec (* (bigdec (std-dev vals)) 1))
+        rng      (- _max _min)
+        ;rsd    (percent-rds mn stddev)
+        frmt-str (str "Values: %s, %s, %s \nMean: %s \nMin: %s \nMax: %s \nRange: %s \nStdDev: %s \n±: %s \n±%% %s \nResult: %4$s ± %9$s ± %10$s %%")]
+    (println (format frmt-str
+               (get bigvals 0) (get bigvals 1) (get bigvals 2) mn _min _max rng stddev pm pm%))
+    {:vals   bigvals
+     :mean   mn
+     :stddev stddev
+     :range  rng
+     :max    _max
+     :min    _min
+     :±      pm
+     :±%     pm%}))
 
 
 
