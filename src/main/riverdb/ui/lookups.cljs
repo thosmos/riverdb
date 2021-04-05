@@ -45,6 +45,7 @@
   :query
   [:db/id
    :riverdb.entity/ns
+   :agencylookup/uuid
    :agencylookup/Active
    :agencylookup/AgencyCode
    :agencylookup/Name

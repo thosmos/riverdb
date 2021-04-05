@@ -166,7 +166,7 @@
         names      (str/split new-name #"\ ")
         fname      (first names)
         lname      (str/join " " (rest names))
-        agency     (select-keys (get-in state-map (:riverdb.ui.root/current-agency state-map)) [:db/id :agencylookup/AgencyCode])
+        agency     (select-keys (get-in state-map (:ui.riverdb/current-agency state-map)) [:db/id :agencylookup/AgencyCode])
         new-person (->>
                      (comp/get-initial-state AddPersonModal {:name new-name
                                                              :fname fname

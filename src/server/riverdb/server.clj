@@ -9,26 +9,22 @@
             [clojure.pprint :refer [pprint]]
             [datomic.api :as d]
             [dotenv]
-            ;[hiccup.core :refer [html]]
             [hiccup.page :refer [html5 include-js include-css]]
             [io.pedestal.http :as http]
             [io.pedestal.http.body-params :as body-params]
             [io.pedestal.interceptor :as interceptor]
             [mount.core :as mount :refer [defstate]]
-            [ring.middleware.cookies :refer [ cookies-request]] ;cookies-response
-            ;[ring.middleware.content-type :refer [wrap-content-type]]
-            ;[ring.middleware.not-modified :refer [wrap-not-modified]]
-            ;[ring.middleware.resource :refer [wrap-resource]]
+            [ring.middleware.cookies :refer [cookies-request]] ;cookies-response
             [ring.util.response :as ring-resp]
             [riverdb.auth :as auth]
             [riverdb.model.user :as user]
             [riverdb.graphql.resolvers :refer [resolvers]]
             [riverdb.graphql.schema :as sch]
             [riverdb.server-components.config]
-            ;[riverdb.server-components.crux-service]
-            [riverdb.server-components.middleware :refer [middleware]]
+            [riverdb.server-components.middleware :as middle :refer [middleware]]
             [riverdb.state :refer [start-dbs]]
-            [theta.util]))
+            [theta.util]
+            [theta.log :as log]))
 
 ;(set! *warn-on-reflection* 1)
 
@@ -187,8 +183,14 @@
   (interceptor/interceptor
     {:name  ::all-paths-are-belong-to-app
      :leave (fn [ctx]
-              (if-not (response? (:response ctx))
-                (assoc ctx :response (middleware (:request ctx)))
+              ;(debug "LEAVE APP PRE" "\n\nresponse" (:response ctx) "\n\nrequest" (:request ctx))
+              (let [ctx (if-not (response? (:response ctx))
+                          (let [params (get-in ctx [:request :params])
+                                ;_      (debug "REQUEST :params" params)
+                                ctx (update ctx :request dissoc :params)]
+                            (assoc ctx :response (middleware (:request ctx))))
+                          ctx)]
+                ;(debug "LEAVE APP POST" "response" (:response ctx))
                 ctx))}))
 
 
@@ -269,6 +271,7 @@
 
 (defn hello-page
   [request]
+  (debug "HELLO PARAMS" (get-in request [:params]))
   (ring-resp/response "Hello World!"))
 
 
@@ -279,7 +282,7 @@
                    :subscriptions false
                    :port          (or (Long/parseLong (dotenv/env :PORT)) 8989)
                    :env           (or (keyword dotenv/app-env) :dev)}
-        inceptors (lacinia/default-interceptors #(process-schemas) options)
+        inceptors (vec (concat [] (lacinia/default-interceptors #(process-schemas) options)))
         inceptors (-> inceptors
                     (lacinia/inject (auth-interceptor)
                       :after :com.walmartlabs.lacinia.pedestal/inject-app-context))
@@ -311,8 +314,10 @@
         sm               (merge sm
                            {::http/not-found-interceptor (app-interceptor)
                             ::http/resource-path "public"})
+        ;_ (log/debug "SERVICE MAP KEYS" (keys sm) (:io.pedestal.http/routes sm))
         sm               (http/default-interceptors sm)
         sm               (http/dev-interceptors sm)
+        ;_ (log/debug "SERVICE MAP KEYS" (keys sm) "\n\nInterceptors" (:io.pedestal.http/interceptors sm))
         runnable-service (http/create-server sm)]
     (http/start runnable-service)))
 

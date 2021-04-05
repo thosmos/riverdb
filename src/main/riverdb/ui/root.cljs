@@ -40,7 +40,7 @@
     [riverdb.ui.routes]
     [riverdb.ui.lookup-options :refer [ui-theta-options preload-options]]
     [riverdb.ui.projects :refer [Projects ui-projects]]
-    [riverdb.ui.sitevisits-page :refer [SiteVisitsPage SiteVisitEditor]]
+    [riverdb.ui.sitevisits-page :refer [SiteVisitsPage SiteVisitEditor SiteVisitList]]
     [riverdb.ui.session :refer [ui-session Session]]
     [riverdb.ui.tac-report-page :refer [TacReportPage]]
     [riverdb.ui.theta :refer [ThetaRoot]]
@@ -244,18 +244,18 @@
             (p {} "Please log in")
             (ui-login-form login-form))
 
-          (div {}
-            (dom/ul
-              ;; More nav links here
-              (dom/li (dom/a {:href "/qc-report"} "QC Report"))
-              (dom/li (dom/a {:href "/dataviz"} "Summary Table"))
-              (dom/li (dom/a {:href "/projects"} "Edit Projects"))
-              (dom/li (dom/a {:href "/sitevisit/list"} "Site Visits"))
-              (dom/li (dom/a {:href "/upload"} "Bulk Import Data"))
-              (dom/li (dom/a {:href "/person"} "Person Form"))
-              (dom/li (dom/a {:href "/people"} "People"))
-              (dom/li (dom/a {:href "" :onClick (fn [] (report/start-report! this PersonList {:route-params {:person/Agency "12345"}}))} "People"))
-              (dom/li {:onClick (fn [] (form/create! this PersonForm {:initial-state {:person/Agency "12345"}}))} "New Person"))))))))
+          #_(div {}
+              (dom/ul
+                ;; More nav links here
+                (dom/li (dom/a {:href "/qc-report"} "QC Report"))
+                (dom/li (dom/a {:href "/dataviz"} "Summary Table"))
+                (dom/li (dom/a {:href "/projects"} "Edit Projects"))
+                (dom/li (dom/a {:href "/sitevisit/list"} "Site Visits"))
+                (dom/li (dom/a {:href "/upload"} "Bulk Import Data"))
+                (dom/li (dom/a {:href "/person"} "Person Form"))
+                (dom/li (dom/a {:href "/people"} "People"))
+                (dom/li (dom/a {:href "" :onClick (fn [] (report/start-report! this PersonList {:route-params {:person/Agency "12345"}}))} "People"))
+                (dom/li {:onClick (fn [] (form/create! this PersonForm {:initial-state {:person/Agency "12345"}}))} "New Person"))))))))
 
 
 
@@ -279,11 +279,11 @@
 (def ui-activity (comp/factory Activity))
 
 
-(defsc AgencyMenu [this {::keys [current-agency] :as props}]
-  {:query         [{[::current-agency '_] (om/get-query looks/agencylookup-sum)}
+(defsc AgencyMenu [this {:ui.riverdb/keys [current-agency] :as props}]
+  {:query         [{[:ui.riverdb/current-agency '_] (om/get-query looks/agencylookup-sum)}
                    {[:component/id :session] (comp/get-query Session)}
                    [::uism/asm-id ::session/session]]
-   :initial-state {::current-agency {}}}
+   :initial-state {:ui.riverdb/current-agency {}}}
   (let [current-state (uism/get-active-state this ::session/session)
         {logged-in? :session/valid?} (get props [:component/id :session])]
     (when (and logged-in? current-agency)
@@ -298,7 +298,8 @@
                            {:root/login (comp/get-query Login)}
                            {:root/activity (comp/get-query Activity)}
                            {:root/agency-menu (comp/get-query AgencyMenu)}
-                           {[:root/tx-result '_] (comp/get-query TxResult)}]
+                           {[:root/tx-result '_] (comp/get-query TxResult)}
+                           {[:ui.riverdb/current-agency '_] (om/get-query looks/agencylookup-sum)}]
    :initial-state         {:root/router          {}
                            :root/ready           false
                            :root/login           {}
@@ -313,6 +314,8 @@
         {current-user :account/name
          logged-in?   :session/valid?} current-session
         auth-user     (some-> current-session :account/auth :user)
+        agency-uuid   (get-in props [:ui.riverdb/current-agency :agencylookup/uuid])
+        ag-ident      [:agencylookup/uuid agency-uuid]
         rdb-admin?    (->> (roles/user->roles auth-user) (roles/admin? #{:role.type/riverdb-admin}))]
     (div {:style {:display "grid" :gridTemplateRows "45px 1fr" :gridRowGap "0.2em" :height "100%"}}
       (div :.ui.secondary.pointing.menu {:style {:height "40px"}}
@@ -323,9 +326,9 @@
             (ui-dropdown {:className "item" :text "Data Entry"}
               (ui-dropdown-menu {}
                 #_(ui-dropdown-item {:onClick (fn [] (form/create! this SiteVisitEditor))} "New Site Visit")
-                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this SiteVisitsPage {}))} "Site Visits")
-                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this UploadPage {}) )} "Import CSV")
-                (ui-dropdown-item {:onClick (fn [] (form/create! this PersonForm {:initial-state {}}))} "Add Person")))
+                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this SiteVisitList {}))} "Site Visits")
+                #_(ui-dropdown-item {:onClick (fn [] (rroute/route-to! this UploadPage {}) )} "Import CSV")
+                #_(ui-dropdown-item {:onClick (fn [] (form/create! this PersonForm {:initial-state {}}))} "Add Person")))
             (ui-dropdown {:className "item" :text "Reports"}
               (ui-dropdown-menu {}
                 (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this TacReportPage {}))} "QC Report")
@@ -333,7 +336,7 @@
                 (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this DataVizPage {}))} "Data Table")))
             (ui-dropdown {:className "item" :text "Admin"}
               (ui-dropdown-menu {}
-                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this PersonList {}))} "People")
+                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this PersonList {:person/Agency ag-ident}))} "People")
                 (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this Projects {}))} "Projects"))))
           #_[(when rdb-admin?
                (dom/a :.item {:key  "theta" :classes [(when (= :theta current-tab) "active")]

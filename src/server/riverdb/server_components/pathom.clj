@@ -20,13 +20,13 @@
     [riverdb.server-components.datomic :refer [datomic-connections]]
     [riverdb.state :refer [db cx]]))
 
-(pc/defresolver index-explorer [env _]
+(pc/defresolver index-explorer [{::pc/keys [indexes]} _]
   {::pc/input  #{:com.wsscode.pathom.viz.index-explorer/id}
    ::pc/output [:com.wsscode.pathom.viz.index-explorer/index]}
   {:com.wsscode.pathom.viz.index-explorer/index
-   (-> (get env ::pc/indexes)
-     (update ::pc/index-resolvers #(into {} (map (fn [[k v]] [k (dissoc v ::pc/resolve)])) %))
-     (update ::pc/index-mutations #(into {} (map (fn [[k v]] [k (dissoc v ::pc/mutate)])) %)))})
+   (p/transduce-maps
+     (remove (comp #{::pc/resolve ::pc/mutate} key))
+     indexes)})
 
 (def all-resolvers [user/resolvers session/resolvers resolvers/resolvers
                     resolvers/lookup-resolvers resolvers/id-resolvers index-explorer
@@ -71,8 +71,8 @@
                                                            (assoc
                                                              :db (db) ; real datomic would use (d/db db-connection)
                                                              :connection (cx)
-                                                             :config config)
-                                                           #_(datomic/add-datomic-env {:production (:main datomic-connections)}))))
+                                                             :config config))))
+                                                           ;(datomic/add-datomic-env {:production (:main datomic-connections)}))))
                                     (preprocess-parser-plugin log-requests)
 
                                     radpm/query-params-to-env-plugin

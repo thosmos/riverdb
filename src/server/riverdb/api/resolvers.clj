@@ -57,6 +57,7 @@
               val-string?  (string? v)
               val-map?     (map? v)
               val-nil?     (nil? v)
+              val-vec?     (vector? v)
 
               arg?         (cond
                              (and type-ref? val-map?)
@@ -80,7 +81,9 @@
                                val-string?
                                (Long/parseLong v)
                                val-map?
-                               arg?)
+                               arg?
+                               :else
+                               v)
                              type-inst?
                              (cond
                                val-map?
@@ -439,7 +442,7 @@
                         (tac/get-annual-report-csv (:csv params))
                         (tac/get-annual-report (db) (:agency params) (:project params) (:year params)))}))
 
-(def agency-query [:db/id :agencylookup/AgencyCode :agencylookup/AgencyDescr])
+(def agency-query [:db/id :agencylookup/uuid :agencylookup/AgencyCode :agencylookup/AgencyDescr])
 
 (>defn all-agencies
   "Returns a sequence of ..."
@@ -457,7 +460,7 @@
     (log/debug "Agency Lookup Input" input "Params?" params)
     {:all-agencies (all-agencies db)}))
 
-(def people-query [:person/uuid :person/Name :person/IsStaff :person/Agency])
+(def people-query [:person/uuid :person/Name :person/IsStaff {:person/Agency [:db/id :agencylookup/uuid :agencylookup/AgencyCode]}])
 
 (defn all-people-ids
   "Returns a sequence of entities for all of the active persons in the system"

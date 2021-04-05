@@ -12,7 +12,7 @@
     ;[tick.timezone]
     [theta.log :refer [debug]]
     ["react-datepicker/dist" :default DatePicker]
-    ["js-joda/dist/js-joda" :as js-joda :refer [DateTimeFormatter, LocalDateTime, LocalDate]]
+    ["js-joda" :as js-joda :refer [DateTimeFormatter, LocalDateTime, LocalDate]]
     ;["react-treeview-semantic" :default SourceTree]))
     ["react-treeview/lib/react-treeview" :as TreeView]
     ["react-virtualized-auto-sizer/dist/index.cjs.js" :as AutoSizer]

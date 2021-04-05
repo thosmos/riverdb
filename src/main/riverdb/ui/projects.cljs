@@ -825,10 +825,10 @@
 
 
 (defsc Projects [this {:keys                 [ui/ready projects]
-                       :riverdb.ui.root/keys [current-agency] :as props}]
+                       :ui.riverdb/keys [current-agency] :as props}]
   {:ident             (fn [] [:component/id :projects])
    :query             [{:projects (comp/get-query ProjectForm)}
-                       {[:riverdb.ui.root/current-agency '_] (comp/get-query Agency)}
+                       {[:ui.riverdb/current-agency '_] (comp/get-query Agency)}
                        :ui/ready
                        [df/marker-table ::projs]]
    :initial-state     {:ui/ready true}
@@ -845,7 +845,7 @@
                           result))
    :componentDidMount (fn [this]
                         (let [props  (comp/props this)
-                              agency (:riverdb.ui.root/current-agency props)
+                              agency (:ui.riverdb/current-agency props)
                               projs  (:agencylookup/Projects agency)]
 
                           (preload-options :entity.ns/constituentlookup {:filter-key :constituentlookup/MethodCode})
@@ -859,8 +859,8 @@
                             (load-projs this projs))))}
 
   (let [marker    (get props [df/marker-table ::projs])
-        ;agencyRef (riverdb.ui.util/thing->ident (:riverdb.ui.root/current-agency props))
-        agencyRef (select-keys (:riverdb.ui.root/current-agency props) [:db/id])
+        ;agencyRef (riverdb.ui.util/thing->ident (:ui.riverdb/current-agency props))
+        agencyRef (select-keys (:ui.riverdb/current-agency props) [:db/id])
         onNew     (fn []
                     (let [pj (comp/get-initial-state ProjectForm {:agencyRef agencyRef})]
                       (debug "NEW PROJECT" pj)))]

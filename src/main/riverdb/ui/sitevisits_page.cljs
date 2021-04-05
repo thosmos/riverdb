@@ -17,6 +17,7 @@
     [com.fulcrologic.fulcro.networking.file-upload :as file-upload]
     [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
     [com.fulcrologic.fulcro.ui-state-machines :as uism :refer [defstatemachine]]
+    [com.fulcrologic.rad.routing :as rroute]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-dropdown :refer [ui-form-dropdown]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-input :refer [ui-form-input]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-text-area :refer [ui-form-text-area]]
@@ -70,6 +71,7 @@
     [testdouble.cljs.csv :as csv]))
 
 (declare SVRouter)
+(declare SiteVisitList)
 
 (defn merge-form-config! [app class props & named-params]
   (let [props-with-config (fs/add-form-config class props)]
@@ -164,7 +166,7 @@
 (fm/defmutation sv-deleted [{:keys [ident]}]
   (action [{:keys [state]}]
     (debug "SV deleted" ident)
-    (routes/route-to! "/sitevisit/list")))
+    (rroute/route-to! SPA SiteVisitList {})))
 
 (fm/defmutation add-worktime [{:keys [sitevisit person]}]
   (action [{:keys [state]}]
@@ -605,7 +607,7 @@
                                `[(rm/reset-form {:ident ~this-ident})]))
                            (when (or (not dirty?) create)
                              (fm/set-value! this :ui/editing false)
-                             (routes/route-to! "/sitevisit/list")))}
+                             (rroute/route-to! this SiteVisitList {})))}
               (if dirty?
                 "Cancel"
                 "Close"))))))))
@@ -648,8 +650,8 @@
 (fm/defmutation merge-new-sv2
   [{:keys []}]
   (action [{:keys [state]}]
-    (let [current-project (get @state :riverdb.ui.root/current-project)
-          current-agency  (get @state :riverdb.ui.root/current-agency)
+    (let [current-project (get @state :ui.riverdb/current-project)
+          current-agency  (get @state :ui.riverdb/current-agency)
           sv              (comp/get-initial-state SiteVisitForm {:project current-project :agency current-agency})
           _               (debug "Merge SV!" sv current-project current-agency)
           sv              (walk-ident-refs @state sv)
@@ -661,7 +663,7 @@
           (-> st
             ;; NOTE load the minimum so we can get globals after load
             (merge/merge-component SiteVisitForm sv
-              :replace [:riverdb.ui.root/current-sv]
+              :replace [:ui.riverdb/current-sv]
               :replace [:component/id :sitevisit-editor :sitevisit])))))))
 
 
@@ -674,14 +676,14 @@
 
 
 (defsc SiteVisitEditor [this {:keys                 [sitevisit session]
-                              :riverdb.ui.root/keys [current-project current-agency]
+                              :ui.riverdb/keys [current-project current-agency]
                               :ui/keys              [ready] :as props}]
   {:ident             (fn [] [:component/id :sitevisit-editor])
    :initial-state     {:ui/ready false}
    :query             [:ui/ready
                        {:sitevisit (comp/get-query SiteVisitForm)}
-                       {[:riverdb.ui.root/current-agency '_] (comp/get-query looks/agencylookup-sum)}
-                       {[:riverdb.ui.root/current-project '_] (comp/get-query ProjectInfo)}
+                       {[:ui.riverdb/current-agency '_] (comp/get-query looks/agencylookup-sum)}
+                       {[:ui.riverdb/current-project '_] (comp/get-query ProjectInfo)}
                        {:session (comp/get-query Session)}
                        [:db/ident '_]
                        [df/marker-table ::sv]]
@@ -714,7 +716,7 @@
                                  ;(dr/target-ready! SPA editor-ident)
                                  (f/load! app sv-ident SiteVisitForm
                                    {:target               (targeting/multiple-targets
-                                                            [:riverdb.ui.root/current-sv]
+                                                            [:ui.riverdb/current-sv]
                                                             [:component/id :sitevisit-editor :sitevisit])
                                     :marker               ::sv
                                     :post-mutation        `form-ready
@@ -840,8 +842,8 @@
 ;                              :sort-fn     :stationlookup/StationID}})))
 
 (defn reset-sites [this]
-  (let [sites  (get (comp/props this) :riverdb.ui.root/current-project-sites)
-        target [:riverdb.ui.root/current-project-sites]]
+  (let [sites  (get (comp/props this) :ui.riverdb/current-project-sites)
+        target [:ui.riverdb/current-project-sites]]
     (debug "RESET SITES" sites)
     (fm/set-value! this :ui/site nil)
     (comp/transact! this `[(rm/sort-ident-list-by {:idents-path ~target
@@ -850,7 +852,7 @@
 
 (defn make-filter
   ([props]
-   (let [{:riverdb.ui.root/keys [current-agency current-project current-year]
+   (let [{:ui.riverdb/keys [current-agency current-project current-year]
           :ui/keys              [site]} props
 
          ag-id     (:db/id current-agency)
@@ -881,16 +883,16 @@
 (defsc SiteVisitList
   "This tracks current-project, current-year, filter, limit, sort, and site"
   [this {:keys                 [sitevisits project-years]
-         :riverdb.ui.root/keys [current-agency current-project current-year current-project-sites]
+         :ui.riverdb/keys [current-agency current-project current-year current-project-sites]
          :ui/keys              [site sortField sortOrder limit offset list-meta show-upload] :as props}]
   {:ident              (fn [] [:component/id :sitevisit-list])
    :query              [{:sitevisits (comp/get-query SiteVisitSummary)}
                         {:project-years (comp/get-query ProjectYears)}
                         ;{:sites (comp/get-query looks/stationlookup-sum)}
-                        {[:riverdb.ui.root/current-agency '_] (comp/get-query looks/agencylookup-sum)}
-                        {[:riverdb.ui.root/current-project '_] (comp/get-query looks/projectslookup-sum)}
-                        {[:riverdb.ui.root/current-project-sites '_] (comp/get-query looks/stationlookup-sum)}
-                        [:riverdb.ui.root/current-year '_]
+                        {[:ui.riverdb/current-agency '_] (comp/get-query looks/agencylookup-sum)}
+                        {[:ui.riverdb/current-project '_] (comp/get-query looks/projectslookup-sum)}
+                        {[:ui.riverdb/current-project-sites '_] (comp/get-query looks/stationlookup-sum)}
+                        [:ui.riverdb/current-year '_]
                         [df/marker-table ::svs]
                         :ui/limit
                         :ui/offset
@@ -912,18 +914,18 @@
                         :ui/show-upload false}
    :componentDidUpdate (fn [this prev-props prev-state]
                          (let [{:ui/keys              [limit offset sortField sortOrder site] :as props
-                                :riverdb.ui.root/keys [current-project current-year]} (comp/props this)
+                                :ui.riverdb/keys [current-project current-year]} (comp/props this)
                                diff         (clojure.data/diff prev-props props)
                                changed-keys (clojure.set/union (keys (first diff)) (keys (second diff)))
-                               runQuery?    (some #{:riverdb.ui.root/current-project
-                                                    :riverdb.ui.root/current-year
+                               runQuery?    (some #{:ui.riverdb/current-project
+                                                    :ui.riverdb/current-year
                                                     :ui/offset
                                                     :ui/limit
                                                     :ui/sortField
                                                     :ui/sortOrder
                                                     :ui/site}
                                               changed-keys)
-                               sortSites?   (some #{:riverdb.ui.root/current-project} changed-keys)]
+                               sortSites?   (some #{:ui.riverdb/current-project} changed-keys)]
                            (debug "DID UPDATE SiteVisitList" "runQuery?" runQuery? "sortSites?" sortSites?)
                            (when runQuery?
                              (let [filter (make-filter props)]
@@ -932,7 +934,7 @@
                              (reset-sites this))))
    :componentDidMount  (fn [this]
                          (let [{:ui/keys              [limit offset sortField sortOrder] :as props
-                                :riverdb.ui.root/keys [current-agency]} (comp/props this)
+                                :ui.riverdb/keys [current-agency]} (comp/props this)
                                filter (make-filter props)
                                {:agencylookup/keys [AgencyCode]} current-agency]
                            (debug "DID MOUNT SiteVisitList")
@@ -962,7 +964,8 @@
 
 
         onEdit                 (fn [sv]
-                                 (routes/route-to! (str "/sitevisit/edit/" (or (:db/id sv) "new"))))
+                                 (debug "onEdit routing to sitevisit editor" (or (:db/id sv) "new"))
+                                 (rroute/route-to! this SiteVisitEditor {:sv-id (or (:db/id sv) "new")}))
         onUpload               (fn []
                                  (log/debug "onUpload")
                                  (fm/set-value! this :ui/show-upload true))

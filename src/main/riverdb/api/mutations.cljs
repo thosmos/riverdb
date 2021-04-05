@@ -16,6 +16,9 @@
     [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
     [com.fulcrologic.fulcro.dom :as dom :refer [div]]
     [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
+    [com.fulcrologic.rad.routing :as rroute]
+    [com.fulcrologic.rad.routing.history]
+    [com.fulcrologic.rad.routing.html5-history :as html5 :refer [url->route apply-route!]]
     [riverdb.ui.routes :as routes]
     [com.rpl.specter :as sp]))
 
@@ -125,13 +128,13 @@
            :projectslookup/Name
            {:projectslookup/AgencyRef (comp/get-query Agency)}]})
 
-(defmutation process-project-years [{:keys [desired-path]}]
+(defmutation process-project-years [{:keys [desired-route]}]
   (action [{:keys [state]}]
     (debug (clojure.string/upper-case "process-project-years"))
     (let [agency-project-years (get-in @state [:component/id :proj-years :agency-project-years])
           _                    (debug "agency-project-years" agency-project-years)
-          current-project      (get @state :riverdb.ui.root/current-project)
-          current-year         (get @state :riverdb.ui.root/current-year)
+          current-project      (get @state :ui.riverdb/current-project)
+          current-year         (get @state :ui.riverdb/current-year)
           proj-k               (if current-project
                                  (keyword (:projectslookup/ProjectID current-project))
                                  (ffirst agency-project-years))
@@ -147,17 +150,17 @@
         (fn [st]
           (cond-> st
             project
-            (merge/merge-component Project project :replace [:riverdb.ui.root/current-project])
+            (merge/merge-component Project project :replace [:ui.riverdb/current-project])
             sites
             (->
-              (set-root-key* :riverdb.ui.root/current-project-sites [])
+              (set-root-key* :ui.riverdb/current-project-sites [])
               (merge-idents* :org.riverdb.db.stationlookup/gid :db/id sites
-                :append [:riverdb.ui.root/current-project-sites]))
+                :append [:ui.riverdb/current-project-sites]))
             year
-            (set-root-key* :riverdb.ui.root/current-year year))))
-      (when desired-path
-        (debug "ROUTE TO desired-path" desired-path)
-        (routes/route-to! desired-path)))))
+            (set-root-key* :ui.riverdb/current-year year))))
+      (when desired-route
+        (debug "ROUTE TO desired-route" desired-route)
+        (html5/apply-route! SPA desired-route)))))
 
 (defmutation process-tac-report
   "TAC Report post process"

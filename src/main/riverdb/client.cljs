@@ -6,13 +6,17 @@
     [com.fulcrologic.fulcro-css.css-injection :as cssi]
     [com.fulcrologic.fulcro.data-fetch :as df]
     [com.fulcrologic.fulcro.inspect.inspect-client :as inspect]
+    [com.fulcrologic.fulcro.mutations :as m]
     [com.fulcrologic.fulcro.networking.http-remote :as net]
     [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
     [com.fulcrologic.fulcro.ui-state-machines :as uism]
     [com.fulcrologic.rad.application :as rad-app]
+    [com.fulcrologic.rad.authorization :as auth]
     [com.fulcrologic.rad.rendering.semantic-ui.semantic-ui-controls :as sui]
-    [com.fulcrologic.rad.routing.html5-history :refer [html5-history]]
+    [com.fulcrologic.rad.routing :as routing]
+    [com.fulcrologic.rad.routing.html5-history :as hist5 :refer [html5-history]]
     [com.fulcrologic.rad.routing.history :as history]
+    [com.fulcrologic.rad.type-support.date-time :as datetime]
     [riverdb.application :refer [SPA]]
     [riverdb.model.session :as session]
     [riverdb.ui.globals :as globals]
@@ -32,6 +36,15 @@
 
   #_(report/install-formatter! app :boolean :affirmation (fn [_ value] (if value "yes" "no"))))
 
+(m/defmutation fix-route
+  "Mutation. Called after auth startup. Looks at the session. If the user is not logged in, it triggers authentication"
+  [_]
+  (action [{:keys [app]}]
+    (let [logged-in (auth/verified-authorities app)]
+      (if (empty? logged-in)
+        (routing/route-to! app root/LoginForm {})
+        (hist5/restore-route! app root/Root {})))))
+
 (defn ^:export refresh []
   (log/info "Hot code Remount")
   (cssi/upsert-css "componentcss" {:component root/Root})
@@ -43,6 +56,7 @@
   (log/test-logs)
 
   (log/info "Application starting.")
+  (datetime/set-timezone! "America/Los_Angeles")
   (cssi/upsert-css "componentcss" {:component root/Root})
   ;(inspect/app-started! SPA)
   (log/info "Setting Fulcro Root and Initializing State")
@@ -58,9 +72,10 @@
      :actor/current-session ui-session/Session
      :actor/project-years   py/ProjectYears
      :actor/globals         globals/Globals}
-    {:desired-path (some-> js/window .-location .-pathname)})
+    {:desired-route (hist5/url->route)})
+  ;(auth/start! app [root/LoginForm] {:after-session-check `fix-route})
   ;(log/info "Starting Pushy")
-  (routes/start!)
+  ;(routes/start!)
 
   (log/info "Mounting Root")
   (app/mount! SPA root/Root "app" {:initialize-state? false}))

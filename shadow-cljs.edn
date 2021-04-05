@@ -16,7 +16,22 @@
                                       :preloads   [com.fulcrologic.fulcro.inspect.preload
                                                    ;com.fulcrologic.fulcro.inspect.websocket-preload
                                                    riverdb.development-preload]
-                                      :watch-dir  "resources/public/admin/css"}}
+                                      :watch-dir  "resources/public/admin/css"}
+                         :js-options {:resolve
+                                      {
+                                       ;; for performance checking during dev
+                                       ;;"react-dom" {:target  :npm
+                                       ;;:require "react-dom/cjs/react-dom.production.min.js"}
+                                       ;;"react"     {:target  :npm
+                                       ;;:require "react/cjs/react.production.min.js"}
+
+                                       "js-joda"
+                                       {:target :npm
+                                        :require "@js-joda/core"}
+                                       ;; Make js-joda-timezone a reasonable build size
+                                       "js-joda-timezone"
+                                       {:target  :npm
+                                        :require "@js-joda/timezone/dist/js-joda-timezone-10-year-range.min.js"}}}}
 
             :native
                         {:target     :react-native

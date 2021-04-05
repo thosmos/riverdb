@@ -51,6 +51,12 @@
                                                  :xss-protection {:enable? true
                                                                   :mode    :block}}}
 
+ :com.fulcrologic.rad.pathom/config {:trace?         false
+                                     ;; TODO: Elide params and such in logging
+                                     :sensitive-keys #{:password :riverdb.model.account/password}
+                                     :log-requests?  true
+                                     :log-responses? true}
+
  :taoensso.timbre/logging-config
                                     {:level        :info
                                      :ns-whitelist []

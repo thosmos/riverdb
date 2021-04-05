@@ -247,14 +247,14 @@
 
 (defonce tac-page-state (atom {}))
 
-(defsc TacReportPage [this {:riverdb.ui.root/keys [current-agency current-project current-year]
+(defsc TacReportPage [this {:ui.riverdb/keys [current-agency current-project current-year]
                             :keys                 [tac-report-data project-years] :as props}]
   {:ident         (fn [] [:component/id :tac-report])
    :query         [[:tac-report-data '_]
                    {:project-years (om/get-query ProjectYears)}
-                   {[:riverdb.ui.root/current-agency '_] (comp/get-query looks/agencylookup-sum)}
-                   {[:riverdb.ui.root/current-project '_] (comp/get-query looks/projectslookup-sum)}
-                   [:riverdb.ui.root/current-year '_]
+                   {[:ui.riverdb/current-agency '_] (comp/get-query looks/agencylookup-sum)}
+                   {[:ui.riverdb/current-project '_] (comp/get-query looks/projectslookup-sum)}
+                   [:ui.riverdb/current-year '_]
                    [df/marker-table ::tac]]
    :initial-state {:tac-report-data nil
                    :project-years   {}}

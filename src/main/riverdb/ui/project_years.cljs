@@ -14,17 +14,17 @@
 
 
 (defsc ProjectYears [this {:keys                 [agency-project-years]
-                           :riverdb.ui.root/keys [current-agency current-project current-year]}]
+                           :ui.riverdb/keys [current-agency current-project current-year]}]
   {:ident             (fn [] [:component/id :proj-years])
    :query             [:agency-project-years
-                       {[:riverdb.ui.root/current-agency '_] (comp/get-query looks/agencylookup-sum)}
-                       {[:riverdb.ui.root/current-project '_] (comp/get-query looks/projectslookup-sum)}
-                       [:riverdb.ui.root/current-year '_]]
+                       {[:ui.riverdb/current-agency '_] (comp/get-query looks/agencylookup-sum)}
+                       {[:ui.riverdb/current-project '_] (comp/get-query looks/projectslookup-sum)}
+                       [:ui.riverdb/current-year '_]]
    :initial-state     {:agency-project-years nil}
-   ;; FIXME update :agency-project-years when [:riverdb.ui.root/current-agency '_] changes
+   ;; FIXME update :agency-project-years when [:ui.riverdb/current-agency '_] changes
    :componentDidMount (fn [this]
                         (debug "PROJECT YEARS MOUNTED")
-                        (let [{:riverdb.ui.root/keys [current-agency]
+                        (let [{:ui.riverdb/keys [current-agency]
                                :keys                 [agency-project-years]} (comp/props this)
                               agencyCode (:agencylookup/AgencyCode current-agency)]
                           (when (and agencyCode (not agency-project-years))
@@ -50,15 +50,15 @@
                             year    (when years
                                       (get-year-fn current-year years))]
                         (when project
-                          (merge/merge-component! this looks/projectslookup-sum project :replace [:riverdb.ui.root/current-project]))
+                          (merge/merge-component! this looks/projectslookup-sum project :replace [:ui.riverdb/current-project]))
                           ;(rm/merge-ident! (comp/get-ident looks/projectslookup-sum project) project
-                          ;  :replace [:riverdb.ui.root/current-project]))
+                          ;  :replace [:ui.riverdb/current-project]))
                         (when sites
-                          (rm/set-root-key! :riverdb.ui.root/current-project-sites [])
+                          (rm/set-root-key! :ui.riverdb/current-project-sites [])
                           (rm/merge-idents! :org.riverdb.db.stationlookup/gid :db/id sites
-                            :append [:riverdb.ui.root/current-project-sites]))
+                            :append [:ui.riverdb/current-project-sites]))
                         (when year
-                          (rm/set-root-key! :riverdb.ui.root/current-year year)))
+                          (rm/set-root-key! :ui.riverdb/current-year year)))
                       proj-k)
 
         proj-k      (if current-project
@@ -98,7 +98,7 @@
             " Year: "
             (dom/select {:value    (or proj-year "")
                          :onChange #(let [yr (.. % -target -value)]
-                                      (rm/set-root-key! :riverdb.ui.root/current-year yr))}
+                                      (rm/set-root-key! :ui.riverdb/current-year yr))}
               (doall
                 (for [yr years]
                   (dom/option {:value (str yr) :key yr} (str yr)))))))))))

@@ -1,9 +1,9 @@
 (ns theta.log
-  #?(:cljs (:require-macros [theta.log]))
   (:require
     #?@(:clj
         [[dotenv]
-         [clojure.tools.logging :as log]])))
+         [clojure.tools.logging :as log]]))
+  #?(:cljs (:require-macros [theta.log])))
 
 #?(:clj (defmacro app-env [] dotenv/app-env))
 

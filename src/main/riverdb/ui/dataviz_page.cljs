@@ -168,14 +168,14 @@
                           (dataviz-cells param-config sv))))))))))))))
 
 
-(defsc DataVizPage [this {:riverdb.ui.root/keys [current-agency current-project current-year]
+(defsc DataVizPage [this {:ui.riverdb/keys [current-agency current-project current-year]
                           :keys                 [dataviz-data project-years] :as props}]
   {:ident         (fn [] [:component/id :dataviz])
    :query         [[:dataviz-data '_]
                    {:project-years (comp/get-query ProjectYears)}
-                   {[:riverdb.ui.root/current-agency '_] (comp/get-query looks/agencylookup-sum)}
-                   {[:riverdb.ui.root/current-project '_] (comp/get-query looks/projectslookup-sum)}
-                   [:riverdb.ui.root/current-year '_]
+                   {[:ui.riverdb/current-agency '_] (comp/get-query looks/agencylookup-sum)}
+                   {[:ui.riverdb/current-project '_] (comp/get-query looks/projectslookup-sum)}
+                   [:ui.riverdb/current-year '_]
                    [df/marker-table ::table]]
    :initial-state (fn [params]
                     {:dataviz-data  nil

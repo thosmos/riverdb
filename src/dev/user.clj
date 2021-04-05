@@ -13,12 +13,13 @@
     [thosmos.util :as tu]
     [thosmos.datomic :as tdb]
     [java-time :as jt]
-    [tick.core :as t]))
+    [tick.core :as t]
+    [theta.log :as log]))
 
 (set! *data-readers* (assoc *data-readers* 'fulcro/tempid #'riverdb.util/readTempid))
 
 ;; ==================== SERVER ====================
-(set-refresh-dirs "src/main")
+(set-refresh-dirs "src/main" "src/server" "src/rad")
 
 (defn start
   "Start the web server"

@@ -12,10 +12,9 @@
   {:ident [:org.riverdb.db.agencylookup/gid :db/id]
    :query [:db/id
            :riverdb.entity/ns
+           :agencylookup/uuid
            :agencylookup/Active
            :agencylookup/AgencyCode
-           :agencylookup/Name
-           :agencylookup/NameShort
            {:agencylookup/Projects (comp/get-query Project)}]})
 
 (defn preload-agency [agID]

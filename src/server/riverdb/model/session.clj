@@ -40,7 +40,7 @@
   (log/info "Authenticating" username)
   (let [user? (user/pull-email->user username
                 [:db/id :user/uuid :user/name :user/email :user/password
-                 {:user/roles '[* {:role/agency [:db/id :agencylookup/AgencyCode :agencylookup/Name]}]}])
+                 {:user/roles '[* {:role/agency [:db/id :agencylookup/AgencyCode :agencylookup/Name :agencylookup/uuid]}]}])
         res   (when user?
                 (auth/auth-password {:email username :password password :verify (:user/password user?)}))
         _     (log/debug "AUTH RESULT" res)]

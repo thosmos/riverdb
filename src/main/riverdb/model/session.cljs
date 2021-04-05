@@ -8,6 +8,8 @@
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
     [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
+    [com.fulcrologic.rad.routing.html5-history :as hist5 :refer [html5-history]]
+    [com.fulcrologic.rad.routing.history :as history]
     [riverdb.api.mutations :as rm]
     [riverdb.application :refer [SPA]]
     [riverdb.roles :as roles]
@@ -17,7 +19,8 @@
     [riverdb.ui.project-years :as py]
     [theta.log :refer [debug info]]
     [com.fulcrologic.fulcro.algorithms.denormalize :as fdn]
-    [com.fulcrologic.fulcro.data-fetch :as df]))
+    [com.fulcrologic.fulcro.data-fetch :as df]
+    [com.fulcrologic.rad.routing :as rroute]))
 
 (defn clear [env]
   (uism/assoc-aliased env :error ""))
@@ -27,19 +30,23 @@
 
 (defn logout [env]
   (comp/transact! SPA `[(rm/clear-tac-report) (rm/clear-agency-project-years)])
-  (routes/route-to! "/")
-  ;(dr/change-route SPA ["main"])
+  (dr/change-route! SPA ["main"])
+  (history/push-route! SPA ["main"] {})
 
   (-> env
     (clear)
     (update ::uism/state-map
       (fn [st]
         (-> st
-          (dissoc :riverdb.ui.root/current-agency)
-          (dissoc :riverdb.ui.root/current-project)
-          (dissoc :riverdb.ui.root/current-project-sites)
-          (dissoc :riverdb.ui.root/current-year)
+          (dissoc :ui.riverdb/current-agency)
+          (dissoc :ui.riverdb/current-project)
+          (dissoc :ui.riverdb/current-project-sites)
+          (dissoc :ui.riverdb/current-year)
           (dissoc :user/id)
+          (dissoc :person/uuid)
+          (dissoc :org.riverdb.db.stationlookup/gid)
+          (dissoc :org.riverdb.db.agencylookup/gid)
+          (dissoc :org.riverdb.db.projectslookup/gid)
           (dissoc :tac-report-data)
           (dissoc :dataviz-data)
           (dissoc :riverdb.theta.options/ns)
@@ -83,18 +90,18 @@
                           agency     (first agencies)
                           agencyCode (:agencylookup/AgencyCode agency)
                           agID       (:db/id agency)
-                          {:keys [desired-path] :as config} (uism/retrieve env :config)]
+                          {:keys [desired-route] :as config} (uism/retrieve env :config)]
                       (df/load! SPA :agency-project-years nil
                         {:params               {:agencies [agencyCode]}
                          :target               [:component/id :proj-years :agency-project-years]
                          :post-mutation        `rm/process-project-years
-                         :post-mutation-params {:desired-path desired-path}})
+                         :post-mutation-params {:desired-route desired-route}})
                       (agency/preload-agency agID)
                       #_(df/load! SPA [:component/id :globals] globals/Globals)
                       (debug "AUTH STUFF" agencyCode (keys env))
                       (-> env
-                        (uism/store :config (dissoc config :desired-path))
-                        (assoc-in [::uism/state-map :riverdb.ui.root/current-agency]
+                        (uism/store :config (dissoc config :desired-route))
+                        (assoc-in [::uism/state-map :ui.riverdb/current-agency]
                           [:org.riverdb.db.agencylookup/gid (:db/id agency)])))))
 
                  (uism/activate :state/logged-in))
@@ -155,6 +162,7 @@
                                        ::uism/handler       login}
                       :event/complete {::uism/handler (fn [env]
                                                         (debug "LOGGED OUT")
+                                                        (dr/change-route! SPA ["main"])
 
                                                         env)}})}}})
 
