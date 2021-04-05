@@ -41,9 +41,9 @@
 
          :rad        {:extra-paths ["src/rad"]
                       :extra-deps  {;com.fulcrologic/fulcro-rad {:local/root "/Users/thomas/Develop/cljs/fulcro/fulcro-rad"}
-                                    com.fulcrologic/fulcro-rad             {:mvn/version "1.0.8"}
+                                    com.fulcrologic/fulcro-rad             {:mvn/version "1.0.9"}
                                     com.fulcrologic/fulcro-rad-semantic-ui {:mvn/version "1.0.4"}
-                                    com.fulcrologic/fulcro-rad-datomic     {:mvn/version "1.0.5"}}}
+                                    com.fulcrologic/fulcro-rad-datomic     {:mvn/version "1.0.7"}}}
          :rad-server {:extra-deps {}};com.fulcrologic/fulcro-rad-datomic {:local/root "/Users/thomas/Develop/cljs/fulcro/fulcro-rad-datomic"}
 
 
