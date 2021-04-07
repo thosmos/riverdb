@@ -709,7 +709,7 @@
 
 (defn bigmean [prec bigvals]
   (let [cnt (count bigvals)]
-    (with-precision prec :rounding RoundingMode/HALF_UP
+    (with-precision prec :rounding RoundingMode/HALF_EVEN
       (->> bigvals
         (apply +)
         (#(/ % cnt))))))
@@ -717,7 +717,7 @@
 (defn bigstddev
   [prec vals]
  (let [mn (bigmean prec vals)]
-   (with-precision prec :rounding RoundingMode/HALF_UP
+   (with-precision prec :rounding RoundingMode/HALF_EVEN
                         (/ (reduce #(+ %1 (square (- %2 mn))) 0 vals)
                           (dec (count vals))))))
 
@@ -730,8 +730,8 @@
         plus     (- _max mn)
         minus    (- mn _min)
         pm       (max plus minus)
-        plus%    (with-precision prec :rounding RoundingMode/HALF_UP (* 100 (/ plus mn)))
-        minus%   (with-precision prec :rounding RoundingMode/HALF_UP (* 100 (/ minus mn)))
+        plus%    (with-precision prec :rounding RoundingMode/HALF_EVEN (* 100 (/ plus mn)))
+        minus%   (with-precision prec :rounding RoundingMode/HALF_EVEN (* 100 (/ minus mn)))
         pm%      (max plus% minus%)
         stddev   (with-precision prec (* (bigdec (std-dev vals)) 1))
         rng      (- _max _min)

@@ -311,11 +311,18 @@
     (log/debug "ID PULL RESOLVER" gid-key input)
     (try
       (let [query   (-> env ::p/parent-query)
+            id-val  (get input gid-key)
             _       (log/debug "Lookup Resolver Key" gid-key "Input" input "QUERY" query)
 
-            id-val? (try
-                      (Long/parseLong (get input gid-key))
-                      (catch NumberFormatException _ nil))
+            tp      (type id-val)
+            id-val? (cond
+                      (= tp java.lang.String)
+                      (try
+                        (Long/parseLong id-val)
+                        (catch NumberFormatException _ nil))
+                      (= tp java.lang.Long)
+                      id-val)
+
             result  (when id-val?
                       (d/pull (db) query id-val?))
             result  (when result

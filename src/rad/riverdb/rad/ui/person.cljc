@@ -6,6 +6,7 @@
     [riverdb.rad.model.agency :as agency]
     [riverdb.rad.model.person :as person]
     [riverdb.rad.model.global :as global]
+    [riverdb.rad.ui.agency :refer [agency-picker]]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
     #?(:clj  [com.fulcrologic.fulcro.dom-server :as dom :refer [div label input]]
@@ -26,72 +27,28 @@
     [com.fulcrologic.semantic-ui.elements.icon.ui-icon :refer [ui-icon]]
     [theta.log :as log]))
 
-(defsc AgencyQuery [this props]
-  {:query [:agencylookup/uuid :agencylookup/AgencyDescr :agencylookup/AgencyCode]
-   :ident :agencylookup/uuid})
-
 (defsc AgencyQueryGID [this props]
   {:query [:db/id :agencylookup/uuid]
    :ident [:org.riverdb.db.agencylookup/gid :db/id]})
 
-
-(form/defsc-form AgencyForm [this props]
-  {fo/id         agency/uid
-   fo/attributes [agency/AgencyCode global/EntityNS]
-   fo/read-only-fields #{:agency/AgencyCode :riverdb.entity/ns}
-   fo/layout     [[agency/AgencyCode]]})
-
 (form/defsc-form PersonForm [this props]
-  {fo/id             person/uid
-   fo/attributes     [person/Name person/IsStaff person/Agency global/EntityNS]
-   fo/default-values {:person/IsStaff    false
-                      :riverdb.entity/ns :entity.ns/person}
+  {fo/id               person/uid
+   fo/attributes       [person/Name person/IsStaff person/Agency global/EntityNS]
+   fo/default-values   {:person/IsStaff    false
+                        :riverdb.entity/ns :entity.ns/person}
    ;::form/enumeration-order :person/Name
    ;::form/cancel-route      ["people"]
-   fo/route-prefix   "person"
+   fo/route-prefix     "person"
    ;:route-segment     ["person"]
-   fo/title          "Edit Person"
-   fo/layout         [[:person/Name]
-                      [:person/Agency]
-                      [:person/IsStaff]]
-   fo/field-labels   {:person/IsStaff "Staff"}
-   fo/field-styles   {:person/Agency :pick-one}
+   fo/title            "Edit Person"
+   fo/layout           [[:person/Name]
+                        [:person/Agency]
+                        [:person/IsStaff]]
+   fo/field-labels     {:person/IsStaff "Staff"}
+   fo/field-styles     {:person/Agency :pick-one}
    fo/read-only-fields #{:person/Agency}
-   fo/field-options  {:person/Agency {po/cache-key :picker/agency
-                                      po/query-key :all-agencies
-                                      po/cache-time-ms 3600000
-                                      po/query-component AgencyQuery
-                                      po/options-xform (fn [_ options]
-                                                         (let [opts
-                                                               (mapv
-                                                                 (fn [{:agencylookup/keys [uuid AgencyCode]}]
-                                                                   {:text AgencyCode :value [:agencylookup/uuid uuid]})
-                                                                 (sort-by :agencylookup/AgencyCode options))]
-                                                           (log/debug "AGENCY PICKER OPTS" opts)
-                                                           opts))}}
-   ;fo/subforms       {:person/Agency {fo/ui AgencyForm
-   ;                                   form/default-to-many}}
+   fo/field-options    {:person/Agency agency-picker}})
 
-
-
-   ;fo/triggers       {:derive-fields
-   ;                   (fn [props]
-   ;                     (let [props (assoc props :person/Agency "17592186158635")]
-   ;                       (log/debug "Form Derive Fields" props)
-   ;                       props))
-   ;                   :on-change
-   ;                   (fn [{::uism/keys [state-map] :as uism-env} form-ident k old-value new-value]
-   ;                     (log/debug "Form Trigger" form-ident k old-value new-value)
-   ;                     uism-env)}
-   #_::form/subforms          #_{:person/Agency {::form/ui            form/ToOneEntityPicker
-                                                 ::form/pick-one      {:options/query-key :org.riverdb.db.agencylookup
-                                                                       :options/params    {:limit -1 :filter {:agencylookup/Active true}}
-                                                                       :options/subquery  [:agencylookup/uuid :agencylookup/AgencyCode]
-                                                                       :options/transform (fn [{:agencylookup/keys [uuid AgencyCode]}]
-                                                                                            {:text AgencyCode :value [:agencylookup/uuid uuid]})}
-                                                 ::form/label         "Agency"
-                                                 ;; Use computed props to inform subform of its role.
-                                                 ::form/subform-style :inline}}})
 
 ;(def account-validator (fs/make-validator (fn [form field]
 ;                                            (case field
@@ -133,27 +90,19 @@
    ro/paginate?           true
    ro/page-size           20
    ro/run-on-mount?       true
-   ro/controls            {:person/Agency {:label               "Agency"
-                                           :type                :picker
-                                           :disabled?           true
-                                           po/cache-key :picker/agency
-                                           po/query-key :all-agencies
-                                           po/cache-time-ms 3600000
-                                           po/query-component AgencyQuery
-                                           po/options-xform (fn [_ options]
-                                                              (let [opts
-                                                                    (mapv
-                                                                      (fn [{:agencylookup/keys [uuid AgencyCode]}]
-                                                                        {:text AgencyCode :value [:agencylookup/uuid uuid]})
-                                                                      (sort-by :agencylookup/AgencyCode options))]
-                                                                (log/debug "AGENCY PICKER OPTS" opts)
-                                                                opts))}
+   ro/controls            {:person/Agency (merge
+                                            {:label     "Agency"
+                                             :type      :picker
+                                             :disabled? true}
+                                            agency-picker)
+
                            :person/Name   {:label    "Name"
                                            :type     :string
                                            :style    :search
                                            :onChange (fn [this a]
                                                        (log/debug "search change" a)
                                                        (com.fulcrologic.rad.control/run! this))}
+
                            ::add-person   {:label  "Add Person"
                                            :type   :button
                                            :action (fn [this]
@@ -167,13 +116,8 @@
    ro/links               {:person/Name (fn [report-instance {:person/keys [uuid] :as props}]
                                           (form/edit! report-instance PersonForm uuid))}
    ro/initial-sort-params {:sort-by :person/Name}
-   ro/query-inclusions    [{[:ui.riverdb/current-agency '_] (comp/get-query AgencyQueryGID)} [::po/options-cache '_]]
-   :componentDidMount     (fn [this]
-                            (let [props    (comp/props this)
-                                  agency   (:ui.riverdb/current-agency props)
-                                  ag-ident [:agencylookup/uuid (:agencylookup/uuid agency)]]
+   ro/query-inclusions    [{[:ui.riverdb/current-agency '_] (comp/get-query AgencyQueryGID)}
+                           [::po/options-cache '_]]})
 
-                              (log/debug "PEOPLE PROPS" props)))})
-                              ;(control/set-parameter! this :person/Agency ag-ident)))})
 
 

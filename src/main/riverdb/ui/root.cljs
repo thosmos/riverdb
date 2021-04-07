@@ -51,7 +51,8 @@
     [theta.util :as tutil]
     [com.fulcrologic.fulcro.components :as om]
     [com.fulcrologic.fulcro.data-fetch :as f]
-    [riverdb.rad.ui.person :refer [PersonForm PersonList]]))
+    [riverdb.rad.ui.person :refer [PersonForm PersonList]]
+    [riverdb.rad.ui.users :refer [UserList UserForm]]))
 
 (defn field [{:keys [label valid? error-message] :as props}]
   (let [input-props (-> props (assoc :name label) (dissoc :label :valid? :error-message))]
@@ -262,7 +263,7 @@
 
 (dr/defrouter TopRouter [this props]
   {:router-targets        [Main Signup SignupSuccess ThetaRoot Projects TacReportPage
-                           DataVizPage SiteVisitsPage UploadPage PersonForm PersonList]
+                           DataVizPage SiteVisitsPage UploadPage PersonForm PersonList UserList UserForm]
    :shouldComponentUpdate (fn [_ _ _] true)})
 (def ui-top-router (comp/factory TopRouter))
 
@@ -337,7 +338,8 @@
             (ui-dropdown {:className "item" :text "Admin"}
               (ui-dropdown-menu {}
                 (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this PersonList {:person/Agency ag-ident}))} "People")
-                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this Projects {}))} "Projects"))))
+                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this Projects {}))} "Projects")
+                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this UserList {:user/agency ag-ident}))} "User Logins"))))
           #_[(when rdb-admin?
                (dom/a :.item {:key  "theta" :classes [(when (= :theta current-tab) "active")]
                               :href "/theta/index"} "Tables"))

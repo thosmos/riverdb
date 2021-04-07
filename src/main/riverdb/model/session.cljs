@@ -85,10 +85,12 @@
                           globals    (get actor-data [:component/id :globals])
                           _          (debug "GLOBALS" globals)
                           user       (get-in actor-data [:account/auth :user])
-                          roles      (roles/user->roles user)
-                          agencies   (when roles (roles/roles->agencies2 roles))
-                          agency     (first agencies)
-                          agencyCode (:agencylookup/AgencyCode agency)
+                          agency     (:user/agency user)
+                          ;role
+                          ;roles      (roles/user->roles user)
+                          ;agencies   (when roles (roles/roles->agencies2 roles))
+                          ;agency     (first agencies)
+                          agencyCode (or (:agencylookup/AgencyCode agency) "ALL")
                           agID       (:db/id agency)
                           {:keys [desired-route] :as config} (uism/retrieve env :config)]
                       (df/load! SPA :agency-project-years nil
