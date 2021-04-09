@@ -4,7 +4,7 @@
     [riverdb.rad.model.agency :as agency]
     [riverdb.rad.model.global :as global]
     [riverdb.rad.model.user :as user]
-    ;[riverdb.rad.model.role :as role]
+    [riverdb.rad.model.worktime :as worktime]
     [com.fulcrologic.rad.attributes :as attr :refer [defattr]]
     [com.fulcrologic.rad.attributes-options :as ao]
     #?(:clj
@@ -25,7 +25,7 @@
                            agency/attributes
                            global/attributes
                            user/attributes
-                           ;role/attributes
+                           worktime/attributes
                            [all-projects])))
 
 (def all-attribute-validator (attr/make-attribute-validator all-attributes))

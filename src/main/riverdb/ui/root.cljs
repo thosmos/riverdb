@@ -52,7 +52,8 @@
     [com.fulcrologic.fulcro.components :as om]
     [com.fulcrologic.fulcro.data-fetch :as f]
     [riverdb.rad.ui.person :refer [PersonForm PersonList]]
-    [riverdb.rad.ui.users :refer [UserList UserForm]]))
+    [riverdb.rad.ui.users :refer [UserList UserForm]]
+    [riverdb.rad.ui.worktime :refer [WorkTimeList]]))
 
 (defn field [{:keys [label valid? error-message] :as props}]
   (let [input-props (-> props (assoc :name label) (dissoc :label :valid? :error-message))]
@@ -263,7 +264,7 @@
 
 (dr/defrouter TopRouter [this props]
   {:router-targets        [Main Signup SignupSuccess ThetaRoot Projects TacReportPage
-                           DataVizPage SiteVisitsPage UploadPage PersonForm PersonList UserList UserForm]
+                           DataVizPage SiteVisitsPage UploadPage PersonForm PersonList UserList UserForm WorkTimeList]
    :shouldComponentUpdate (fn [_ _ _] true)})
 (def ui-top-router (comp/factory TopRouter))
 
@@ -328,6 +329,7 @@
               (ui-dropdown-menu {}
                 #_(ui-dropdown-item {:onClick (fn [] (form/create! this SiteVisitEditor))} "New Site Visit")
                 (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this SiteVisitList {}))} "Site Visits")
+                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this WorkTimeList {}))} "Work Times")
                 #_(ui-dropdown-item {:onClick (fn [] (rroute/route-to! this UploadPage {}) )} "Import CSV")
                 #_(ui-dropdown-item {:onClick (fn [] (form/create! this PersonForm {:initial-state {}}))} "Add Person")))
             (ui-dropdown {:className "item" :text "Reports"}

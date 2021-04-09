@@ -1438,8 +1438,8 @@
   :entity/name "Work Time"
   :entity/ns :entity.ns/worktime
   :entity/pks [:worktime/uuid]
-  :entity/prKeys [:worktime/hours :worktime/task]
-  :entity/nameKey [:worktime/hours]
+  :entity/prKeys [:worktime/date :worktime/task :worktime/hours]
+  :entity/nameKey [:worktime/date]
   :entity/attrs
   [#:attr{:name "Sitevisit",
           :key :worktime/sitevisit,
@@ -1465,6 +1465,11 @@
           :cardinality :one,
           :type :string,
           :doc "Task (optional)"}
+   #:attr{:name "Date",
+          :key :worktime/date,
+          :cardinality :one,
+          :type :instant,
+          :doc "Date of work (optional)"}
    #:attr{:name "uuid",
           :key :worktime/uuid,
           :identity true,

@@ -46,6 +46,21 @@
       (mapv (fn [id] {:projectslookup/uuid id}) ids))
     (log/error "No database atom for production schema!")))
 
+(defn get-all-worktimes
+  [env query-params]
+  (if-let [db (some-> (get-in env [::datomic/databases :production]) deref)]
+    (let [person (:worktime/person query-params)
+          ids    (if person
+                   (d/q '[:find [?e ...]
+                          :in $ ?person
+                          :where
+                          [?e :worktime/person ?person]] db person)
+                   (d/q '[:find [?e ...]
+                          :where
+                          [?e :riverdb.entity/ns :entity.ns/worktime]] db))]
+      (mapv (fn [id] {:org.riverdb.db.worktime/gid id}) ids))
+    (log/error "No database atom for production schema!")))
+
 (defn get-all-users
   [env query-params]
   (if-let [db (some-> (get-in env [::datomic/databases :production]) deref)]

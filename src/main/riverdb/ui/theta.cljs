@@ -298,27 +298,30 @@
                                 (dr/target-ready! app route-ident)))))
    :css                [[:.red {:backgroundColor "red"}
                          :.blue {:backgroundColor "blue"}]]}
-  (let [entity-k    (:riverdb.entity/ns props)
-        entity-nm   (name entity-k)
-        entity-spec (get look/specs-map entity-k)
-        attrs       (:entity/attrs entity-spec)
+  (let [entity-k      (:riverdb.entity/ns props)
+        entity-nm     (name entity-k)
+        entity-spec   (get look/specs-map entity-k)
+        attrs         (:entity/attrs entity-spec)
+        entity-prKeys (:entity/prKeys entity-spec)
+        ;; if no prKeys, then use entity defaults
+        prKeys        (or prKeys entity-prKeys)
         ;; select visible attrs
-        prAttrs     (select-keys attrs prKeys)
+        prAttrs       (select-keys attrs prKeys)
         ;; find only the :ref type attrs
-        refNameKeys (get-refNameKeys prAttrs)
-        handleSort  (fn [field]
-                      (if (not= field sortField)
-                        (do
-                          (fm/set-value! this :ui/sortField field)
-                          (fm/set-value! this :ui/sortOrder :asc))
-                        (if (= sortOrder :desc)
+        refNameKeys   (get-refNameKeys prAttrs)
+        handleSort    (fn [field]
+                        (if (not= field sortField)
                           (do
-                            (fm/set-value! this :ui/sortField nil)
-                            (fm/set-value! this :ui/sortOrder nil))
-                          (do
-                            (fm/set-value! this :ui/sortOrder :desc)))))
-        limit       limit
-        offset      offset
+                            (fm/set-value! this :ui/sortField field)
+                            (fm/set-value! this :ui/sortOrder :asc))
+                          (if (= sortOrder :desc)
+                            (do
+                              (fm/set-value! this :ui/sortField nil)
+                              (fm/set-value! this :ui/sortOrder nil))
+                            (do
+                              (fm/set-value! this :ui/sortOrder :desc)))))
+        limit         limit
+        offset        offset
 
         {:keys [red blue]} (css/get-classnames ThetaList)]
 
