@@ -1,6 +1,7 @@
 (ns riverdb.ui.util
   (:require
     [cognitect.transit :as transit]
+    [com.cognitect.transit.types :as ty]
     [edn-query-language.core :as eql]
     [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
@@ -430,7 +431,7 @@
                        (.-rep value)
                        (or value ""))
            :onChange (fn [e]
-                       (let [val   (transit/bigdec (.. e -target -value))
+                       (let [val   ^ty.TaggedValue (transit/bigdec (.. e -target -value))
                              new-v (if (= (.-rep val) "")
                                      nil
                                      val)]
@@ -445,7 +446,7 @@
                      (.-rep value)
                      (or value ""))
          :onChange (fn [e]
-                     (let [val   (transit/bigdec (.. e -target -value))
+                     (let [val   ^ty.TaggedValue (transit/bigdec (.. e -target -value))
                            new-v (if (= (.-rep val) "")
                                    nil
                                    val)]

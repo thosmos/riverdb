@@ -90,7 +90,7 @@
                           ;roles      (roles/user->roles user)
                           ;agencies   (when roles (roles/roles->agencies2 roles))
                           ;agency     (first agencies)
-                          agencyCode (or (:agencylookup/AgencyCode agency) "ALL")
+                          agencyCode (or (:agencylookup/AgencyCode agency))
                           agID       (:db/id agency)
                           {:keys [desired-route] :as config} (uism/retrieve env :config)]
                       (df/load! SPA :agency-project-years nil

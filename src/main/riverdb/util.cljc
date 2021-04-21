@@ -6,7 +6,8 @@
     #?(:cljs [goog.object :as gobj])
     [com.fulcrologic.guardrails.core :refer [>defn]]
     [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
-    [clojure.spec.alpha :as s])
+    [clojure.spec.alpha :as s]
+    [theta.log :as log])
   #?(:clj (:import [java.util UUID])))
 
 #?(:cljs
@@ -91,6 +92,36 @@
   [t c]
   (let [TC 0.0191]
     (/ c (+ 1 (* TC (- t 25))))))
+
+#?(:cljs
+   (defn save-file
+     "saves a file in the client.  using 'file-saver' instead"
+     ;const url = window.URL.createObjectURL(new Blob([response.data]));
+     ;const link = document.createElement('a');
+     ;link.href = url;
+     ;link.setAttribute('download', 'file.pdf'); //or any other extension
+     ;document.body.appendChild(link);
+     ;link.click()
+     ;link.parentNode.removeChild(link);
+
+     ;// IE doesn't allow using a blob object directly as link href
+     ;        // instead it is necessary to use msSaveOrOpenBlob
+     ;        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+     ;            window.navigator.msSaveOrOpenBlob(newBlob);
+     ;            return;
+     ;        }
+     [blob filename]
+     (let [url  (js/URL.createObjectURL blob)
+           link (js/document.createElement "a")]
+       (if (and js/window.navigator js/window.navigator.msSaveOrOpenBlob)
+         (js/window.navigator.msSaveOrOpenBlob blob)
+         (do
+           (.setAttribute link "href" url)
+           (.setAttribute link "download" filename)
+           (log/debug "URL" url blob link)
+           (js/document.body.appendChild link)
+           (.click link)
+           (.removeChild (.-parentNode link) link))))))
 
 ;(defn history-view
 ;  "Return a function that will display transaction history with

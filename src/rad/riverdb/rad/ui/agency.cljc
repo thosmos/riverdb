@@ -11,7 +11,7 @@
     [theta.log :as log]))
 
 (defsc AgencyQuery [this props]
-  {:query [:agencylookup/uuid :agencylookup/AgencyDescr :agencylookup/AgencyCode]
+  {:query [:agencylookup/uuid :agencylookup/AgencyCode]
    :ident :agencylookup/uuid})
 
 (def agency-picker
@@ -25,5 +25,5 @@
                                 (fn [{:agencylookup/keys [uuid AgencyCode]}]
                                   {:text AgencyCode :value [:agencylookup/uuid uuid]})
                                 (sort-by :agencylookup/AgencyCode options))]
-                          (log/debug "AGENCY PICKER OPTS" opts)
+                          ;(log/debug "AGENCY PICKER OPTS" opts)
                           opts))})

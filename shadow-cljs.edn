@@ -1,15 +1,21 @@
-{:deps     {:aliases [:cljsbuild :rad]}
+{:deps     {:aliases [:cljsbuild :rad :rad-dev]}
  :nrepl    {:port 9000}
  :jvm-opts ["-Xmx1G"]
  :builds   {:main       {:target     :browser
                          :output-dir "resources/public/admin/js/main"
                          :asset-path "/admin/js/main"
 
+                         :build-hooks
+                                     [(shadow-git-inject.core/hook)]
+
                          :modules    {:main {:init-fn riverdb.client/init
                                              :entries [riverdb.client]}}
                          ;;; guardrails checks only during dev
                          ;:dev        {:compiler-options
                          ;             {:external-config {:guardrails {}}}}
+
+                         :compiler-options
+                                     {:closure-defines {riverdb.client/version  :shadow-git-inject/version}}
 
                          :dev        {:closure-defines {com.fulcrologic.fulcro.inspect.inspect_ws/SERVER_PORT 8237}}
                          :devtools   {:after-load riverdb.client/refresh
@@ -26,7 +32,7 @@
                                        ;;:require "react/cjs/react.production.min.js"}
 
                                        "js-joda"
-                                       {:target :npm
+                                       {:target  :npm
                                         :require "@js-joda/core"}
                                        ;; Make js-joda-timezone a reasonable build size
                                        "js-joda-timezone"

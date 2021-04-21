@@ -17,10 +17,11 @@
     [com.fulcrologic.fulcro.dom :as dom :refer [div]]
     [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
     [com.fulcrologic.rad.routing :as rroute]
-    [com.fulcrologic.rad.routing.history]
-    [com.fulcrologic.rad.routing.html5-history :as html5 :refer [url->route apply-route!]]
+    [com.fulcrologic.rad.routing.history :as hist]
+    [com.fulcrologic.rad.routing.html5-history :as hist5 :refer [url->route apply-route!]]
     [riverdb.ui.routes :as routes]
-    [com.rpl.specter :as sp]))
+    [com.rpl.specter :as sp]
+    [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]))
 
 ;;;  CLIENT
 
@@ -160,7 +161,16 @@
             (set-root-key* :ui.riverdb/current-year year))))
       (when desired-route
         (debug "ROUTE TO desired-route" desired-route)
-        (html5/apply-route! SPA desired-route)))))
+        (let [params (:params desired-route)
+              rad? (:_rp_ params)]
+          (if rad?
+            (do
+              (log/debug "RAD ROUTE" desired-route)
+              (hist5/apply-route! SPA desired-route))
+            (do
+              (log/debug "NON-RAD ROUTE" desired-route)
+              (dr/change-route! SPA (:route desired-route))
+              (hist/replace-route! SPA (:route desired-route) (:params desired-route)))))))))
 
 (defmutation process-tac-report
   "TAC Report post process"
