@@ -112,7 +112,7 @@
 
 (defn wrap-html-routes [ring-handler]
   (fn [{:keys [uri params query-params path-info anti-forgery-token] :as req}]
-    (log/debug "HTML ROUTES HANDLER" uri path-info "PARAMS" params "QUERY PARAMS" query-params (keys req))
+    ;(log/debug "HTML ROUTES HANDLER" uri path-info "PARAMS" params "QUERY PARAMS" query-params (keys req))
     (cond
 
       (#{"/sitevisits.csv"} uri)

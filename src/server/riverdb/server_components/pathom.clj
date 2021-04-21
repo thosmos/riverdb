@@ -13,7 +13,7 @@
     [riverdb.api.resolvers :as resolvers]
     [riverdb.model.session :as session]
     [riverdb.model.user :as user]
-    [riverdb.rad.model :refer [all-attributes]]
+    [riverdb.rad.model :as model :refer [all-attributes]]
     [riverdb.rad.middleware :as middleware]
     [riverdb.server-components.config :refer [config]]
     [riverdb.server-components.auto-resolvers :refer [automatic-resolvers]]
@@ -30,7 +30,7 @@
 
 (def all-resolvers [user/resolvers session/resolvers resolvers/resolvers
                     resolvers/lookup-resolvers resolvers/id-resolvers index-explorer
-                    mutations/mutations
+                    mutations/mutations model/resolvers
                     #_automatic-resolvers
                     form/save-form
                     #_form/delete-entity])

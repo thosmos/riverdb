@@ -8,9 +8,8 @@
 (log/set-level! :debug)
 (log/merge-config! {:output-fn ts/prefix-output-fn
                     :appenders {:console (ts/console-appender)}
-                    :ns-blacklist  [
-                                    "com.fulcrologic.fulcro.algorithms.indexing"
-                                    ;"com.fulcrologic.fulcro.algorithms.tx-processing"
-                                    ;"com.fulcrologic.fulcro.ui-state-machines"
-                                    ;"com.fulcrologic.fulcro.routing.dynamic-routing"
+                    :ns-blacklist  ["com.fulcrologic.fulcro.algorithms.indexing"
+                                    "com.fulcrologic.fulcro.algorithms.tx-processing"
+                                    "com.fulcrologic.fulcro.ui-state-machines"
+                                    "com.fulcrologic.fulcro.routing.dynamic-routing"
                                     "com.fulcrologic.fulcro.inspect.inspect-client"]})

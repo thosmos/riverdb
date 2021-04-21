@@ -29,3 +29,6 @@
                            [all-projects])))
 
 (def all-attribute-validator (attr/make-attribute-validator all-attributes))
+
+(def resolvers (vec (concat
+                      worktime/resolvers)))

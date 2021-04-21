@@ -119,22 +119,25 @@
                    {:worktime/person (comp/get-query Monitor)}
                    :worktime/hours
                    :worktime/uuid
-                   :worktime/task]
-   :initial-state (fn [{:keys [person sitevisit] :as params}]
+                   :worktime/task
+                   :worktime/agency]
+   :initial-state (fn [{:keys [person sitevisit agency] :as params}]
                     {:db/id              (tempid/tempid)
                      :riverdb.entity/ns  :entity.ns/worktime
                      :worktime/uuid      (tempid/uuid)
                      :worktime/sitevisit sitevisit
                      :worktime/person    person
                      :worktime/hours     (transit/bigdec "1")
-                     :worktime/task      "sitevisit"})
+                     :worktime/task      "sitevisit"
+                     :worktime/agency    agency})
    :form-fields   #{:db/id
                     :riverdb.entity/ns
                     :worktime/uuid
                     :worktime/hours
                     :worktime/sitevisit
                     :worktime/person
-                    :worktime/task}}
+                    :worktime/task
+                    :worktime/agency}}
 
   (let [name (:person/Name person)]
     (dom/tr
@@ -168,10 +171,10 @@
     (debug "SV deleted" ident)
     (rroute/route-to! SPA SiteVisitList {})))
 
-(fm/defmutation add-worktime [{:keys [sitevisit person]}]
+(fm/defmutation add-worktime [{:keys [sitevisit] :as args}]
   (action [{:keys [state]}]
     (debug "ADD worktime")
-    (let [wt (comp/get-initial-state WorkTime {:sitevisit sitevisit :person person})
+    (let [wt (comp/get-initial-state WorkTime args)
           wt (fs/add-form-config WorkTime wt)]
       (debug "New worktime" wt)
       (swap! state
@@ -199,15 +202,17 @@
 (defn sync-worktimes [this visitors worktimes]
   (let [props          (comp/props this)
         sv-id          (:db/id props)
+        ag-id          (:sitevisit/AgencyCode props)
         visitor-ids    (set (select [ALL LAST] visitors))
         worker-ids     (set (select [ALL :worktime/person :db/id] worktimes))
         add-workers    (clojure.set/difference visitor-ids worker-ids)
         delete-workers (clojure.set/difference worker-ids visitor-ids)]
-    (debug "Sync WorkTimes" "add-workers" add-workers "del-workers" delete-workers)
+    (debug "Sync WorkTimes" "add-workers" add-workers "del-workers" delete-workers "props" props)
     ;; add new workers
     (doseq [add-id add-workers]
       (let [args {:person    {:db/id add-id}
-                  :sitevisit [:org.riverdb.db.sitevisit/gid sv-id]}]
+                  :sitevisit [:org.riverdb.db.sitevisit/gid sv-id]
+                  :agency    ag-id}]
         (comp/transact! this `[(add-worktime ~args)])))
 
     ;; remove missing workers
@@ -238,44 +243,44 @@
                               :ui/create
                               :ui/error
                               :sitevisit/AgencyCode
-                              :sitevisit/BacteriaCollected
-                              :sitevisit/BacteriaTime
+                              ;:sitevisit/BacteriaCollected
+                              ;:sitevisit/BacteriaTime
                               :sitevisit/CheckPersonRef
-                              :sitevisit/CreationTimestamp
+                              ;:sitevisit/CreationTimestamp
                               :sitevisit/DataEntryDate
                               :sitevisit/DataEntryNotes
                               :sitevisit/DataEntryPersonRef
                               :sitevisit/Datum
-                              :sitevisit/DepthMeasured
-                              :sitevisit/GPSDeviceCode
-                              :sitevisit/HydroMod
-                              :sitevisit/HydroModLoc
+                              ;:sitevisit/DepthMeasured
+                              ;:sitevisit/GPSDeviceCode
+                              ;:sitevisit/HydroMod
+                              ;:sitevisit/HydroModLoc
                               :sitevisit/Lat
                               :sitevisit/Lon
-                              :sitevisit/MetalCollected
-                              :sitevisit/MetalTime
+                              ;:sitevisit/MetalCollected
+                              ;:sitevisit/MetalTime
                               :sitevisit/Notes
-                              :sitevisit/PointID
+                              ;:sitevisit/PointID
                               :sitevisit/ProjectID
                               :sitevisit/QACheck
                               :sitevisit/QADate
                               :sitevisit/QAPersonRef
-                              :sitevisit/SeasonCode
+                              ;:sitevisit/SeasonCode
                               :sitevisit/SiteVisitDate
                               :sitevisit/SiteVisitID
                               :sitevisit/StationFailCode
                               :sitevisit/StationID
                               :sitevisit/StreamWidth
                               :sitevisit/Time
-                              :sitevisit/TssCollected
-                              :sitevisit/TssTime
-                              :sitevisit/TurbidityCollected
-                              :sitevisit/TurbidityTime
-                              :sitevisit/UnitStreamWidth
-                              :sitevisit/UnitWaterDepth
+                              ;:sitevisit/TssCollected
+                              ;:sitevisit/TssTime
+                              ;:sitevisit/TurbidityCollected
+                              ;:sitevisit/TurbidityTime
+                              ;:sitevisit/UnitStreamWidth
+                              ;:sitevisit/UnitWaterDepth
                               :sitevisit/VisitType
-                              :sitevisit/WaterDepth
-                              :sitevisit/WidthMeasured
+                              ;:sitevisit/WaterDepth
+                              ;:sitevisit/WidthMeasured
                               :sitevisit/uuid
                               :sitevisit/Visitors
                               {:sitevisit/Samples (comp/get-query SampleForm)}

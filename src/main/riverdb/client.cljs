@@ -1,5 +1,6 @@
 (ns riverdb.client
   (:require
+    [cljs.core]
     [com.fulcrologic.fulcro.algorithms.denormalize :as fdn]
     [com.fulcrologic.fulcro.application :as app]
     [com.fulcrologic.fulcro.components :as comp]
@@ -19,9 +20,11 @@
     [com.fulcrologic.rad.type-support.date-time :as datetime]
     [riverdb.application :refer [SPA]]
     [riverdb.model.session :as session]
+    [riverdb.rad.ui.controls.autocomplete]
+    [riverdb.rad.ui.controls.inputlist]
     [riverdb.ui.globals :as globals]
-    [riverdb.ui.root :as root]
     ;[riverdb.model :as model]
+    [riverdb.ui.root :as root]
     [riverdb.ui.session :as ui-session]
     [riverdb.ui.routes :as routes]
     [riverdb.ui.project-years :as py]
@@ -30,11 +33,23 @@
     ;[com.fulcrologic.rad.form :as form]
     ;[com.fulcrologic.rad.rendering.semantic-ui.semantic-ui-controls :as sui]))
 
+(goog-define version "hmm")
+
 (defn setup-RAD [app]
   (history/install-route-history! app (html5-history))
-  (rad-app/install-ui-controls! app sui/all-controls)
+  (let [all-controls (-> sui/all-controls
+                       (assoc-in [:com.fulcrologic.rad.form/type->style->control
+                                  :string
+                                  :autocomplete]
+                         riverdb.rad.ui.controls.autocomplete/render-autocomplete-field)
+                       (assoc-in [:com.fulcrologic.rad.form/type->style->control
+                                  :string
+                                  :inputlist]
+                         riverdb.rad.ui.controls.inputlist/render-inputlist-field))]
 
-  #_(report/install-formatter! app :boolean :affirmation (fn [_ value] (if value "yes" "no"))))
+    (rad-app/install-ui-controls! app all-controls)))
+
+  ;;(report/install-formatter! app :boolean :affirmation (fn [_ value] (if value "yes" "no"))))
 
 (m/defmutation fix-route
   "Mutation. Called after auth startup. Looks at the session. If the user is not logged in, it triggers authentication"
@@ -56,6 +71,7 @@
   (log/test-logs)
 
   (log/info "Application starting.")
+  (log/debug "Version" version)
   (datetime/set-timezone! "America/Los_Angeles")
   (cssi/upsert-css "componentcss" {:component root/Root})
   ;(inspect/app-started! SPA)

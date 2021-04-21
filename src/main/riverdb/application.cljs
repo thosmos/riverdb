@@ -121,8 +121,8 @@
                                         (or
                                           (app/default-remote-error? result)
                                           (contains-error? body)))
-                :optimized-render!    kf2/render!
-                ;:optimized-render!    mroot/render!
+                ;:optimized-render!    kf2/render!
+                :optimized-render!    mroot/render!
                 ;:global-eql-transform global-eql-transform-old
                 :global-eql-transform (global-eql-transform (elision-predicate default-network-blacklist))}))
                 ;:client-did-mount     (fn [app]

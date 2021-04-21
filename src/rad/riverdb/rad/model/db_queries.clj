@@ -2,7 +2,8 @@
   (:require
     [com.fulcrologic.rad.database-adapters.datomic :as datomic]
     [datomic.api :as d]
-    [theta.log :as log]))
+    [theta.log :as log]
+    [riverdb.api.resolvers :refer [add-conditions]]))
 
 ;(defn get-all-roles
 ;  [env query-params]
@@ -50,15 +51,46 @@
   [env query-params]
   (if-let [db (some-> (get-in env [::datomic/databases :production]) deref)]
     (let [person (:worktime/person query-params)
-          ids    (if person
-                   (d/q '[:find [?e ...]
+          agency (:worktime/agency query-params)
+          ids    (cond
+                   person
+                   (d/q '[:find [?u ...]
                           :in $ ?person
                           :where
-                          [?e :worktime/person ?person]] db person)
-                   (d/q '[:find [?e ...]
+                          [?e :worktime/person ?person]
+                          [?e :worktime/uuid ?u]] db person)
+                   agency
+                   (d/q '[:find [?u ...]
+                          :in $ ?agency
                           :where
-                          [?e :riverdb.entity/ns :entity.ns/worktime]] db))]
-      (mapv (fn [id] {:org.riverdb.db.worktime/gid id}) ids))
+                          [?e :worktime/agency ?agency]
+                          [?e :worktime/uuid ?u]] db agency)
+                   :else
+                   (d/q '[:find [?u ...]
+                          :where
+                          [_ :worktime/uuid ?u]] db))]
+      (mapv (fn [id] {:worktime/uuid id}) ids))
+    (log/error "No database atom for production schema!")))
+
+(defn get-all-worktime-tasks
+  [env query-params]
+  (if-let [db (some-> (get-in env [::datomic/databases :production]) deref)]
+    (let [{:keys [only search-string]} query-params
+          values (if (or only search-string)
+                   (let [find-v '[:find [?t ...] :where]
+                         find-v (add-conditions find-v '?t {:contains (or only search-string)})
+                         find-v (conj find-v '[_ :worktime/task ?t])]
+                     ;(log/debug "get-all-worktime-tasks" find-v)
+                     (d/q find-v db))
+                   (d/q '[:find [?t ...]
+                          :where
+                          [_ :worktime/task ?t]] db))
+          results (mapv
+                    (fn [t]
+                      {:text t :value t})
+                    values)]
+      ;(log/debug "ALL TASKS" results)
+      results)
     (log/error "No database atom for production schema!")))
 
 (defn get-all-users

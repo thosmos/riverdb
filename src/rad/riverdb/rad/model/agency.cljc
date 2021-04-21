@@ -5,7 +5,7 @@
     [com.fulcrologic.rad.authorization :as auth]))
 
 (defattr uid :agencylookup/uuid :uuid
-  {ao/identity?     true
+  {ao/identity? true
    ao/schema        :production})
 
 (defattr AgencyDescr :agencylookup/AgencyDescr :string

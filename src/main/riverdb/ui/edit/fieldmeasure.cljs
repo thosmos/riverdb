@@ -3,6 +3,7 @@
     [clojure.string :as str]
     [clojure.edn :as edn]
     [clojure.data]
+    [com.cognitect.transit.types :as ty]
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
@@ -261,8 +262,8 @@
                             (> rnge precRange)
                             (< mean precThreshold))
                           (> rnge precRange)))
-        low           (when Low (.-rep Low))
-        high          (when High (.-rep High))
+        low           (when Low (.-rep ^ty.TaggedValue Low))
+        high          (when High (.-rep ^ty.TaggedValue High))
 
         qualExc       (or
                         (and high (> mean high))

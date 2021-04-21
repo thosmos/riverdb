@@ -1470,6 +1470,11 @@
           :cardinality :one,
           :type :instant,
           :doc "Date of work (optional)"}
+   #:attr{:name "Agency",
+          :key :worktime/agency,
+          :cardinality :one,
+          :type :ref,
+          :doc "Agency (required)"}
    #:attr{:name "uuid",
           :key :worktime/uuid,
           :identity true,
