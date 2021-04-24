@@ -3,6 +3,8 @@
     [com.fulcrologic.fulcro.components :as comp]
     [com.fulcrologic.fulcro.server.api-middleware :as fmw]
     [com.fulcrologic.guardrails.core :refer [>defn => | ?]]
+    [com.fulcrologic.rad.type-support.date-time :as datetime]
+    [cljc.java-time.zone-id]
     [com.rpl.specter :as sp]
     [com.wsscode.pathom.connect :as pc :refer [defresolver defmutation]]
     [com.wsscode.pathom.core :as p]
@@ -445,9 +447,10 @@
   {::pc/output [:tac-report-data]}
   (let [params (-> env :ast :params)]
     (log/info "QUERY :tac-report-data" params)
-    {:tac-report-data (if (:csv params)
-                        (tac/get-annual-report-csv (:csv params))
-                        (tac/get-annual-report (db) (:agency params) (:project params) (:year params)))}))
+    {:tac-report-data (binding [datetime/*current-timezone* (cljc.java-time.zone-id/of "America/Los_Angeles")]
+                               (if (:csv params)
+                                 (tac/get-annual-report-csv (:csv params))
+                                 (tac/get-qc-report (db) (:agency params) (:project params) (:year params))))}))
 
 (def agency-query [:db/id :agencylookup/uuid :agencylookup/AgencyCode :agencylookup/AgencyDescr])
 

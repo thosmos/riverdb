@@ -8,9 +8,14 @@
     [datomic.api :as d]
     [java-time :as jt]
     [riverdb.util :as util]
+    [riverdb.db :as rdb :refer [rpull]]
     [taoensso.timbre :as log :refer [debug info]]
     [thosmos.util :as tu]
-    [clojure.pprint :as pprint])
+    [clojure.pprint :refer [pprint]]
+    [com.fulcrologic.fulcro.components :as comp]
+    [com.fulcrologic.rad.type-support.decimal :as math]
+    [com.fulcrologic.rad.type-support.date-time :as datetime]
+    [cljc.java-time.zone-id])
   (:import (java.io Writer)
            (java.time ZonedDateTime)
            [java.math RoundingMode]
@@ -124,6 +129,7 @@
 
 (def default-query2
   [:db/id
+   :org.riverdb/import-key
    [:sitevisit/SiteVisitID :as :svid]
    [:sitevisit/SiteVisitDate :as :date]
    [:sitevisit/Time :as :time]
@@ -137,11 +143,14 @@
    {[:sitevisit/StationFailCode :as :failcode]
     [[:stationfaillookup/FailureReason :as :reason]]}
    {[:sitevisit/Samples :as :samples]
-    [{[:sample/SampleTypeCode :as :type]
+    [:db/id
+     :org.riverdb/import-key
+     {[:sample/SampleTypeCode :as :type]
       [[:sampletypelookup/SampleTypeCode :as :code]
        [:db/ident :as :ident]]}
      {[:sample/Constituent :as :constituent]
-      [{[:constituentlookup/AnalyteCode :as :analyte]
+      [[:constituentlookup/ConstituentCode :as :code]
+       {[:constituentlookup/AnalyteCode :as :analyte]
         [[:analytelookup/AnalyteName :as :name]
          [:analytelookup/AnalyteShort :as :short]]}
        {[:constituentlookup/MatrixCode :as :matrix]
@@ -152,9 +161,11 @@
      {[:sample/DeviceID :as :device]
       [[:samplingdevice/CommonID :as :id]
        {[:samplingdevice/DeviceType :as :type]
-        [[:samplingdevicelookup/SampleDevice :as :name]]}]}
-     {[:sample/DeviceType :as :type]
-      [[:samplingdevicelookup/SampleDevice :as :name]]}
+        [[:samplingdevicelookup/SampleDevice :as :name]
+         [:samplingdevicelookup/Scale :as :scale]]}]}
+     {[:sample/DeviceType :as :deviceType]
+      [[:samplingdevicelookup/SampleDevice :as :name]
+       [:samplingdevicelookup/Scale :as :scale]]}
      {[:sample/FieldResults :as :results]
       [[:fieldresult/Result :as :result]
        [:fieldresult/FieldReplicate :as :replicate]
@@ -516,12 +527,12 @@
 (defn reduce-samples-to-map
   "reduce a set of samples into a map of parameter maps indexed by parameter name"
   [samples]
-  (reduce (fn [init {:keys [constituent results device type]}]
+  (reduce (fn [init {:keys [constituent results device deviceType type]}]
             (let [c         constituent
                   analyte   (or (get-in c [:analyte :short]) (get-in c [:analyte :name]))
                   matrix    (or (get-in c [:matrix :short]) (get-in c [:matrix :name]))
                   unit      (get-in c [:unit :name])
-                  device    (when device (str (get-in device [:type :name]) " - " (:id device)))
+                  device    (when deviceType (str (get-in deviceType [:name]) " - " (:id device)))
                   type      (let [t (:code type)]
                               (if (= "Grab" t)
                                 "Lab"
@@ -568,6 +579,8 @@
                                    :analyte analyte}
                                   device
                                   (assoc :device device)
+                                  deviceType
+                                  (assoc :deviceType deviceType)
                                   qual
                                   (assoc :qual qual))))]
 
@@ -626,6 +639,29 @@
    :H2O_NO3      {:order 6 :count 3 :name "NO3" :optional true}
    :H2O_PO4      {:order 7 :count 3 :name "PO4" :optional true}
    :H2O_Velocity {:elide? true}})
+
+(def param->const
+  {"SSI"   {:H2O_pH        [:constituentlookup/ConstituentCode "5-42-78-0-0"]
+            :H2O_Temp      [:constituentlookup/ConstituentCode "5-42-100-0-31"]
+            :H2O_Turb      [:constituentlookup/ConstituentCode "5-42-108-0-9"]
+            :H2O_Cond      [:constituentlookup/ConstituentCode "5-42-24-0-25"]
+            :H2O_DO        [:constituentlookup/ConstituentCode "5-42-38-0-6"]
+            :H2O_PO4       [:constituentlookup/ConstituentCode "5-22-399-2-6"]
+            :H2O_NO3       [:constituentlookup/ConstituentCode "5-20-69-0-6"]
+            :Air_Temp      [:constituentlookup/ConstituentCode "10-42-100-0-31"]
+            :TotalColiform [:constituentlookup/ConstituentCode "5-56-23-20-7"] ;; "5-56-23-20-7" "5-57-23-2-7"
+            :EColi         [:constituentlookup/ConstituentCode "5-57-464-0-7"]}
+   "WCCA"  {:Air_Temp   [:constituentlookup/ConstituentCode "10-42-100-0-31"]
+            :Cond       [:constituentlookup/ConstituentCode "5-42-24-0-25"]
+            :DO_mgL     [:constituentlookup/ConstituentCode "5-42-38-0-6"]
+            :DO_Percent [:constituentlookup/ConstituentCode "5-42-38-0-13"]
+            :H2O_Temp   [:constituentlookup/ConstituentCode "5-42-100-0-31"]
+            :H2O_TempDO [:constituentlookup/ConstituentCode "5-42-100-0-31"]
+            :pH         [:constituentlookup/ConstituentCode "5-42-78-0-0"]
+            :Turb       [:constituentlookup/ConstituentCode "5-42-108-0-9"]}
+   "SYRCL" {:TotalColiform [:constituentlookup/ConstituentCode "5-56-23-20-7"]
+            :EColi         [:constituentlookup/ConstituentCode "5-57-464-0-7"]
+            :Enterococcus  [:constituentlookup/ConstituentCode "5-9000-9002-0-7"]}})
 
 ;(def param-config-ssi
 ;  {:Air_Temp {:order 0
@@ -754,9 +790,9 @@
   "calculate summaries for each parameter map entry"
   [fieldresult]
   (into {}
-    (for [[k {:keys [type vals] :as v}] fieldresult]
+    (for [[k {:keys [type vals unit matrix analyte qual deviceType device] :as v}] fieldresult]
       (do
-        ;(println "CALC " fieldresult)
+        (debug "CALC " v)
         (try
           (let [
                 ;; calculate sample quantity exceedance
@@ -795,11 +831,17 @@
 
               :else
               (let [
+
                     ;; calculate
                     mx           (apply max vals)
                     mn           (apply min vals)
+                    bigvals      (map bigdec vals)
+                    bigmax       (apply max bigvals)
+                    bigmin       (apply min bigvals)
+
                     ;; FIXME clamp range to 4 decimals to eliminate float stragglers - use sig figs?
                     range        (round2 4 (- mx mn))
+                    bigrange     (- bigmax bigmin)
                     stddev       (if (> range 0.0) (std-dev vals) 0.0)
                     mean         (if (> val-count 1)
                                    (mean vals)
@@ -932,11 +974,49 @@
             ;; count valid params
 
             sv   (calc-sitevisit-stats sv)]
-        ;_    (debug "SV" (pprint/pprint sv))]
+        ;_    (debug "SV" (pprint sv))]
 
 
         sv)
       (catch Exception ex (debug "Error in create-param-summaries" ex)))))
+
+(defn create-sitevisit-summaries4
+  "create summary info per sitevisit"
+  [{:keys [sitevisits agency project] :as opts}]
+  (debug "CREATE SV SUMMARIES" (keys opts))
+  (vec (for [sv sitevisits]
+         (try
+           (let [
+                 dt (str (datetime/inst->local-date (:date sv)))
+                 _    (debug "processing SV " (get-in sv [:station :station_id]) dt)
+
+                 ;; remap nested values to root
+                 sv   (-> sv
+                        (assoc :trib (get-in sv [:station :trib]))
+                        (assoc :fork (get-in sv [:station :river_fork]))
+                        (assoc :failcode (get-in sv [:failcode :reason]))
+                        (assoc :site (get-in sv [:station :station_id])))
+
+                 ;; pull out samples list
+                 sas  (get-in sv [:samples])
+
+                 ;_    (debug "reduce Samples to param sums")
+                 sums (reduce-samples-to-map sas)
+                 ;_    (debug "calc param sums")
+                 sums (calc-param-summaries sums)
+                 ;; remove the list of samples and add the new param map
+                 sv   (-> sv
+                        ;(dissoc :samples)
+                        (assoc :fieldresults sums))
+                 ;_   (debug "count valid params")
+                 ;; count valid params
+
+                 sv   (calc-sitevisit-stats sv)]
+             ;_    (debug "SV" (pprint sv))]
+
+
+             sv)
+           (catch Exception ex (debug "Error in create-param-summaries" ex))))))
 
 
 (defn read-csv [filename]
@@ -1194,32 +1274,68 @@
          [?e :projectslookup/Name ?pjnm]]
     db projCode))
 
-(defn get-annual-report [db agency project year]
+;(defn get-annual-report [db agency-code project-id year]
+;  ;{:pre [true (check ::report-year year)]}
+;  (let [year       (if (= year "") nil (Long/parseLong year))
+;        _          (check ::report-year year)
+;        ;agency     (or agency "SYRCL")
+;        done?      false
+;        _          (log/info "BEGINNING QC REPORT" agency-code project-id year)
+;        ;start-time (jt/zoned-date-time year)
+;        ;end-time   (jt/plus start-time (jt/years 1))
+;        agency     (rpull [:agencylookup/AgencyCode agency-code])
+;        project    (rpull [:projectslookup/ProjectID project-id])
+;        sitevisits (if year
+;                     (get-sitevisits db {:agency agency-code :project project-id :year year})
+;                     (get-sitevisits db {:agency agency-code}))
+;        _          (debug "svs" (first sitevisits))
+;        ;sitevisits (filter-sitevisits sitevisits)
+;        sitevisits (create-sitevisit-summaries4 {:sitevisit sitevisits :agency agency :project project})
+;        _          (debug "report reducer")
+;        ;param-keys (reduce #(apply conj %1 (map first (get-in %2 [:fieldresults]))) #{} sitevisits)
+;        report     (report-reducer db sitevisits)
+;        report     (-> report
+;                     (assoc :agency agency-code)
+;                     (assoc :report-year year)
+;                     (assoc :qapp-requirements qapp-requirements)
+;                     (assoc :param-config (if (= agency-code "SSI")
+;                                            param-config-ssi
+;                                            param-config))
+;                     (assoc :project (get-project-name db project-id)))
+;        ;_          (println "REPORT: "
+;        ;             (select-keys report
+;        ;               [:count-sitevisits :count-params-valid :count-params-exceedance]))
+;        report     (report-stats report)
+;        _          (log/info "QC REPORT COMPLETE")]
+;    report))
+
+(defn get-qc-report [db agency-code project-id year]
   ;{:pre [true (check ::report-year year)]}
   (let [year       (if (= year "") nil (Long/parseLong year))
         _          (check ::report-year year)
-        ;agency     (or agency "SYRCL")
         done?      false
-        _          (log/info "BEGINNING TAC REPORT" agency project year)
+        _          (log/info "BEGINNING QC REPORT" agency-code project-id year)
         ;start-time (jt/zoned-date-time year)
         ;end-time   (jt/plus start-time (jt/years 1))
+        agency     (rpull [:agencylookup/AgencyCode agency-code])
+        project    (rpull [:projectslookup/ProjectID project-id])
         sitevisits (if year
-                     (get-sitevisits db {:agency agency :project project :year year})
-                     (get-sitevisits db {:agency agency}))
-        _          (debug "svs" (first sitevisits))
+                     (get-sitevisits db {:agency agency-code :project project-id :year year})
+                     (get-sitevisits db {:agency agency-code}))
+        _          (debug "first SV" (pprint (first sitevisits)))
         ;sitevisits (filter-sitevisits sitevisits)
-        sitevisits (create-sitevisit-summaries3 sitevisits)
+        sitevisits (create-sitevisit-summaries4 {:sitevisits sitevisits :agency agency :project project})
         _          (println "report reducer")
         ;param-keys (reduce #(apply conj %1 (map first (get-in %2 [:fieldresults]))) #{} sitevisits)
         report     (report-reducer db sitevisits)
         report     (-> report
-                     (assoc :agency agency)
+                     (assoc :agency agency-code)
                      (assoc :report-year year)
                      (assoc :qapp-requirements qapp-requirements)
-                     (assoc :param-config (if (= agency "SSI")
+                     (assoc :param-config (if (= agency-code "SSI")
                                             param-config-ssi
                                             param-config))
-                     (assoc :project (get-project-name db project)))
+                     (assoc :project (get-project-name db project-id)))
         ;_          (println "REPORT: "
         ;             (select-keys report
         ;               [:count-sitevisits :count-params-valid :count-params-exceedance]))

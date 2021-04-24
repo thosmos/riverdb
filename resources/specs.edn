@@ -573,11 +573,17 @@
           :position 8,
           :cardinality :one,
           :type :bigdec}
+   #:attr{:name "Resolution",
+          :key :samplingdevicelookup/Resolution,
+          :cardinality :one,
+          :type :bigdec
+          :doc "resolution, exs: 10, 0.1, 0.05"}
    #:attr{:name "SampleDevice",
           :key :samplingdevicelookup/SampleDevice,
           :position 2,
           :cardinality :one,
           :type :string,
+          :identity true,
           :strlen 50}
    #:attr{:name "SampleDeviceDescr",
           :key :samplingdevicelookup/SampleDeviceDescr,
@@ -598,6 +604,11 @@
           :cardinality :one,
           :type :string,
           :strlen 50}
+   #:attr{:name "Scale",
+          :key :samplingdevicelookup/Scale,
+          :cardinality :one,
+          :type :long
+          :doc "decimal scale of measurement results, ex: 0.1 == 1, 0.01 == 2"}
    #:attr{:name "SerialNumber",
           :key :samplingdevicelookup/SerialNumber,
           :position 3,

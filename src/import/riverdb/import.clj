@@ -14,7 +14,7 @@
     ;[domain-spec.core :as ds]
             [java-time :as jt]
     ;[riverdb.api.geo :as geo]
-            [riverdb.db :as rdb]
+            [riverdb.db :as rdb :refer [rpull pull-entities]]
             [riverdb.state :as state :refer [db cx]]
             [theta.util :refer [parse-bool parse-long parse-double parse-date parse-bigdec]]
             [thosmos.util :as tu])
@@ -186,13 +186,13 @@
             :TotalColiform {:order 7 :count 1 :type :lab :name "TotalColiform"}
             :EColi         {:order 7 :count 1 :type :lab :name "EColi"}}
    "WCCA"  {:Air_Temp   {:order 0 :count 1 :name "AirTemp_C"}
-            :Cond       {:order 2 :count 3 :name "Cond_uS"}
-            :DO_mgL     {:order 3 :count 3 :name "DOxy_mgL"}
-            :DO_Percent {:order 3 :count 3 :name "DOxy_Percent"}
-            :H2O_Temp   {:order 1 :count 3 :name "H2OTemp_C"}
-            :H2O_TempDO {:order 1 :count 3 :name "H2OTempDO_C"}
-            :pH         {:order 4 :count 3 :name "pH"}
-            :Turb       {:order 5 :count 3 :name "Turb_NTUs"}}
+            :Cond       {:order 2 :count 3 :name "Cond_uS" :device "Cond_EquipID"}
+            :DO_mgL     {:order 3 :count 3 :name "DOxy_mgL" :device "DOxy_EquipID"}
+            :DO_Percent {:order 3 :count 3 :name "DOxy_Percent" :device "DOxy_EquipID"}
+            :H2O_Temp   {:order 1 :count 3 :name "H2OTemp_C" :device "H2OTemp_EquipID"}
+            :H2O_TempDO {:order 1 :count 3 :name "H2OTempDO_C" :device "DOxy_EquipID"}
+            :pH         {:order 4 :count 3 :name "pH" :device "pH_EquipID"}
+            :Turb       {:order 5 :count 3 :name "Turb_NTUs" :device "Turb_EquipID"}}
    "SYRCL" {:TotalColiform {:count 1 :type :lab :name "TotalColiform"}
             :EColi         {:count 1 :type :lab :name "EColi"}
             :Enterococcus  {:count 1 :type :lab :name "Enterococcus"}}})
@@ -402,26 +402,33 @@
                                  (let [sample-count (get-in param-config [k :count])
                                        param-name   (get-in param-config [k :name])
                                        param-type   (get-in param-config [k :type] :field) ;; :field, :lab, :obs, :cont
+                                       device-col   (get-in param-config [k :device])
                                        result       (cond
                                                       (= param-type :field)
-                                                      (let [fld-vals (vec
-                                                                       (remove nil?
-                                                                         (for [i (range 1 (+ sample-count 1))]
-                                                                           (let [csv-field (if (> sample-count 1)
-                                                                                             (str param-name "_" i)
-                                                                                             param-name)
-                                                                                 csv-idx   (get hidx csv-field)]
-                                                                             (when csv-idx
-                                                                               (let [field-val (get row csv-idx)
-                                                                                     bd-val    (when (and field-val (not= field-val ""))
-                                                                                                 (try
-                                                                                                   (bigdec field-val)
-                                                                                                   (catch Exception _ field-val)))]
-                                                                                 ;(debug "BD VAL" (type bd-val) bd-val)
-                                                                                 bd-val))))))]
+                                                      (let [fld-vals   (vec
+                                                                         (remove nil?
+                                                                           (for [i (range 1 (+ sample-count 1))]
+                                                                             (let [csv-field (if (> sample-count 1)
+                                                                                               (str param-name "_" i)
+                                                                                               param-name)
+                                                                                   csv-idx   (get hidx csv-field)]
+                                                                               (when csv-idx
+                                                                                 (let [field-val (get row csv-idx)
+                                                                                       bd-val    (when (and field-val (not= field-val ""))
+                                                                                                   (try
+                                                                                                     (bigdec field-val)
+                                                                                                     (catch Exception _ field-val)))]
+                                                                                   ;(debug "BD VAL" (type bd-val) bd-val)
+                                                                                   bd-val))))))
+                                                            device-val (let [csv-idx (get hidx device-col)]
+                                                                         (when csv-idx
+                                                                           (let [dev-val (get row csv-idx)]
+                                                                             (when (not= dev-val "")
+                                                                               dev-val))))]
                                                         (when (seq fld-vals)
                                                           {:vals fld-vals
-                                                           :type param-type}))
+                                                           :type param-type
+                                                           :device device-val}))
 
                                                       (= param-type :lab)
                                                       (let [csv-idx    (get hidx param-name)
@@ -556,16 +563,17 @@
 
 
 (defn import-field-results [constituent devType import-token vals]
-  (debug "import-field-results" vals)
+  ;(debug "import-field-results" vals)
   (vec
     (for [i (range (count vals))]
       (let [import-key (str import-token "-" (inc i))]
-        (debug import-key (double (get vals i)))
+        ;(debug import-key (double (get vals i)))
         {:org.riverdb/import-key         import-key
+         :fieldresult/uuid               (d/squuid)
          :fieldresult/Result             (double (get vals i))
-         :fieldresult/FieldReplicate     (inc i)
-         :fieldresult/ConstituentRowID   constituent
-         :fieldresult/SamplingDeviceCode devType}))))
+         :fieldresult/FieldReplicate     (inc i)}))))
+         ;:fieldresult/ConstituentRowID   constituent}))))
+         ;:fieldresult/SamplingDeviceCode devType}))))
 
 ;(defn import-field-results [const-table devType-table import-token-sv results]
 ;  (vec
@@ -578,6 +586,7 @@
 
 (defn import-lab-result [constituent import-token-sa {:keys [value over under dry]}]
   (let [res {:org.riverdb/import-key     (str import-token-sa "-1")
+             :labresult/uuid               (d/squuid)
              :labresult/LabReplicate     1
              :labresult/ConstituentRowID constituent}
         res (cond-> res
@@ -604,11 +613,26 @@
 ;          (import-lab-result constituent import-key result))))))
 
 (defn get-device-id [agency devID devType]
-  (error "get-device-id" "NOT IMPLEMENTED"))
+  ;(debug "get-device-id" agency devID devType)
+  (let [eid (d/q '[:find e? .
+                   :where
+                   [?e :samplingdevice/CommonID devID]
+                   [?e :samplingdevice/DeviceType devType]]
+              (db))]
+    (when-not eid
+      (let [entity {:samplingdevice/CommonID devID
+                    :samplingdevice/DeviceType devType
+                    :samplingdevice/Active true
+                    :samplingdevice/uuid (d/squuid)
+                    :riverdb.entity/ns :entity.ns/samplingdevice}]
+        (try
+          (let [tx @(d/transact (cx) [entity])]
+            (-> (:tempids tx) first second))
+          (catch Exception _))))))
 
 (defn import-samples [agency const-table devtype-table import-token-sv results]
   (vec
-    (for [[k {:keys [type devID] :as result}] results]
+    (for [[k {:keys [type device] :as result}] results]
       (let [event-type    (cond
                             (= type :obs)
                             "FieldDescription"
@@ -623,20 +647,23 @@
                             "FieldMeasure")
             constituent   (get const-table k)
             import-key-sa (str import-token-sv "-" (name type) "-" (name k))
+            devType       (get devtype-table k)
             sa-result     {:org.riverdb/import-key import-key-sa
+                           :sample/uuid            (d/squuid)
                            :sample/EventType       [:eventtypelookup/EventType event-type]
                            :sample/SampleTypeCode  [:sampletypelookup/SampleTypeCode sample-type]
                            :sample/QCCheck         true
                            :sample/Constituent     constituent
                            :sample/SampleReplicate 0}]
+
         (cond-> sa-result
           (= type :field)
           (->
-            (assoc :sample/FieldResults (import-field-results constituent (get devtype-table k) import-key-sa (:vals result)))
-            (assoc :sample/DeviceType (get devtype-table k))
+            (assoc :sample/FieldResults (import-field-results constituent devType import-key-sa (:vals result)))
+            (assoc :sample/DeviceType devType)
             (cond->
-              devID
-              (assoc :sample/DeviceID (get-device-id agency devID (get devtype-table k)))))
+              device
+              (assoc :sample/DeviceID (get-device-id agency device devType))))
           (= type :lab)
           (assoc :sample/LabResults [(import-lab-result constituent import-key-sa result)]))))))
 
@@ -673,14 +700,15 @@
                 Notes           (if Notes
                                   (str Notes " \n " import-str)
                                   import-str)
-                sv              {:sitevisit/ProjectID         [:projectslookup/ProjectID project]
+                sv              {:org.riverdb/import-key      import-token-sv
+                                 :sitevisit/uuid              (d/squuid)
+                                 :sitevisit/ProjectID         [:projectslookup/ProjectID project]
                                  :sitevisit/AgencyCode        [:agencylookup/AgencyCode agency]
                                  :sitevisit/StationID         site-id
                                  :sitevisit/QACheck           true
                                  :sitevisit/CreationTimestamp (Date.)
                                  :sitevisit/StationFailCode   [:stationfaillookup/StationFailCode 0]
-                                 :sitevisit/VisitType         [:sitevisittype/id 1]
-                                 :org.riverdb/import-key      import-token-sv}
+                                 :sitevisit/VisitType         [:sitevisittype/id 1]}
                 sv              (cond-> sv
                                   time
                                   (assoc :sitevisit/Time time)
@@ -737,6 +765,7 @@
   (first (import-csv-txds (db) "SSI" "SSI_BR" "import-resources/SSI_BR-2019.csv"))
   (first (import-csv-txds (db) "WCCA" "WCCA_1" "import-resources/WCCA-2019.csv"))
   (first (import-csv-txds (db) "SYRCL" "SYRCL_1" "import-resources/SYRCL_Bacteria.csv"))
+  (first (import-csv-txds (db) "WCCA" "WCCA_1" "import-resources/WCCA_2019_Corrected.csv"))
   ;; server:
   (first (import-csv-txds (db) "WCCA" "WCCA_1" "resources/WCCA-2019.csv")))
 
