@@ -177,10 +177,10 @@
   ":type is one of :field, :lab, :obs, :cont"
   {"SSI"   {:Air_Temp      {:order 0 :count 1 :name "Air"}
             :H2O_Temp      {:order 1 :count 6 :name "H2Otemp"}
-            :H2O_Cond      {:order 2 :count 3 :name "Cond"}
-            :H2O_DO        {:order 3 :count 3 :name "O2"}
-            :H2O_pH        {:order 4 :count 3 :name "pH"}
-            :H2O_Turb      {:order 5 :count 3 :name "Tur"}
+            :H2O_Cond      {:order 2 :count 3 :name "Cond" :device "Cond_."}
+            :H2O_DO        {:order 3 :count 3 :name "O2" :device "O2_."}
+            :H2O_pH        {:order 4 :count 3 :name "pH" :device "pH_."}
+            :H2O_Turb      {:order 5 :count 3 :name "Tur" :device "Tur_."}
             :H2O_PO4       {:order 6 :count 3 :name "PO4"}
             :H2O_NO3       {:order 6 :count 3 :name "NO3"}
             :TotalColiform {:order 7 :count 1 :type :lab :name "TotalColiform"}
@@ -381,6 +381,7 @@
 
 
 (defn read-csv [filename col-config param-config]
+  (debug "READ CSV" filename)
   (with-open
     [^java.io.Reader r (clojure.java.io/reader filename)]
     (let [csv    (parse-csv r)
@@ -426,9 +427,11 @@
                                                                              (when (not= dev-val "")
                                                                                dev-val))))]
                                                         (when (seq fld-vals)
-                                                          {:vals fld-vals
-                                                           :type param-type
-                                                           :device device-val}))
+                                                          {:param-name param-name
+                                                           :sample-count sample-count
+                                                           :vals       fld-vals
+                                                           :type       param-type
+                                                           :device     device-val}))
 
                                                       (= param-type :lab)
                                                       (let [csv-idx    (get hidx param-name)
@@ -445,16 +448,20 @@
                                                                          (try
                                                                            (bigdec lab-val)
                                                                            (catch Exception _ lab-val)))
+                                                            lab-result {:param-name param-name
+                                                                        :type       param-type}
                                                             lab-result (if lab-val
-                                                                         (cond-> {:value lab-val}
+                                                                         (cond-> lab-result
+                                                                           true
+                                                                           {:value lab-val}
                                                                            over?
                                                                            (assoc :over true)
                                                                            under?
                                                                            (assoc :under true))
-                                                                         (cond
+                                                                         (cond-> lab-result
                                                                            dry?
                                                                            {:dry true}))]
-                                                        (assoc lab-result :type param-type)))]
+                                                        lab-result))]
                                    (when result
                                      [k result]))))
                          sv  (assoc sv :results frs)]
@@ -568,12 +575,12 @@
     (for [i (range (count vals))]
       (let [import-key (str import-token "-" (inc i))]
         ;(debug import-key (double (get vals i)))
-        {:org.riverdb/import-key         import-key
-         :fieldresult/uuid               (d/squuid)
-         :fieldresult/Result             (double (get vals i))
-         :fieldresult/FieldReplicate     (inc i)}))))
-         ;:fieldresult/ConstituentRowID   constituent}))))
-         ;:fieldresult/SamplingDeviceCode devType}))))
+        {:org.riverdb/import-key     import-key
+         :fieldresult/uuid           (d/squuid)
+         :fieldresult/Result         (double (get vals i))
+         :fieldresult/FieldReplicate (inc i)}))))
+;:fieldresult/ConstituentRowID   constituent}))))
+;:fieldresult/SamplingDeviceCode devType}))))
 
 ;(defn import-field-results [const-table devType-table import-token-sv results]
 ;  (vec
@@ -586,7 +593,7 @@
 
 (defn import-lab-result [constituent import-token-sa {:keys [value over under dry]}]
   (let [res {:org.riverdb/import-key     (str import-token-sa "-1")
-             :labresult/uuid               (d/squuid)
+             :labresult/uuid             (d/squuid)
              :labresult/LabReplicate     1
              :labresult/ConstituentRowID constituent}
         res (cond-> res
@@ -612,27 +619,84 @@
 ;              import-key  (str import-token-sv "-lab-" (name k))]
 ;          (import-lab-result constituent import-key result))))))
 
-(defn get-device-id [agency devID devType]
-  ;(debug "get-device-id" agency devID devType)
-  (let [eid (d/q '[:find e? .
+(defn get-or-create-device-id [agency devType devID]
+  ;(debug "get-device-id" agency devType devID)
+  (let [eid (d/q '[:find ?e .
+                   :in $ ?devID ?devType ?agency
                    :where
-                   [?e :samplingdevice/CommonID devID]
-                   [?e :samplingdevice/DeviceType devType]]
-              (db))]
-    (when-not eid
-      (let [entity {:samplingdevice/CommonID devID
+                   [?e :samplingdevice/CommonID ?devID]
+                   [?e :samplingdevice/DeviceType ?devType]
+                   [?e :samplingdevice/Agency ?ag]
+                   [?ag :agencylookup/AgencyCode ?agency]]
+              (db) devID devType agency)]
+    (if eid
+      eid
+      (let [entity {:samplingdevice/CommonID   devID
                     :samplingdevice/DeviceType devType
-                    :samplingdevice/Active true
-                    :samplingdevice/uuid (d/squuid)
-                    :riverdb.entity/ns :entity.ns/samplingdevice}]
+                    :samplingdevice/Active     true
+                    :samplingdevice/uuid       (d/squuid)
+                    :samplingdevice/Agency     [:agencylookup/AgencyCode agency]
+                    :riverdb.entity/ns         :entity.ns/samplingdevice}]
         (try
-          (let [tx @(d/transact (cx) [entity])]
+          (let [_  (debug "Create device" agency devType devID)
+                tx @(d/transact (cx) [entity])]
             (-> (:tempids tx) first second))
-          (catch Exception _))))))
+          (catch Exception ex (error ex "CREATE DEVICE FAILED")))))))
 
-(defn import-samples [agency const-table devtype-table import-token-sv results]
+(defn get-or-create-parameter [{:keys [param-name sample-count project constituent devType sampleType]}]
+  (let [eid? (if devType
+               (d/q '[:find ?e .
+                      :in $ ?project ?const ?devType
+                      :where
+                      [?pj :projectslookup/ProjectID ?project]
+                      [?pj :projectslookup/Parameters ?e]
+                      [?e :parameter/Constituent ?const]
+                      [?e :parameter/DeviceType ?devType]]
+                 (db) project constituent devType)
+               (d/q '[:find ?e .
+                      :in $ ?project ?const
+                      :where
+                      [?pj :projectslookup/ProjectID ?project]
+                      [?pj :projectslookup/Parameters ?e]
+                      [?e :parameter/Constituent ?const]]
+                 (db) project constituent))
+        eid  (if eid?
+               (do
+                 ;(debug "FOUND PARAMETER" eid?)
+                 eid?)
+               (try
+                 (let [entity (cond-> {:db/id "param"
+                                       :riverdb.entity/ns :entity.ns/parameter
+                                       :parameter/uuid (d/squuid)
+                                       :parameter/Active true
+                                       :parameter/Constituent constituent
+                                       :parameter/Name        param-name
+                                       :parameter/NameShort   (clojure.string/replace param-name #" " "")
+                                       :parameter/SampleType  [:sampletypelookup/SampleTypeCode sampleType]}
+                                devType
+                                (assoc :parameter/DeviceType devType)
+                                sample-count
+                                (assoc :parameter/Replicates sample-count))
+                       proj-tx {:projectslookup/ProjectID project
+                                :projectslookup/Parameters [{:db/id "param"}]}
+                       ;_ (debug "CREATE PARAMETER TX" param-name [entity proj-tx])
+                       ;eid [:parameter/uuid (:parameter/uuid entity)]
+
+                       tx @(d/transact (cx) [entity proj-tx])
+                       eid (get (:tempids tx) "param")]
+
+                   (debug "CREATE PARAMETER" param-name eid entity)
+                   eid)
+
+                 (catch Exception ex (error ex "CREATE PARAMETER FAILED"))))]
+    eid))
+
+
+
+
+(defn import-samples [{:keys [agency project const-table devtype-table import-token-sv results]}]
   (vec
-    (for [[k {:keys [type device] :as result}] results]
+    (for [[k {:keys [param-name sample-count type device] :as result}] results]
       (let [event-type    (cond
                             (= type :obs)
                             "FieldDescription"
@@ -654,7 +718,14 @@
                            :sample/SampleTypeCode  [:sampletypelookup/SampleTypeCode sample-type]
                            :sample/QCCheck         true
                            :sample/Constituent     constituent
-                           :sample/SampleReplicate 0}]
+                           :sample/SampleReplicate 0}
+            parameter     (get-or-create-parameter {:param-name param-name
+                                                    :sample-count         sample-count
+                                                    :project              project
+                                                    :constituent          constituent
+                                                    :devType              devType
+                                                    :sampleType           sample-type})
+            device-id     (when device (get-or-create-device-id agency devType device))]
 
         (cond-> sa-result
           (= type :field)
@@ -662,8 +733,10 @@
             (assoc :sample/FieldResults (import-field-results constituent devType import-key-sa (:vals result)))
             (assoc :sample/DeviceType devType)
             (cond->
-              device
-              (assoc :sample/DeviceID (get-device-id agency device devType))))
+              device-id
+              (assoc :sample/DeviceID device-id)
+              parameter
+              (assoc :sample/Parameter parameter)))
           (= type :lab)
           (assoc :sample/LabResults [(import-lab-result constituent import-key-sa result)]))))))
 
@@ -755,7 +828,13 @@
                 ;                  :sample/QCCheck         true
                 ;                  :sample/SampleReplicate 0
                 ;                  :sample/FieldResults    f-results}]
-                samples         (import-samples agency (get param->const agency) (get param->devType agency) import-token-sv results)
+                samples         (import-samples
+                                  {:agency          agency
+                                   :project         project
+                                   :devtype-table   (get param->devType agency)
+                                   :const-table     (get param->const agency)
+                                   :import-token-sv import-token-sv
+                                   :results         results})
                 result          [(assoc sv :sitevisit/Samples samples)]]
             result))))))
 

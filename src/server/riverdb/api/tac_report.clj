@@ -8,7 +8,7 @@
     [datomic.api :as d]
     [java-time :as jt]
     [riverdb.util :as util]
-    [riverdb.db :as rdb :refer [rpull]]
+    [riverdb.db :as rdb :refer [rpull pull-entities]]
     [taoensso.timbre :as log :refer [debug info]]
     [thosmos.util :as tu]
     [clojure.pprint :refer [pprint]]
@@ -129,7 +129,7 @@
 
 (def default-query2
   [:db/id
-   :org.riverdb/import-key
+   ;:org.riverdb/import-key
    [:sitevisit/SiteVisitID :as :svid]
    [:sitevisit/SiteVisitDate :as :date]
    [:sitevisit/Time :as :time]
@@ -144,7 +144,7 @@
     [[:stationfaillookup/FailureReason :as :reason]]}
    {[:sitevisit/Samples :as :samples]
     [:db/id
-     :org.riverdb/import-key
+     ;:org.riverdb/import-key
      {[:sample/SampleTypeCode :as :type]
       [[:sampletypelookup/SampleTypeCode :as :code]
        [:db/ident :as :ident]]}
@@ -159,10 +159,13 @@
        {[:constituentlookup/UnitCode :as :unit]
         [[:unitlookup/Unit :as :name]]}]}
      {[:sample/DeviceID :as :device]
-      [[:samplingdevice/CommonID :as :id]
-       {[:samplingdevice/DeviceType :as :type]
-        [[:samplingdevicelookup/SampleDevice :as :name]
-         [:samplingdevicelookup/Scale :as :scale]]}]}
+      [[:samplingdevice/CommonID :as :id]]}
+     {[:sample/Parameter :as :param]
+      [[:parameter/Replicates :as :reps]
+       [:parameter/NameShort :as :name]
+       [:parameter/High :as :high]
+       [:parameter/Low :as :low]
+       [:parameter/PrecisionCode :as :prec]]}
      {[:sample/DeviceType :as :deviceType]
       [[:samplingdevicelookup/SampleDevice :as :name]
        [:samplingdevicelookup/Scale :as :scale]]}
@@ -204,7 +207,6 @@
                 :in    '[$ qu]
                 :where '[]
                 :args  [db query]}
-
 
         q      (cond-> q
 
@@ -289,107 +291,6 @@
     ;; we can modiy this to handle labresults too, or do it somewhere else
 
     result))
-
-
-;
-;(defn get-sitevisits3
-;  ([db {:keys [year agency fromDate toDate station stationCode projectID query qaCheck] :as opts}]
-;   ;(debug "get-sitevisits" db opts)
-;   (let [fromDate (if (some? fromDate)
-;                    fromDate
-;                    (when year
-;                      (jt/zoned-date-time year)))
-;         toDate   (if (some? toDate)
-;                    toDate
-;                    (when year
-;                      (jt/plus fromDate (jt/years 1))))
-;
-;         query    (or query default-query2)
-;
-;         q        {:find  ['[(pull ?sv qu) ...]]
-;                   :in    '[$ qu]
-;                   :where '[]
-;                   :args  [db query]}
-;
-;         q        (cond-> q
-;
-;                    ;; if station
-;                    station
-;                    (->
-;                      (update :where #(-> %
-;                                        (conj '[?st :stationlookup/StationID ?station])
-;                                        (conj '[?sv :sitevisit/StationID ?st])))
-;                      (update :in conj '?station)
-;                      (update :args conj station))
-;
-;                    ;; if stationCode
-;                    stationCode
-;                    (->
-;                      (update :where #(-> %
-;                                        (conj '[?st :stationlookup/StationCode ?stationCode])
-;                                        (conj '[?sv :sitevisit/StationID ?st])))
-;                      (update :in conj '?stationCode)
-;                      (update :args conj stationCode))
-;
-;                    agency
-;                    (->
-;                      (update :where #(-> %
-;                                        (conj '[?pj :projectslookup/AgencyCode ?agency])
-;                                        (conj '[?sv :sitevisit/ProjectID ?pj])))
-;                      (update :in conj '?agency)
-;                      (update :args conj agency))
-;
-;                    projectID
-;                    (->
-;                      (update :where #(-> %
-;                                        (conj '[?pj :projectslookup/ProjectID ?projectID])
-;                                        (conj '[?sv :sitevisit/ProjectID ?pj])))
-;                      (update :in conj '?projectID)
-;                      (update :args conj projectID))
-;
-;                    ;; If either from- or to- date were passed, join the `sitevisit` entity
-;                    ;; and bind its `SiteVisitDate` attribute to the `?date` variable.
-;                    (or fromDate toDate)
-;                    (update :where conj
-;                      '[?sv :sitevisit/SiteVisitDate ?date])
-;
-;                    ;; If the `fromDate` filter was passed, do the following:
-;                    ;; 1. add a parameter placeholder into the query;
-;                    ;; 2. add an actual value to the arguments;
-;                    ;; 3. add a proper condition against `?date` variable
-;                    ;; (remember, it was bound above).
-;                    fromDate
-;                    (->
-;                      (update :in conj '?fromDate)
-;                      (update :args conj (jt/java-date fromDate))
-;                      (update :where conj
-;                        '[(> ?date ?fromDate)]))
-;
-;                    ;; similar to ?fromDate
-;                    toDate
-;                    (->
-;                      (update :in conj '?toDate)
-;                      (update :args conj (jt/java-date toDate))
-;                      (update :where conj
-;                        '[(< ?date ?toDate)]))
-;
-;                    qaCheck
-;                    (update q :where conj '[?sv :sitevisit/QACheck true]))
-;
-;
-;         ;;; last one, in case there are no conditions, get all sitevisits
-;         ;(empty? (:where q))
-;         ;(->
-;         ;  (update :where conj '[?sv :sitevisit/StationID])))
-;
-;         q        (update q :where conj '[?sv :sitevisit/QACheck true])
-;
-;         q        (remap-query q)]
-;     ;; this query only returns field results due to missing :db/id on sample
-;     ;; we can modiy this to handle labresults too, or do it somewhere else
-;     (debug "QUERY" q)
-;
-;     (d/qseq q))))
 
 
 
@@ -532,7 +433,7 @@
                   analyte   (or (get-in c [:analyte :short]) (get-in c [:analyte :name]))
                   matrix    (or (get-in c [:matrix :short]) (get-in c [:matrix :name]))
                   unit      (get-in c [:unit :name])
-                  device    (when deviceType (str (get-in deviceType [:name]) " - " (:id device)))
+                  device    (when device (str (:name deviceType) " " (:id device)))
                   type      (let [t (:code type)]
                               (if (= "Grab" t)
                                 "Lab"

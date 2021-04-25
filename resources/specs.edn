@@ -2434,7 +2434,8 @@
           :key :samplingdevice/Active,
           :position 0,
           :cardinality :one,
-          :type :boolean}
+          :type :boolean
+          :doc "Device is active (default/missing is active)"}
    #:attr{:name "CommonID",
           :key :samplingdevice/CommonID,
           :position 2,
@@ -2455,6 +2456,10 @@
           :identity true,
           :cardinality :one,
           :type :long}
+   #:attr{:name "Agency",
+          :key :samplingdevice/Agency,
+          :cardinality :one,
+          :type :ref}
    #:attr{:name "uuid",
           :key :samplingdevice/uuid,
           :identity true,
