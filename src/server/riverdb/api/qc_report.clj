@@ -165,7 +165,7 @@
    :args  args})
 
 ;; one graph query to pull all the data we need at once!
-(defn get-sitevisits [db {:keys [agency fromDate toDate year
+(defn get-sitevisits [db {:keys [agency fromDate toDate year sampleType
                                  project station stationCode query qaCheck] :as opts}]
   (log/debug "GET SITEVISITS" agency fromDate toDate project station)
   (let [fromDate (if (some? fromDate)
@@ -203,6 +203,15 @@
                                        (conj '[?sv :sitevisit/StationID ?st])))
                      (update :in conj '?stationCode)
                      (update :args conj stationCode))
+
+                   sampleType
+                   (->
+                     (update :where #(-> %
+                                       (conj '[?stype :sampletypelookup/SampleTypeCode ?sampleType])
+                                       (conj '[?sas :sample/SampleTypeCode ?stype])
+                                       (conj '[?sv :sitevisit/Samples ?sas])))
+                     (update :in conj '?sampleType)
+                     (update :args conj sampleType))
 
                    agency
                    (->
@@ -463,7 +472,7 @@
 (defn calc3 [scale vals]
   (let [bigvals  (try
                    (vec (map #(.setScale (bigdec %) scale RoundingMode/HALF_EVEN) vals))
-                   (catch Exception ex (log/error ex "setScale failed" vals)))
+                   (catch Exception ex (log/error ex "setScale failed" scale vals)))
         prec     (max-precision bigvals)
         mn       (.setScale (bigmean prec bigvals) scale RoundingMode/HALF_EVEN)
         _min     (apply min bigvals)
@@ -471,8 +480,12 @@
         plus     (- _max mn)
         minus    (- mn _min)
         pm       (max plus minus)
-        plus%    (with-precision prec :rounding RoundingMode/HALF_EVEN (* 100 (/ plus mn)))
-        minus%   (with-precision prec :rounding RoundingMode/HALF_EVEN (* 100 (/ minus mn)))
+        plus%    (if (and (> plus 0) (> mn 0))
+                   (with-precision prec :rounding RoundingMode/HALF_EVEN (* 100 (/ plus mn)))
+                   0)
+        minus%   (if (and (> minus 0) (> mn 0))
+                   (with-precision prec :rounding RoundingMode/HALF_EVEN (* 100 (/ minus mn)))
+                   0)
         pm%      (max plus% minus%)
         stddev1  (std-dev vals)
         stddev   (when stddev1
@@ -595,7 +608,9 @@
                 sum)
 
               :else
-              (let [scale          (:scale deviceType)
+              (let [scale          (or (:scale deviceType) (get-scale vals))
+                    _ (when (nil? scale)
+                        (debug "SCALE IS NIL" sum))
 
                     ;; calculate
                     bigcalcs       (calc3 scale vals)
@@ -638,13 +653,13 @@
                                          (if
                                            (> prec-percent req-percent)
                                            (do
-                                             (println "PRECISION % " param-name "thresh:" threshold "prec:" prec-percent "req:" req-percent)
+                                             ;(println "PRECISION % " param-name "thresh:" threshold "prec:" prec-percent "req:" req-percent)
                                              true)
                                            false)
                                          (if
                                            (> prec-unit req-unit)
                                            (do
-                                             (println "PRECISION unit " param-name "thresh:" threshold "prec:" prec-unit "req: " req-unit)
+                                             ;(println "PRECISION unit " param-name "thresh:" threshold "prec:" prec-unit "req: " req-unit)
                                              true)
                                            false))
                                        (cond
@@ -715,7 +730,7 @@
 
 (defn sitevisit-summaries
   "create summary info per sitevisit"
-  [{:keys [sitevisits agency project] :as opts}]
+  [{:keys [sitevisits agency project type] :as opts}]
   (debug "CREATE SV SUMMARIES" (keys opts))
   (vec (for [sv sitevisits]
          (try
@@ -731,6 +746,10 @@
 
                  ;; pull out samples list
                  sas  (get-in sv [:samples])
+
+                 sas  (if type
+                        (filter #(= (get-in % [:type :code]) type) sas)
+                        sas)
 
                  ;_    (debug "reduce Samples to param sums")
                  sums (summarize-samples sas)
@@ -1026,7 +1045,7 @@
                      (get-sitevisits db {:agency agency-code}))
         ;_          (debug "first SV" (first sitevisits))
         ;sitevisits (filter-sitevisits sitevisits)
-        sitevisits (sitevisit-summaries {:sitevisits sitevisits :agency agency :project project})
+        sitevisits (sitevisit-summaries {:sitevisits sitevisits :agency agency :project project :type "FieldMeasure"})
         ;_          (println "report reducer" (first sitevisits))
         ;param-keys (reduce #(apply conj %1 (map first (get-in %2 [:fieldresults]))) #{} sitevisits)
         report     (report-reducer db sitevisits)
