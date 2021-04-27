@@ -16,6 +16,7 @@
     [datascript.core :as ds]
     [riverdb.state :refer [db cx]]
     [riverdb.api.tac-report :as tac]
+    [riverdb.api.qc-report :as qc]
     [riverdb.graphql.schema :refer [table-specs-ds specs-sorted specs-map]]
     [taoensso.timbre :as log :refer [debug]]
     [thosmos.util :as tu :refer [walk-modify-k-vals limit-fn]]))
@@ -450,7 +451,7 @@
     {:tac-report-data (binding [datetime/*current-timezone* (cljc.java-time.zone-id/of "America/Los_Angeles")]
                                (if (:csv params)
                                  (tac/get-annual-report-csv (:csv params))
-                                 (tac/get-qc-report (db) (:agency params) (:project params) (:year params))))}))
+                                 (qc/get-qc-report (db) (:agency params) (:project params) (:year params))))}))
 
 (def agency-query [:db/id :agencylookup/uuid :agencylookup/AgencyCode :agencylookup/AgencyDescr])
 

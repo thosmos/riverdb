@@ -19,19 +19,44 @@
 (defn str-values [vals]
   (str "(" (clojure.string/join ", " vals) ")"))
 
-(defn param-sort [m cfg]
-  (conj (sorted-map-by #(compare (get-in cfg [%1 :order]) (get-in cfg [%2 :order])))
+(defn param-sort [m]
+  #_(conj (sorted-map-by #(compare (get-in cfg [%1 :order]) (get-in cfg [%2 :order])))
+      m)
+  (into (sorted-map-by #(do
+                          ;(debug "PARAM SORT" %1 (get-in m [%1 :display-order]) %2 (get-in m [%2 :display-order]))
+                          (compare (get-in m [%1 :display-order]) (get-in m [%2 :display-order]))))
     m))
+
+(defn bool->Y [bool]
+  (if bool
+    "Y"
+    ""))
+
+(defn prec->str [param-prec]
+  (let [{perc :percent unit :unit range :range thresh :threshold} param-prec]
+    (if thresh
+      (str "±" perc "% (above " thresh "), ±" unit " (below " thresh ")")
+      (cond
+        range
+        (str "R <= " range)
+        perc
+        (str "± " perc "%")
+        unit
+        (str "± " unit)))))
 
 (defsc TacReport [this {:keys [tac-report-data] :as props}]
   {:query         [:tac-report-data]
    :initial-state {}}
 
   (let [{:keys [count-sitevisits count-no-results no-results-rs param-config qapp-requirements
-                count-results percent-complete z-params count-params
-                count-params-planned count-params-possible count-params-valid percent-params-valid
+                count-results percent-complete z-params count-params x-params
+                percent-params-imprecise count-params-planned count-params-possible
+                count-params-complete percent-params-complete count-params-imprecise
                 count-params-exceedance percent-params-exceedance report-year project agency]} tac-report-data
-        z-params (param-sort z-params param-config)]
+        _ (debug "x-params" x-params)]
+        ;_ (debug "Z PARAMS PRE" z-params)
+        ;z-params (param-sort z-params)]
+    ;(debug "Z PARAMS POST" z-params)
     ;{:keys [agency project year]} (om/get-computed this)]
     (dom/div {:className "tac-report"}
       (when tac-report-data
@@ -51,13 +76,15 @@
                 (dom/tr (td " ") (td ""))
                 (dom/tr (td "Planned Parameters: ") (td (str count-params-planned)))
                 (dom/tr (td "Possible Parameters: ") (td (str count-params-possible)))
-                (dom/tr (td "Actual Parameters: ") (td (str count-params)))
-                (dom/tr (td "Valid Parameters: ") (td (str count-params-valid)))
-                (dom/tr (td "% Valid Parameters: ") (td (str percent-params-valid)))
+                (dom/tr (td "Sampled Parameters: ") (td (str count-params)))
+                (dom/tr (td "Complete Parameters: ") (td (str count-params-complete)))
+                (dom/tr (td "% Complete Parameters: ") (td (str percent-params-complete)))
+                (dom/tr (td "Imprecise Parameters: ") (td (str count-params-imprecise)))
+                (dom/tr (td "% Imprecise Parameters: ") (td (str percent-params-imprecise)))
                 (dom/tr (td "Exceedance Parameters: ") (td (str count-params-exceedance)))
                 (dom/tr (td "% Exceedance Parameters: ") (td (str percent-params-exceedance)))))
 
-            (dom/h3 nil "QAPP Precision Standards")
+            (dom/h3 nil "Precision Standards")
 
             (dom/table :.ui.compact.collapsing.table
               (dom/tbody
@@ -65,23 +92,21 @@
                   (for [[qk qm] (:params qapp-requirements)]
                     (let [qk-nm  (name qk)
                           prec   (:precision qm)
-                          thresh (:threshold prec)
-                          unit   (:unit prec)
-                          perc   (:percent prec)
-                          range  (:range prec)]
+                          {perc :percent unit :unit range :range thresh :threshold} prec]
                       (dom/tr {:key qk-nm}
                         (dom/td
                           (str qk-nm))
                         (dom/td
-                          (if thresh
-                            (str "± " perc " % avg above " thresh ", " " ± " unit " units avg below " thresh)
-                            (cond
-                              range
-                              (str "R <= " range)
-                              perc
-                              (str "± " perc " % avg")
-                              unit
-                              (str "± " unit " avg")))))))))))
+                          (prec->str prec)
+                          #_(if thresh
+                              (str "± " perc " % avg above " thresh ", " " ± " unit " units avg below " thresh)
+                              (cond
+                                range
+                                (str "R <= " range)
+                                perc
+                                (str "± " perc " % avg")
+                                unit
+                                (str "± " unit " avg")))))))))))
 
 
           (when (seq no-results-rs)
@@ -121,9 +146,8 @@
                   (dom/th "Planned")
                   (dom/th "Possible")
                   (dom/th "Actual")
-                  (dom/th "Valid")
-                  (dom/th "% Valid")
-                  (dom/th "Invalid")
+                  (dom/th "Complete")
+                  (dom/th "% Complete")
                   (dom/th "Incomplete")
                   (dom/th "Imprecise")
                   (dom/th "Exceedance")
@@ -131,115 +155,150 @@
                   (dom/th "Low")))
               (dom/tbody
                 (doall
-                  (for [[p-nm p] z-params]
-                    (dom/tr {:key p-nm}
-                      (dom/td (name p-nm))
-                      (dom/td count-sitevisits)
-                      (dom/td count-results)
-                      (dom/td (:count p))
-                      (dom/td (:valid p))
-                      (dom/td (:percent-valid p))
-                      (dom/td (:invalid p))
-                      (dom/td (:invalid-incomplete p))
-                      (dom/td (:invalid-imprecise p))
-                      (dom/td (:exceedance p))
-                      (dom/td (:exceed-high p))
-                      (dom/td (:exceed-low p))))))))
+                  (for [p x-params]
+                    (let [p-nm (:name p)]
+                      (dom/tr {:key p-nm}
+                        (dom/td p-nm)
+                        (dom/td count-sitevisits)
+                        (dom/td count-results)
+                        (dom/td (:count p))
+                        (dom/td (:complete p))
+                        (dom/td (:percent-complete p))
+                        (dom/td (:incomplete p))
+                        (dom/td (:imprecise p))
+                        (dom/td (:exceedance p))
+                        (dom/td (:exceed-high p))
+                        (dom/td (:exceed-low p)))))))))
 
           (dom/h2 nil "Parameter Details")
 
           (dom/div
             (doall
-              (for [[p-nm {:keys [valid exceedance exceedance-rs exceed-high exceed-low
-                                  percent-valid invalid count invalid-imprecise invalid-rs] :as p}] z-params]
-                (dom/div :.ui.segment {:key p-nm}
-                  (dom/h3 nil (name p-nm))
-                  (table :.ui.compact.collapsing.table
-                    (dom/tbody
-                      (dom/tr (td "Count: ") (td (str count)))
-                      (dom/tr (td "Valid: ") (td (str valid)))
-                      (when invalid
-                        (dom/tr (td "Invalid: ") (td (str invalid))))
-                      (when exceedance
-                        (dom/tr (td "Exceedances: ") (td (str exceedance))))))
+              (for [{:keys [type count complete incomplete percent-complete incomplete-rs qapp-precision qapp-exceedance
+                            exceedance exceed-high exceed-low exceedance-rs imprecise imprecise-rs] :as p} x-params]
+                (let [p-nm (:name p)
+                      {req-perc :percent req-unit :unit req-range :range req-thresh :threshold} qapp-precision
+                      {req-high :high req-low :low} qapp-exceedance]
+                  (dom/div :.ui.segment {:key p-nm}
+                    (dom/h3 nil (name p-nm))
+                    (table :.ui.compact.collapsing.table
+                      (dom/tbody
+                        (dom/tr (td "Count: ") (td (str count)))
+                        (when incomplete
+                          (dom/tr (td "Incomplete: ") (td (str incomplete))))
+                        (when imprecise
+                          (dom/tr (td "Imprecise: ") (td (str imprecise))))
+                        (when exceedance
+                          (dom/tr (td "Exceedance: ") (td (str exceedance))))))
 
-                  (when invalid
-                    (dom/div
-                      (dom/h3 "Invalid Records:")
-                      (table :.ui.striped.very.compact.table
-                        (dom/thead
-                          (dom/tr
-                            (dom/th "Site")
-                            (dom/th "Date")
-                            (dom/th "Max")
-                            (dom/th "Min")
-                            (dom/th "Mean")
-                            (dom/th "StdDev")
-                            (dom/th "RDS")
-                            (dom/th "Range")
-                            (dom/th "Samples")
-                            (dom/th "Imprecise?")
-                            (dom/th "Incomplete?")
-                            (dom/th "Device")
-                            (dom/th "Notes")))
-                        (dom/tbody
-                          (doall
-                            (for [{:keys [db/id svid fieldresults date site notes] :as sv} invalid-rs]
-                              (let [{:keys [min mean stddev vals prec max device range imprecise? incomplete?]} fieldresults]
-                                (dom/tr #js {:key (or id svid)}
-                                  (dom/td site)
-                                  (dom/td (if (= (type date) js/String)
-                                            date
-                                            (.toLocaleDateString date "en-US")))
-                                  (dom/td max)
-                                  (dom/td min)
-                                  (dom/td mean)
-                                  (dom/td stddev)
-                                  (dom/td prec)
-                                  (dom/td range)
-                                  (dom/td {:style {:whiteSpace "nowrap"}} (str-values vals))
-                                  (dom/td (when imprecise? "Y"))
-                                  (dom/td (when incomplete? "Y"))
-                                  (dom/td {:style {:whiteSpace "nowrap"}} device)
-                                  (dom/td notes)))))))))
+                    (when incomplete
+                      (dom/div
+                        (dom/h3 "Incomplete Records:")
+                        (table :.ui.striped.very.compact.table
+                          (dom/thead
+                            (dom/tr
+                              (dom/th "Site")
+                              (dom/th "Date")
+                              (dom/th "Samples")
+                              (dom/th "Device")
+                              (dom/th "Notes")))
+                          (dom/tbody
+                            (doall
+                              (for [{:keys [db/id svid sample date site notes] :as sv} incomplete-rs]
+                                (let [{:keys [min mean stddev vals prec max device range imprecise? incomplete?]} sample]
+                                  (dom/tr #js {:key (or id svid)}
+                                    (dom/td site)
+                                    (dom/td (if (= (type date) js/String)
+                                              date
+                                              (.toLocaleDateString date "en-US")))
+                                    (dom/td {:style {:whiteSpace "nowrap"}} (str-values vals))
+                                    (dom/td {:style {:whiteSpace "nowrap"}} device)
+                                    (dom/td notes)))))))))
 
-                  (dom/br)
+                    (dom/br)
 
-                  (when exceedance
-                    (dom/div
-                      (dom/h3 "Exceedance Records:")
-                      (table :.ui.striped.very.compact.table
-                        (dom/thead
-                          (dom/tr
-                            (dom/th "Site")
-                            (dom/th "Date")
-                            (dom/th "Max")
-                            (dom/th "Min")
-                            (dom/th "Mean")
-                            (dom/th "StdDev")
-                            (dom/th "RDS")
-                            (dom/th "Range")
-                            (dom/th "Samples")
-                            (dom/th "Device")
-                            (dom/th "Notes")))
-                        (dom/tbody
-                          (doall
-                            (for [{:keys [db/id svid fieldresults date site notes] :as sv} exceedance-rs]
-                              (let [{:keys [min mean stddev vals prec max device range]} fieldresults]
-                                (dom/tr {:key (or id svid)}
-                                  (dom/td site)
-                                  (dom/td (if (= (type date) js/String)
-                                            date
-                                            (.toLocaleDateString date "en-US")))
-                                  (dom/td max)
-                                  (dom/td min)
-                                  (dom/td mean)
-                                  (dom/td stddev)
-                                  (dom/td prec)
-                                  (dom/td range)
-                                  (dom/td {:style {:whiteSpace "nowrap"}} (str-values vals))
-                                  (dom/td {:style {:whiteSpace "nowrap"}} device)
-                                  (dom/td notes))))))))))))))))))
+                    (when imprecise
+                      (dom/div
+                        (dom/h3 "Imprecise Records " (dom/small "(" (prec->str qapp-precision) ")") ":")
+
+                        (table :.ui.striped.very.compact.table
+                          (dom/thead
+                            (dom/tr
+                              (dom/th "Site")
+                              (dom/th "Date")
+                              (dom/th "Samples")
+                              (dom/th "Max")
+                              (dom/th "Min")
+                              (dom/th "Mean")
+                              (when req-range
+                                (dom/th "Range"))
+                              (when req-unit
+                                (dom/th "±"))
+                              (when req-perc
+                                (dom/th "±%"))
+                              (dom/th "Device")
+                              (dom/th "Notes")))
+                          (dom/tbody
+                            (doall
+                              (for [{:keys [db/id svid sample date site notes] :as sv} imprecise-rs]
+                                (let [{:keys [min mean vals max device range prec-unit prec-percent]} sample]
+                                  (dom/tr #js {:key (or id svid)}
+                                    (dom/td site)
+                                    (dom/td (if (= (type date) js/String)
+                                              date
+                                              (.toLocaleDateString date "en-US")))
+                                    (dom/td {:style {:whiteSpace "nowrap"}} (str-values vals))
+                                    (dom/td max)
+                                    (dom/td min)
+                                    (dom/td mean)
+                                    (when req-range
+                                      (dom/td range))
+                                    (when req-unit
+                                      (dom/td prec-unit))
+                                    (when req-perc
+                                      (dom/td prec-percent))
+                                    (dom/td {:style {:whiteSpace "nowrap"}} device)
+                                    (dom/td notes)))))))))
+
+                    (dom/br)
+
+                    (when exceedance
+                      (dom/div
+                        (dom/h3 "Exceedance Records "
+                          (dom/small "("
+                            (when req-high (str "high: " req-high))
+                            (when req-low
+                              (str (when req-high ", ") "low: " req-low)) ")"))
+                        (table :.ui.striped.very.compact.table
+                          (dom/thead
+                            (dom/tr
+                              (dom/th "Site")
+                              (dom/th "Date")
+                              (dom/th "Samples")
+                              (dom/th "Max")
+                              (dom/th "Min")
+                              (dom/th "Mean")
+                              (dom/th "High?")
+                              (dom/th "Low?")
+                              (dom/th "Device")
+                              (dom/th "Notes")))
+                          (dom/tbody
+                            (doall
+                              (for [{:keys [db/id svid sample date site notes] :as sv} exceedance-rs]
+                                (let [{:keys [min mean stddev vals prec max device range too-low? too-high?]} sample]
+                                  (dom/tr {:key (or id svid)}
+                                    (dom/td site)
+                                    (dom/td (if (= (type date) js/String)
+                                              date
+                                              (.toLocaleDateString date "en-US")))
+                                    (dom/td {:style {:whiteSpace "nowrap"}} (str-values vals))
+                                    (dom/td max)
+                                    (dom/td min)
+                                    (dom/td mean)
+                                    (dom/td (bool->Y too-high?))
+                                    (dom/td (bool->Y too-low?))
+                                    (dom/td {:style {:whiteSpace "nowrap"}} device)
+                                    (dom/td notes)))))))))))))))))))
 
 
 (defn parse-year [yr]

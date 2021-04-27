@@ -59,7 +59,7 @@
          (update :fieldmeas (fnil conj []) rslt)
          (and fieldobs? (= typ "FieldObs"))
          (update :fieldobs (fnil conj []) rslt)
-         (and labresults? (= typ "Lab"))
+         (and labresults? (= typ "Grab"))
          (update :labresults (fnil conj []) rslt))))))
 
 
