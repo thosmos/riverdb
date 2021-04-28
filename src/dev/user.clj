@@ -8,7 +8,7 @@
     [mount.core :as mount]
     [riverdb.server]
     [riverdb.state :refer [db cx]]
-    [riverdb.db :as rdb :refer [rpull]]
+    [riverdb.db :as rdb :refer [rpull pull-entities]]
     [com.rpl.specter :as sp]
     [thosmos.util :as tu]
     [thosmos.datomic :as tdb]

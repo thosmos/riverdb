@@ -9,190 +9,37 @@
             [clojure.spec.alpha :as s]
             [clojure.tools.logging :as log :refer [debug info warn error]]
             [clojure.string :as str]
-    ;[com.walmartlabs.lacinia.schema :as schema]
             [datomic.api :as d]
-    ;[domain-spec.core :as ds]
             [java-time :as jt]
-    ;[riverdb.api.geo :as geo]
-            [riverdb.db :as rdb]
+            [riverdb.db :as rdb :refer [rpull pull-entities]]
             [riverdb.state :as state :refer [db cx]]
             [theta.util :refer [parse-bool parse-long parse-double parse-date parse-bigdec]]
             [thosmos.util :as tu])
   (:import (java.util Date)))
 
 ;(def uri-dbf (or (dotenv/env :DATOMIC_URI_DBF) "datomic:free://localhost:4334/test-dbf"))
-;
 
 
-
-
-;(def qapp-requirements
-;  {:include-elided? false
-;   :min-samples     3
-;   :elide-extra?    true
-;   :params          {:H2O_Temp {:precision  {:unit 0.5}
-;                                :exceedance {:high 20.0}}
-;                     :H2O_Cond {:precision {:unit 5.0}}
-;                     :H2O_DO   {:precision  {:percent 5.0}
-;                                :exceedance {:low 7.0}}
-;                     :H2O_pH   {:precision  {:unit 0.2}
-;                                :exceedance {:low  6.5
-;                                             :high 8.5}}
-;                     :H2O_Turb {:precision {:percent   5.0
-;                                            :unit      0.3
-;                                            :threshold 10.0}}
-;                     :H2O_PO4  {:precision {:percent   10.0
-;                                            :unit      0.03
-;                                            :threshold 0.1}}
-;                     :H2O_NO3  {:precision {:percent   10.0
-;                                            :unit      0.03
-;                                            :threshold 0.1}}}})
-;
-;
-;(def qapp-requirements-wcca
-;  {:include-elided? false
-;   :min-samples     3
-;   :elide-extra?    true
-;   :params          {:H2O_Temp {:precision  {:unit 0.5}
-;                                :exceedance {:high 20.0}}
-;                     :H2O_Cond {:precision {:unit 5.0}}
-;                     :H2O_DO   {:precision  {:percent 5.0}
-;                                :exceedance {:low 7.0}}
-;                     :H2O_pH   {:precision  {:unit 0.2}
-;                                :exceedance {:low  6.5
-;                                             :high 8.5}}
-;                     :H2O_Turb {:precision {:percent   5.0
-;                                            :unit      0.3
-;                                            :threshold 10.0}}}})
-
-
-;(def params
-;  [:Air_Temp :H2O_Temp :H2O_Cond :H2O_DO :H2O_pH :H2O_Turbidity])
-
-;; FIXME per group
-
-;(def param-config
-;  {:Air_Temp     {:order 0 :count 1 :name "Air_Temp"}
-;   :H2O_Temp     {:order 1 :count 6 :name "H2O_Temp"}
-;   :H2O_Cond     {:order 2 :count 3 :name "Cond"}
-;   :H2O_DO       {:order 3 :count 3 :name "DO"}
-;   :H2O_pH       {:order 4 :count 3 :name "pH"}
-;   :H2O_Turb     {:order 5 :count 3 :name "Turb"}
-;   :H2O_NO3      {:order 6 :count 3 :name "NO3" :optional true}
-;   :H2O_PO4      {:order 7 :count 3 :name "PO4" :optional true}
-;   :H2O_Velocity {:elide? true}})
-
-;(def param-config-wcca
-;  {:Air_Temp   {:order 0 :count 1 :name "Air_Temp_C"}
-;   :Cond       {:order 2 :count 3 :name "Cond_uS"}
-;   :DO_mgL     {:order 3 :count 3 :name "DOxy_mgL"}
-;   :DO_Percent {:order 3 :count 3 :name "DOxy_Percent"}
-;   :H2O_Temp   {:order 1 :count 3 :name "H2OTemp_C"}
-;   :H2O_TempDO {:order 1 :count 3 :name "H2OTempDO_C"}
-;   :pH         {:order 4 :count 3 :name "pH"}
-;   :Turb       {:order 5 :count 3 :name "Turb_NTUs"}})
-
-;(def wcca-param->constituent
-;  {:Air_Temp   [:constituentlookup/ConstituentCode "10-42-100-0-31"]
-;   :Cond       [:constituentlookup/ConstituentCode "5-42-24-0-25"]
-;   :DO_mgL     [:constituentlookup/ConstituentCode "WCCA-DO-H2O-mg/L-PROBE-NONE-5-42-38-0-6"]
-;   :DO_Percent [:constituentlookup/ConstituentCode "WCCA-DO-H2O-%-PROBE-NONE-5-42-38-0-13"]
-;   :H2O_Temp   [:constituentlookup/ConstituentCode "WCCA 5-42-100-0-31"]
-;   :H2O_TempDO [:constituentlookup/ConstituentCode "WCCA-TempDO-5-42-100-0-31"]
-;   :pH         [:constituentlookup/ConstituentCode "5-42-78-0-0"]
-;   :Turb       [:constituentlookup/ConstituentCode "5-42-108-0-9"]})
-
-;(def param-config-ssi
-;  {:Air_Temp {:order 0 :count 1 :name "Air"}
-;   :H2O_Temp {:order 1 :count 6 :name "H2Otemp"}
-;   :H2O_Cond {:order 2 :count 3 :name "Cond"}
-;   :H2O_DO   {:order 3 :count 3 :name "O2"}
-;   :H2O_pH   {:order 4 :count 3 :name "pH"}
-;   :H2O_Turb {:order 5 :count 3 :name "Tur"}
-;   :H2O_PO4  {:order 6 :count 3 :name "PO4"}
-;   :H2O_NO3  {:order 6 :count 3 :name "NO3"}
-;   :TotalColiform {:order 7 :count 1 :name "TotalColiform"}
-;   :EColi {:order 7 :count 1 :name "EColi"}})
-
-;(def ssi-param->constituent
-;  {:H2O_pH   [:constituentlookup/ConstituentCode "5-42-78-0-0"]
-;   :H2O_Temp [:constituentlookup/ConstituentCode "5-42-100-0-31"]
-;   :H2O_Turb [:constituentlookup/ConstituentCode "5-42-108-0-9"]
-;   :H2O_Cond [:constituentlookup/ConstituentCode "5-42-24-0-25"]
-;   :H2O_DO   [:constituentlookup/ConstituentCode "5-42-38-0-6"]
-;   :H2O_PO4  [:constituentlookup/ConstituentCode "5-22-399-2-6"]
-;   :H2O_NO3  [:constituentlookup/ConstituentCode "5-20-69-0-6"]
-;   :Air_Temp [:constituentlookup/ConstituentCode "10-42-100-0-31"]
-;   :TotalColiform [:constituentlookup/ConstituentCode "5-57-23-2-7"]
-;   :EColi    [:constituentlookup/ConstituentCode "5-57-464-0-7"]})
-
-
-;(def cols-wcca
-;  {
-;   "SiteName"            :site-name
-;   "SiteID"              :site-id
-;   "SiteSamplingEventID" :svid
-;   "Date"                :SiteVisitDate
-;   "StartTime"           :time
-;   "Lat"                 :lat
-;   "Long"                :lon
-;
-;   "WaterDepth_In"       :WaterDepth
-;   "DepthUnit"           :UnitWaterDepth
-;   "StreamWidth_Ft"      :StreamWidth
-;   "WidthUnit"           :UnitStreamWidth
-;
-;   "Notes"               :Notes
-;   "DataEntryNotes"      :DataEntryNotes
-;   "DataEntryDateTime"   :DataEntryDate
-;   "DataEntryPersonID"   :DataEntryPerson
-;   "QC"                  :QACheck
-;   "QCDate"              :QADate
-;   "QCPersonID"          :QAPerson})
-
-
-;(def cols-SSI
-;  {
-;   "Site"              :site-name
-;   "SiteID"            :site-id
-;   "SiteVisitID"       :svid
-;   "Date"              :SiteVisitDate
-;   "Time"              :time
-;
-;   "Water Depth"       :WaterDepth
-;   "Depth Unit"        :UnitWaterDepth
-;   "Stream Width"      :StreamWidth
-;   "Width Unit"        :UnitStreamWidth})
-
-;"Field Notes"       :Notes
-;"Data Entry Notes"  :DataEntryNotes
-;"DataEntryDateTime" :DataEntryDate
-;;   "DataEntryPersonID"   :DataEntryPerson
-;"QC"                :QACheck
-;"QCDate"            :QADate
-;"QCPerson"          :QAPerson})
-
-;;
 (def param-configs
   ":type is one of :field, :lab, :obs, :cont"
   {"SSI"   {:Air_Temp      {:order 0 :count 1 :name "Air"}
             :H2O_Temp      {:order 1 :count 6 :name "H2Otemp"}
-            :H2O_Cond      {:order 2 :count 3 :name "Cond"}
-            :H2O_DO        {:order 3 :count 3 :name "O2"}
-            :H2O_pH        {:order 4 :count 3 :name "pH"}
-            :H2O_Turb      {:order 5 :count 3 :name "Tur"}
+            :H2O_Cond      {:order 2 :count 3 :name "Cond" :device "Cond_."}
+            :H2O_DO        {:order 3 :count 3 :name "O2" :device "O2_."}
+            :H2O_pH        {:order 4 :count 3 :name "pH" :device "pH_."}
+            :H2O_Turb      {:order 5 :count 3 :name "Tur" :device "Tur_."}
             :H2O_PO4       {:order 6 :count 3 :name "PO4"}
             :H2O_NO3       {:order 6 :count 3 :name "NO3"}
             :TotalColiform {:order 7 :count 1 :type :lab :name "TotalColiform"}
             :EColi         {:order 7 :count 1 :type :lab :name "EColi"}}
    "WCCA"  {:Air_Temp   {:order 0 :count 1 :name "AirTemp_C"}
-            :Cond       {:order 2 :count 3 :name "Cond_uS"}
-            :DO_mgL     {:order 3 :count 3 :name "DOxy_mgL"}
-            :DO_Percent {:order 3 :count 3 :name "DOxy_Percent"}
-            :H2O_Temp   {:order 1 :count 3 :name "H2OTemp_C"}
-            :H2O_TempDO {:order 1 :count 3 :name "H2OTempDO_C"}
-            :pH         {:order 4 :count 3 :name "pH"}
-            :Turb       {:order 5 :count 3 :name "Turb_NTUs"}}
+            :TDS       {:order 2 :count 3 :name "TDS_ppm" :device "TDS_EquipID"}
+            :DO_mgL     {:order 3 :count 3 :name "DOxy_mgL" :device "DOxy_EquipID"}
+            :DO_Percent {:order 3 :count 3 :name "DOxy_Percent" :device "DOxy_EquipID"}
+            :H2O_Temp   {:order 1 :count 3 :name "H2OTemp_C" :device "pH_EquipID"}
+            :H2O_TempDO {:order 1 :count 3 :name "H2OTempDO_C" :device "DOxy_EquipID"}
+            :pH         {:order 4 :count 3 :name "pH" :device "pH_EquipID"}
+            :Turb       {:order 5 :count 3 :name "Turb_NTUs" :device "Turb_EquipID"}}
    "SYRCL" {:TotalColiform {:count 1 :type :lab :name "TotalColiform"}
             :EColi         {:count 1 :type :lab :name "EColi"}
             :Enterococcus  {:count 1 :type :lab :name "Enterococcus"}}})
@@ -209,7 +56,7 @@
             :TotalColiform [:constituentlookup/ConstituentCode "5-56-23-20-7"] ;; "5-56-23-20-7" "5-57-23-2-7"
             :EColi         [:constituentlookup/ConstituentCode "5-57-464-0-7"]}
    "WCCA"  {:Air_Temp   [:constituentlookup/ConstituentCode "10-42-100-0-31"]
-            :Cond       [:constituentlookup/ConstituentCode "5-42-24-0-25"]
+            :TDS       [:constituentlookup/ConstituentCode "5-42-107-0-100"]
             :DO_mgL     [:constituentlookup/ConstituentCode "5-42-38-0-6"]
             :DO_Percent [:constituentlookup/ConstituentCode "5-42-38-0-13"]
             :H2O_Temp   [:constituentlookup/ConstituentCode "5-42-100-0-31"]
@@ -222,11 +69,11 @@
 
 (def param->devType
   {"WCCA" {:Air_Temp   [:samplingdevicelookup/SampleDevice "SupcoTemp"]
-           :Cond       [:samplingdevicelookup/SampleDevice "ECTestr 11"]
-           :DO_mgL     [:samplingdevicelookup/SampleDevice "WCCA DO"]
-           :DO_Percent [:samplingdevicelookup/SampleDevice "WCCA DO"]
-           :H2O_Temp   [:samplingdevicelookup/SampleDevice "WCCA Temp"]
-           :H2O_TempDO [:samplingdevicelookup/SampleDevice "WCCA DO"]
+           :TDS        [:samplingdevicelookup/SampleDevice "TDSTestr 11"]
+           :DO_mgL     [:samplingdevicelookup/SampleDevice "YSI"]
+           :DO_Percent [:samplingdevicelookup/SampleDevice "YSI"]
+           :H2O_Temp   [:samplingdevicelookup/SampleDevice "HannaPH"]
+           :H2O_TempDO [:samplingdevicelookup/SampleDevice "YSI"]
            :pH         [:samplingdevicelookup/SampleDevice "HannaPH"]
            :Turb       [:samplingdevicelookup/SampleDevice "LaMotteTurb"]}
    "SSI"  {:Air_Temp [:samplingdevicelookup/SampleDevice "ExtechTemp"]
@@ -381,6 +228,7 @@
 
 
 (defn read-csv [filename col-config param-config]
+  (debug "READ CSV" filename)
   (with-open
     [^java.io.Reader r (clojure.java.io/reader filename)]
     (let [csv    (parse-csv r)
@@ -402,26 +250,35 @@
                                  (let [sample-count (get-in param-config [k :count])
                                        param-name   (get-in param-config [k :name])
                                        param-type   (get-in param-config [k :type] :field) ;; :field, :lab, :obs, :cont
+                                       device-col   (get-in param-config [k :device])
                                        result       (cond
                                                       (= param-type :field)
-                                                      (let [fld-vals (vec
-                                                                       (remove nil?
-                                                                         (for [i (range 1 (+ sample-count 1))]
-                                                                           (let [csv-field (if (> sample-count 1)
-                                                                                             (str param-name "_" i)
-                                                                                             param-name)
-                                                                                 csv-idx   (get hidx csv-field)]
-                                                                             (when csv-idx
-                                                                               (let [field-val (get row csv-idx)
-                                                                                     bd-val    (when (and field-val (not= field-val ""))
-                                                                                                 (try
-                                                                                                   (bigdec field-val)
-                                                                                                   (catch Exception _ field-val)))]
-                                                                                 ;(debug "BD VAL" (type bd-val) bd-val)
-                                                                                 bd-val))))))]
+                                                      (let [fld-vals   (vec
+                                                                         (remove nil?
+                                                                           (for [i (range 1 (+ sample-count 1))]
+                                                                             (let [csv-field (if (> sample-count 1)
+                                                                                               (str param-name "_" i)
+                                                                                               param-name)
+                                                                                   csv-idx   (get hidx csv-field)]
+                                                                               (when csv-idx
+                                                                                 (let [field-val (get row csv-idx)
+                                                                                       bd-val    (when (and field-val (not= field-val ""))
+                                                                                                   (try
+                                                                                                     (bigdec field-val)
+                                                                                                     (catch Exception _ field-val)))]
+                                                                                   ;(debug "BD VAL" (type bd-val) bd-val)
+                                                                                   bd-val))))))
+                                                            device-val (let [csv-idx (get hidx device-col)]
+                                                                         (when csv-idx
+                                                                           (let [dev-val (get row csv-idx)]
+                                                                             (when (not= dev-val "")
+                                                                               dev-val))))]
                                                         (when (seq fld-vals)
-                                                          {:vals fld-vals
-                                                           :type param-type}))
+                                                          {:param-name param-name
+                                                           :sample-count sample-count
+                                                           :vals       fld-vals
+                                                           :type       param-type
+                                                           :device     device-val}))
 
                                                       (= param-type :lab)
                                                       (let [csv-idx    (get hidx param-name)
@@ -438,16 +295,20 @@
                                                                          (try
                                                                            (bigdec lab-val)
                                                                            (catch Exception _ lab-val)))
+                                                            lab-result {:param-name param-name
+                                                                        :type       param-type}
                                                             lab-result (if lab-val
-                                                                         (cond-> {:value lab-val}
+                                                                         (cond-> lab-result
+                                                                           true
+                                                                           {:value lab-val}
                                                                            over?
                                                                            (assoc :over true)
                                                                            under?
                                                                            (assoc :under true))
-                                                                         (cond
+                                                                         (cond-> lab-result
                                                                            dry?
                                                                            {:dry true}))]
-                                                        (assoc lab-result :type param-type)))]
+                                                        lab-result))]
                                    (when result
                                      [k result]))))
                          sv  (assoc sv :results frs)]
@@ -522,19 +383,6 @@
          db-id   (get-in tx [:tempids temp-id])]
      db-id)))
 
-;(defn gen-sites [cx project site-names]
-;  (let [existing-sites (into {}
-;                         (d/q '[:find ?name ?e
-;                                :in $ ?proj
-;                                :where
-;                                [?pj :projectslookup/ProjectID ?proj]
-;                                [?e :stationlookup/Project ?pj]
-;                                [?e :stationlookup/StationName ?name]] (d/db cx) project))]
-;    (into {} (for [site site-names]
-;               (let [db-id (if-let [db-id (get existing-sites site)]
-;                             db-id
-;                             (gen-site-with-name cx project site))]
-;                 [site db-id])))))
 
 (defn gen-sites [cx project sites]
   (let [existing-sites {}
@@ -556,28 +404,21 @@
 
 
 (defn import-field-results [constituent devType import-token vals]
-  (debug "import-field-results" vals)
+  ;(debug "import-field-results" vals)
   (vec
     (for [i (range (count vals))]
       (let [import-key (str import-token "-" (inc i))]
-        (debug import-key (double (get vals i)))
-        {:org.riverdb/import-key         import-key
-         :fieldresult/Result             (double (get vals i))
-         :fieldresult/FieldReplicate     (inc i)
-         :fieldresult/ConstituentRowID   constituent
-         :fieldresult/SamplingDeviceCode devType}))))
-
-;(defn import-field-results [const-table devType-table import-token-sv results]
-;  (vec
-;    (flatten
-;      (for [[k {:keys [vals]}] results]
-;        (let [constituent  (get const-table k)
-;              devType      (get devType-table k)
-;              import-token (str import-token-sv "-field-" (name k))]
-;          (import-field-result-vals constituent devType import-token vals))))))
+        ;(debug import-key (double (get vals i)))
+        {:org.riverdb/import-key     import-key
+         :fieldresult/uuid           (d/squuid)
+         :fieldresult/Result         (double (get vals i))
+         :fieldresult/FieldReplicate (inc i)}))))
+;:fieldresult/ConstituentRowID   constituent}))))
+;:fieldresult/SamplingDeviceCode devType}))))
 
 (defn import-lab-result [constituent import-token-sa {:keys [value over under dry]}]
   (let [res {:org.riverdb/import-key     (str import-token-sa "-1")
+             :labresult/uuid             (d/squuid)
              :labresult/LabReplicate     1
              :labresult/ConstituentRowID constituent}
         res (cond-> res
@@ -603,12 +444,84 @@
 ;              import-key  (str import-token-sv "-lab-" (name k))]
 ;          (import-lab-result constituent import-key result))))))
 
-(defn get-device-id [agency devID devType]
-  (error "get-device-id" "NOT IMPLEMENTED"))
+(defn get-or-create-device-id [agency devType devID]
+  ;(debug "get-device-id" agency devType devID)
+  (let [eid (d/q '[:find ?e .
+                   :in $ ?devID ?devType ?agency
+                   :where
+                   [?e :samplingdevice/CommonID ?devID]
+                   [?e :samplingdevice/DeviceType ?devType]
+                   [?e :samplingdevice/Agency ?ag]
+                   [?ag :agencylookup/AgencyCode ?agency]]
+              (db) devID devType agency)]
+    (if eid
+      eid
+      (let [entity {:samplingdevice/CommonID   devID
+                    :samplingdevice/DeviceType devType
+                    :samplingdevice/Active     true
+                    :samplingdevice/uuid       (d/squuid)
+                    :samplingdevice/Agency     [:agencylookup/AgencyCode agency]
+                    :riverdb.entity/ns         :entity.ns/samplingdevice}]
+        (try
+          (let [_  (debug "Create device" agency devType devID)
+                tx @(d/transact (cx) [entity])]
+            (-> (:tempids tx) first second))
+          (catch Exception ex (error ex "CREATE DEVICE FAILED")))))))
 
-(defn import-samples [agency const-table devtype-table import-token-sv results]
+(defn get-or-create-parameter [{:keys [param-name sample-count project constituent devType sampleType]}]
+  (let [eid? (if devType
+               (d/q '[:find ?e .
+                      :in $ ?project ?const ?devType
+                      :where
+                      [?pj :projectslookup/ProjectID ?project]
+                      [?pj :projectslookup/Parameters ?e]
+                      [?e :parameter/Constituent ?const]
+                      [?e :parameter/DeviceType ?devType]]
+                 (db) project constituent devType)
+               (d/q '[:find ?e .
+                      :in $ ?project ?const
+                      :where
+                      [?pj :projectslookup/ProjectID ?project]
+                      [?pj :projectslookup/Parameters ?e]
+                      [?e :parameter/Constituent ?const]]
+                 (db) project constituent))
+        eid  (if eid?
+               (do
+                 ;(debug "FOUND PARAMETER" eid?)
+                 eid?)
+               (try
+                 (let [entity (cond-> {:db/id "param"
+                                       :riverdb.entity/ns :entity.ns/parameter
+                                       :parameter/uuid (d/squuid)
+                                       :parameter/Active true
+                                       :parameter/Constituent constituent
+                                       :parameter/Name        param-name
+                                       :parameter/NameShort   (clojure.string/replace param-name #" " "")
+                                       :parameter/SampleType  [:sampletypelookup/SampleTypeCode sampleType]}
+                                devType
+                                (assoc :parameter/DeviceType devType)
+                                sample-count
+                                (assoc :parameter/Replicates sample-count))
+                       proj-tx {:projectslookup/ProjectID project
+                                :projectslookup/Parameters [{:db/id "param"}]}
+                       ;_ (debug "CREATE PARAMETER TX" param-name [entity proj-tx])
+                       ;eid [:parameter/uuid (:parameter/uuid entity)]
+
+                       tx @(d/transact (cx) [entity proj-tx])
+                       eid (get (:tempids tx) "param")]
+
+                   (debug "CREATE PARAMETER" param-name eid entity)
+                   eid)
+
+                 (catch Exception ex (error ex "CREATE PARAMETER FAILED"))))]
+    eid))
+
+
+
+
+(defn import-samples [{:keys [agency project const-table devtype-table import-token-sv results]}]
   (vec
-    (for [[k {:keys [type devID] :as result}] results]
+    (for [[k {:keys [param-name sample-count type device] :as result}] results]
       (let [event-type    (cond
                             (= type :obs)
                             "FieldDescription"
@@ -623,20 +536,32 @@
                             "FieldMeasure")
             constituent   (get const-table k)
             import-key-sa (str import-token-sv "-" (name type) "-" (name k))
+            devType       (get devtype-table k)
             sa-result     {:org.riverdb/import-key import-key-sa
+                           :sample/uuid            (d/squuid)
                            :sample/EventType       [:eventtypelookup/EventType event-type]
                            :sample/SampleTypeCode  [:sampletypelookup/SampleTypeCode sample-type]
                            :sample/QCCheck         true
                            :sample/Constituent     constituent
-                           :sample/SampleReplicate 0}]
+                           :sample/SampleReplicate 0}
+            parameter     (get-or-create-parameter {:param-name param-name
+                                                    :sample-count         sample-count
+                                                    :project              project
+                                                    :constituent          constituent
+                                                    :devType              devType
+                                                    :sampleType           sample-type})
+            device-id     (when device (get-or-create-device-id agency devType device))]
+
         (cond-> sa-result
           (= type :field)
           (->
-            (assoc :sample/FieldResults (import-field-results constituent (get devtype-table k) import-key-sa (:vals result)))
-            (assoc :sample/DeviceType (get devtype-table k))
+            (assoc :sample/FieldResults (import-field-results constituent devType import-key-sa (:vals result)))
+            (assoc :sample/DeviceType devType)
             (cond->
-              devID
-              (assoc :sample/DeviceID (get-device-id agency devID (get devtype-table k)))))
+              device-id
+              (assoc :sample/DeviceID device-id)
+              parameter
+              (assoc :sample/Parameter parameter)))
           (= type :lab)
           (assoc :sample/LabResults [(import-lab-result constituent import-key-sa result)]))))))
 
@@ -673,14 +598,15 @@
                 Notes           (if Notes
                                   (str Notes " \n " import-str)
                                   import-str)
-                sv              {:sitevisit/ProjectID         [:projectslookup/ProjectID project]
+                sv              {:org.riverdb/import-key      import-token-sv
+                                 :sitevisit/uuid              (d/squuid)
+                                 :sitevisit/ProjectID         [:projectslookup/ProjectID project]
                                  :sitevisit/AgencyCode        [:agencylookup/AgencyCode agency]
                                  :sitevisit/StationID         site-id
                                  :sitevisit/QACheck           true
                                  :sitevisit/CreationTimestamp (Date.)
                                  :sitevisit/StationFailCode   [:stationfaillookup/StationFailCode 0]
-                                 :sitevisit/VisitType         [:sitevisittype/id 1]
-                                 :org.riverdb/import-key      import-token-sv}
+                                 :sitevisit/VisitType         [:sitevisittype/id 1]}
                 sv              (cond-> sv
                                   time
                                   (assoc :sitevisit/Time time)
@@ -727,7 +653,13 @@
                 ;                  :sample/QCCheck         true
                 ;                  :sample/SampleReplicate 0
                 ;                  :sample/FieldResults    f-results}]
-                samples         (import-samples agency (get param->const agency) (get param->devType agency) import-token-sv results)
+                samples         (import-samples
+                                  {:agency          agency
+                                   :project         project
+                                   :devtype-table   (get param->devType agency)
+                                   :const-table     (get param->const agency)
+                                   :import-token-sv import-token-sv
+                                   :results         results})
                 result          [(assoc sv :sitevisit/Samples samples)]]
             result))))))
 
@@ -737,29 +669,11 @@
   (first (import-csv-txds (db) "SSI" "SSI_BR" "import-resources/SSI_BR-2019.csv"))
   (first (import-csv-txds (db) "WCCA" "WCCA_1" "import-resources/WCCA-2019.csv"))
   (first (import-csv-txds (db) "SYRCL" "SYRCL_1" "import-resources/SYRCL_Bacteria.csv"))
+  (first (import-csv-txds (db) "WCCA" "WCCA_1" "import-resources/WCCA_2019_Corrected.csv"))
   ;; server:
   (first (import-csv-txds (db) "WCCA" "WCCA_1" "resources/WCCA-2019.csv")))
 
 
-
-
-;(defn import-csv-wcca [cx project filename]
-;  (println "importing " project filename)
-;  (doseq [txd (import-csv-wcca-txds (d/db cx) project filename)]
-;    (let [tx @(d/transact cx txd)]
-;      (print ".")
-;      (flush)))
-;  (println "\ndone"))
-
-
-
-;(defn import-csv-ssi [cx project filename]
-;  (println "importing " project filename)
-;  (doseq [txd (import-csv-ssi-txds (d/db cx) project filename)]
-;    (let [tx @(d/transact cx txd)]
-;      (print ".")
-;      (flush)))
-;  (println "\ndone"))
 
 (defn import-csv [cx agency project filename]
   (println "importing " agency project filename)
@@ -774,27 +688,6 @@
   (import-csv (cx) "WCCA" "WCCA_1" "import-resources/WCCA-2019.csv")
   ;; server
   (import-csv (cx) "WCCA" "WCCA_1" "resources/WCCA-2019.csv"))
-
-;(comment
-;  (import-csv-ssi (cx) "SSI_1" "import-resources/SSI-2019.csv")
-;  (import-csv-ssi (cx) "SSI_BR" "import-resources/SSI_BR-2019.csv"))
-
-;(comment
-;  (def data (import-csv (cx) "SSI" "SSI_1" "resources/migrations/SSI-2016.csv"))
-;  (def wcca (import-csv (cx) "WCCA" "WCCA_1" "resources/migrations/WCCA-2016.csv"))
-;  (import-sites-wcca "WCCA" "WCCA_1" "resources/import/WCCA-Sites-V13.csv")
-;  (read-csv "resources/import/WCCA-2017.csv")
-;  (import-csv-wcca "WCCA_1" "resources/import/WCCA-2016.csv")
-;  (d/with (db) (nth (import-csv-wcca "WCCA_1" "resources/import/WCCA-2017.csv") 4))
-;
-;  (import-csv-ssi "SSI_1" "resources/import/SSI-2017.csv")
-;
-;  ;; count sitevisits since a date
-;  (count (d/q '[:find [(pull ?e [*]) ...]
-;                :where
-;                [(> ?dt (java.util.Date. (java.util.Date/parse "2018/01/01")))]
-;                [?e :sitevisit/ProjectID [:projectslookup/ProjectID "SSI_1"]]
-;                [?e :sitevisit/SiteVisitDate ?dt]] (db))))
 
 
 

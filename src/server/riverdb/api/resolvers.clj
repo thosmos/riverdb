@@ -3,6 +3,8 @@
     [com.fulcrologic.fulcro.components :as comp]
     [com.fulcrologic.fulcro.server.api-middleware :as fmw]
     [com.fulcrologic.guardrails.core :refer [>defn => | ?]]
+    [com.fulcrologic.rad.type-support.date-time :as datetime]
+    [cljc.java-time.zone-id]
     [com.rpl.specter :as sp]
     [com.wsscode.pathom.connect :as pc :refer [defresolver defmutation]]
     [com.wsscode.pathom.core :as p]
@@ -14,6 +16,7 @@
     [datascript.core :as ds]
     [riverdb.state :refer [db cx]]
     [riverdb.api.tac-report :as tac]
+    [riverdb.api.qc-report :as qc]
     [riverdb.graphql.schema :refer [table-specs-ds specs-sorted specs-map]]
     [taoensso.timbre :as log :refer [debug]]
     [thosmos.util :as tu :refer [walk-modify-k-vals limit-fn]]))
@@ -312,7 +315,7 @@
     (try
       (let [query   (-> env ::p/parent-query)
             id-val  (get input gid-key)
-            _       (log/debug "Lookup Resolver Key" gid-key "Input" input "QUERY" query)
+            ;_       (log/debug "Lookup Resolver Key" gid-key "Input" input "QUERY" query)
 
             tp      (type id-val)
             id-val? (cond
@@ -327,7 +330,7 @@
                       (d/pull (db) query id-val?))
             result  (when result
                       (walk-modify-k-vals result :db/id str))]
-        (log/debug "RESULT" result)
+        ;(log/debug "RESULT" result)
         result)
       (catch Exception ex (log/error ex)))))
 
@@ -355,13 +358,13 @@
     (log/debug "UUID PULL RESOLVER" uuid-key input)
     (try
       (let [query   (-> env ::p/parent-query)
-            _       (log/debug "Lookup Resolver Key" uuid-key "Input" input "QUERY" query)
+            ;_       (log/debug "Lookup Resolver Key" uuid-key "Input" input "QUERY" query)
             id-val? (try
                       (get input uuid-key)
                       (catch IllegalArgumentException _ nil))
             result  (when id-val?
                       (d/pull (db) query [uuid-key id-val?]))]
-        (log/debug "RESULT" result)
+        ;(log/debug "RESULT" result)
         result)
       (catch Exception ex (log/error ex)))))
 
@@ -385,7 +388,7 @@
 (defresolver agency-project-years [env _]
   {::pc/output [:agency-project-years]}
   (let [params (-> env :ast :params)]
-    (log/info "QUERY :agency-project-years" params)
+    ;(log/info "QUERY :agency-project-years" params)
     {:agency-project-years (tac/get-agency-project-years (db) (:agencies params))}))
 
 
@@ -445,9 +448,10 @@
   {::pc/output [:tac-report-data]}
   (let [params (-> env :ast :params)]
     (log/info "QUERY :tac-report-data" params)
-    {:tac-report-data (if (:csv params)
-                        (tac/get-annual-report-csv (:csv params))
-                        (tac/get-annual-report (db) (:agency params) (:project params) (:year params)))}))
+    {:tac-report-data (binding [datetime/*current-timezone* (cljc.java-time.zone-id/of "America/Los_Angeles")]
+                               (if (:csv params)
+                                 (tac/get-annual-report-csv (:csv params))
+                                 (qc/get-qc-report (db) (:agency params) (:project params) (:year params))))}))
 
 (def agency-query [:db/id :agencylookup/uuid :agencylookup/AgencyCode :agencylookup/AgencyDescr])
 
