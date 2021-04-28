@@ -197,6 +197,15 @@
            ...]
           :where [?e :constituentlookup/AnalyteCode]] (db))))
 
+(defn generate-const-code [const-id]
+  (let [c (get-const-info const-id)
+        ma (get-in c [:constituentlookup/MatrixCode :matrixlookup/MatrixCode])
+        me (get-in c [:constituentlookup/MethodCode :methodlookup/MethodCode])
+        an (get-in c [:constituentlookup/AnalyteCode :analytelookup/AnalyteCode])
+        fr (get-in c [:constituentlookup/FractionCode :fractionlookup/FractionCode])
+        un (get-in c [:constituentlookup/UnitCode :unitlookup/UnitCode])]
+    (apply str (interpose "-" [ma me an fr un]))))
+
 (defn pull-sv
   "a full graph query of the most significant fields in a sitevisit"
   [db-id]

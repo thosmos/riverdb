@@ -33,10 +33,10 @@
             :TotalColiform {:order 7 :count 1 :type :lab :name "TotalColiform"}
             :EColi         {:order 7 :count 1 :type :lab :name "EColi"}}
    "WCCA"  {:Air_Temp   {:order 0 :count 1 :name "AirTemp_C"}
-            :Cond       {:order 2 :count 3 :name "Cond_uS" :device "Cond_EquipID"}
+            :TDS       {:order 2 :count 3 :name "TDS_ppm" :device "TDS_EquipID"}
             :DO_mgL     {:order 3 :count 3 :name "DOxy_mgL" :device "DOxy_EquipID"}
             :DO_Percent {:order 3 :count 3 :name "DOxy_Percent" :device "DOxy_EquipID"}
-            :H2O_Temp   {:order 1 :count 3 :name "H2OTemp_C" :device "H2OTemp_EquipID"}
+            :H2O_Temp   {:order 1 :count 3 :name "H2OTemp_C" :device "pH_EquipID"}
             :H2O_TempDO {:order 1 :count 3 :name "H2OTempDO_C" :device "DOxy_EquipID"}
             :pH         {:order 4 :count 3 :name "pH" :device "pH_EquipID"}
             :Turb       {:order 5 :count 3 :name "Turb_NTUs" :device "Turb_EquipID"}}
@@ -56,7 +56,7 @@
             :TotalColiform [:constituentlookup/ConstituentCode "5-56-23-20-7"] ;; "5-56-23-20-7" "5-57-23-2-7"
             :EColi         [:constituentlookup/ConstituentCode "5-57-464-0-7"]}
    "WCCA"  {:Air_Temp   [:constituentlookup/ConstituentCode "10-42-100-0-31"]
-            :Cond       [:constituentlookup/ConstituentCode "5-42-24-0-25"]
+            :TDS       [:constituentlookup/ConstituentCode "5-42-107-0-100"]
             :DO_mgL     [:constituentlookup/ConstituentCode "5-42-38-0-6"]
             :DO_Percent [:constituentlookup/ConstituentCode "5-42-38-0-13"]
             :H2O_Temp   [:constituentlookup/ConstituentCode "5-42-100-0-31"]
@@ -69,11 +69,11 @@
 
 (def param->devType
   {"WCCA" {:Air_Temp   [:samplingdevicelookup/SampleDevice "SupcoTemp"]
-           :Cond       [:samplingdevicelookup/SampleDevice "ECTestr 11"]
-           :DO_mgL     [:samplingdevicelookup/SampleDevice "WCCA DO"]
-           :DO_Percent [:samplingdevicelookup/SampleDevice "WCCA DO"]
-           :H2O_Temp   [:samplingdevicelookup/SampleDevice "WCCA Temp"]
-           :H2O_TempDO [:samplingdevicelookup/SampleDevice "WCCA DO"]
+           :TDS        [:samplingdevicelookup/SampleDevice "TDSTestr 11"]
+           :DO_mgL     [:samplingdevicelookup/SampleDevice "YSI"]
+           :DO_Percent [:samplingdevicelookup/SampleDevice "YSI"]
+           :H2O_Temp   [:samplingdevicelookup/SampleDevice "HannaPH"]
+           :H2O_TempDO [:samplingdevicelookup/SampleDevice "YSI"]
            :pH         [:samplingdevicelookup/SampleDevice "HannaPH"]
            :Turb       [:samplingdevicelookup/SampleDevice "LaMotteTurb"]}
    "SSI"  {:Air_Temp [:samplingdevicelookup/SampleDevice "ExtechTemp"]

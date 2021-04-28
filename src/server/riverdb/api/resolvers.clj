@@ -315,7 +315,7 @@
     (try
       (let [query   (-> env ::p/parent-query)
             id-val  (get input gid-key)
-            _       (log/debug "Lookup Resolver Key" gid-key "Input" input "QUERY" query)
+            ;_       (log/debug "Lookup Resolver Key" gid-key "Input" input "QUERY" query)
 
             tp      (type id-val)
             id-val? (cond
@@ -330,7 +330,7 @@
                       (d/pull (db) query id-val?))
             result  (when result
                       (walk-modify-k-vals result :db/id str))]
-        (log/debug "RESULT" result)
+        ;(log/debug "RESULT" result)
         result)
       (catch Exception ex (log/error ex)))))
 
@@ -358,13 +358,13 @@
     (log/debug "UUID PULL RESOLVER" uuid-key input)
     (try
       (let [query   (-> env ::p/parent-query)
-            _       (log/debug "Lookup Resolver Key" uuid-key "Input" input "QUERY" query)
+            ;_       (log/debug "Lookup Resolver Key" uuid-key "Input" input "QUERY" query)
             id-val? (try
                       (get input uuid-key)
                       (catch IllegalArgumentException _ nil))
             result  (when id-val?
                       (d/pull (db) query [uuid-key id-val?]))]
-        (log/debug "RESULT" result)
+        ;(log/debug "RESULT" result)
         result)
       (catch Exception ex (log/error ex)))))
 
@@ -388,7 +388,7 @@
 (defresolver agency-project-years [env _]
   {::pc/output [:agency-project-years]}
   (let [params (-> env :ast :params)]
-    (log/info "QUERY :agency-project-years" params)
+    ;(log/info "QUERY :agency-project-years" params)
     {:agency-project-years (tac/get-agency-project-years (db) (:agencies params))}))
 
 

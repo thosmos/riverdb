@@ -8,6 +8,7 @@
     [datomic.api :as d]
     [java-time :as jt]
     [riverdb.util :as util]
+    [riverdb.state :refer [db cx]]
     [riverdb.db :as rdb :refer [rpull pull-entities]]
     [taoensso.timbre :as log :refer [debug info]]
     [thosmos.util :as tu]
@@ -378,6 +379,7 @@
    :params          {:H2O_Temp {:precision  {:unit 0.5}
                                 :exceedance {:high 20.0}}
                      :H2O_Cond {:precision {:range 10.0}}
+                     :H2O_TDS  {:precision {:range 10.0}}
                      :H2O_DO   {:precision  {:percent 5.0}
                                 :exceedance {:low 7.0}}
                      :H2O_pH   {:precision  {:unit 0.2}
@@ -433,7 +435,7 @@
             :TotalColiform [:constituentlookup/ConstituentCode "5-56-23-20-7"] ;; "5-56-23-20-7" "5-57-23-2-7"
             :EColi         [:constituentlookup/ConstituentCode "5-57-464-0-7"]}
    "WCCA"  {:Air_Temp   [:constituentlookup/ConstituentCode "10-42-100-0-31"]
-            :Cond       [:constituentlookup/ConstituentCode "5-42-24-0-25"]
+            :Cond       [:constituentlookup/ConstituentCode "5-42-107-0-100"]
             :DO_mgL     [:constituentlookup/ConstituentCode "5-42-38-0-6"]
             :DO_Percent [:constituentlookup/ConstituentCode "5-42-38-0-13"]
             :H2O_Temp   [:constituentlookup/ConstituentCode "5-42-100-0-31"]
@@ -515,7 +517,7 @@
                   analyte (or (get-in c [:analyte :short]) (get-in c [:analyte :name]))
                   matrix  (or (get-in c [:matrix :short]) (get-in c [:matrix :name]))
                   unit    (get-in c [:unit :name])
-                  device  (:id device)
+                  device  (str (:name deviceType) " " (:id device))
                   type    (:code type)
                   matrix  (if (= type "FieldObs")
                             "FieldObs"
