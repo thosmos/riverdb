@@ -43,7 +43,6 @@
          start-from (or start-from 0)]
      (take quantity (drop start-from coll)))))
 
-
 (defn schemas []
   (domain-spec.core/datomic->terse-schema (db)))
 
@@ -70,12 +69,18 @@
        (d/q find (db) attr qu value)
        (d/q find (db) attr qu)))))
 
-
 (defn rpull
   ([eid]
    (d/pull (db) '[*] eid))
   ([eid query]
    (d/pull (db) query eid)))
+
+(defn pull-tx [eid]
+  (d/q '[:find (pull ?t [*]) .
+         :in $ ?e
+         :where
+         [?e _ _ ?t]]
+    (db) eid))
 
 (defn find-lab-parameters []
   (d/q '[:find ?param ?param2 ?matrix ?method ?unit ?code
@@ -152,7 +157,6 @@
        (warn "Got more than one Constituent at (get-constituent [matrix param])" (map first results)))
      (when (= (count results) 0)
        (warn "Got no Constituent at (get-constituent [matrix param])" matrix analyte method))
-
      (ffirst
        results))))
 

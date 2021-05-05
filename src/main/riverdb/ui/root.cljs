@@ -318,7 +318,9 @@
         auth-user     (some-> current-session :account/auth :user)
         agency-uuid   (get-in props [:ui.riverdb/current-agency :agencylookup/uuid])
         ag-ident      [:agencylookup/uuid agency-uuid]
-        rdb-admin?    (->> (roles/user->roles auth-user) (roles/admin? #{:role.type/riverdb-admin}))]
+        admin?        (->> auth-user :user/role :db/ident (= :role.type/admin))
+        rdb-admin?    (->> auth-user :user/role :db/ident (= :role.type/riverdb-admin))]
+    (debug "RENDER TopChrome" "admin?" admin? "user" auth-user)
     (div {:style {:display "grid" :gridTemplateRows "45px 1fr" :gridRowGap "0.2em" :height "100%"}}
       (div :.ui.secondary.pointing.menu {:style {:height "40px"}}
         (dom/a :.item {:classes [(when (= :main current-tab) "active")]
@@ -330,6 +332,7 @@
                 #_(ui-dropdown-item {:onClick (fn [] (form/create! this SiteVisitEditor))} "New Site Visit")
                 (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this SiteVisitList {}))} "Site Visits")
                 (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this WorkTimeList {:worktime/agency ag-ident}))} "Hours")
+                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this PersonList {:person/Agency ag-ident}))} "People")
                 #_(ui-dropdown-item {:onClick (fn [] (rroute/route-to! this UploadPage {}) )} "Import CSV")
                 #_(ui-dropdown-item {:onClick (fn [] (form/create! this PersonForm {:initial-state {}}))} "Add Person")))
             (ui-dropdown {:className "item" :text "Reports"}
@@ -337,11 +340,13 @@
                 (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this TacReportPage {}))} "QC Report")
 
                 (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this DataVizPage {}))} "Data Table")))
-            (ui-dropdown {:className "item" :text "Admin"}
-              (ui-dropdown-menu {}
-                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this PersonList {:person/Agency ag-ident}))} "People")
-                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this Projects {}))} "Projects")
-                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this UserList {:user/agency ag-ident}))} "User Logins"))))
+            (when admin?
+              (ui-dropdown {:className "item" :text "Admin"}
+                (ui-dropdown-menu {}
+                  (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this Projects {}))} "Projects")
+                  (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this UserList {:user/agency ag-ident}))} "User Logins")
+                  (when rdb-admin?
+                    (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this ThetaRoot {:user/agency ag-ident}))} "Tables"))))))
           #_[(when rdb-admin?
                (dom/a :.item {:key  "theta" :classes [(when (= :theta current-tab) "active")]
                               :href "/theta/index"} "Tables"))

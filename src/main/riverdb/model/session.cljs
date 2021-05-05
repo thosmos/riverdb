@@ -83,14 +83,11 @@
                                        (uism/actor->ident env :actor/current-session)
                                        (::uism/state-map env))
                           globals    (get actor-data [:component/id :globals])
-                          _          (debug "GLOBALS" globals)
+                          ;_          (debug "GLOBALS" globals)
                           user       (get-in actor-data [:account/auth :user])
+                          ;_          (debug "SESSION USER" user)
                           agency     (:user/agency user)
-                          ;role
-                          ;roles      (roles/user->roles user)
-                          ;agencies   (when roles (roles/roles->agencies2 roles))
-                          ;agency     (first agencies)
-                          agencyCode (or (:agencylookup/AgencyCode agency))
+                          agencyCode (:agencylookup/AgencyCode agency)
                           agID       (:db/id agency)
                           {:keys [desired-route] :as config} (uism/retrieve env :config)]
                       (df/load! SPA :agency-project-years nil
@@ -99,8 +96,7 @@
                          :post-mutation        `rm/process-project-years
                          :post-mutation-params {:desired-route desired-route}})
                       (agency/preload-agency agID)
-                      #_(df/load! SPA [:component/id :globals] globals/Globals)
-                      (debug "AUTH STUFF" agencyCode (keys env))
+                      ;(debug "AUTH STUFF" agencyCode (keys env))
                       (-> env
                         (uism/store :config (dissoc config :desired-route))
                         (assoc-in [::uism/state-map :ui.riverdb/current-agency]

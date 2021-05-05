@@ -16,7 +16,7 @@
 
 (defn return-user [user]
   (-> user
-    (select-keys [:user/name :user/email :user/uuid :user/roles])))
+    (select-keys [:user/name :user/email :user/uuid :user/role :user/agency])))
 
 (defn pull-email->user
   ([email]

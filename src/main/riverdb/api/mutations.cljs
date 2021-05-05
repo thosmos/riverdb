@@ -387,12 +387,14 @@
       (debug "DELETE ENTITY" ident)
       (debug "SAVE ENTITY" ident))
     (swap! state set-saving* ident true))
-  (remote [env]
+  (remote [{:keys [state] :as env}]
+    (debug "SAVE ENTITY REMOTE" (:ui.riverdb/current-agency @state))
     (-> env
       (update-in [:ast :params] #(-> %
                                    (dissoc :post-mutation)
                                    (dissoc :post-params)
-                                   (dissoc :success-msg)))
+                                   (dissoc :success-msg)
+                                   (assoc :agency (get-in @state [:ui.riverdb/current-agency 1]))))
       ;; remove reverse keys
       (update-in [:ast :params :diff]
         (fn [diff]

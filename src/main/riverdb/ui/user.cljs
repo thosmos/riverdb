@@ -17,7 +17,8 @@
 
 (defsc RoleType [this props]
   {:ident :role.type/uuid
-   :query [:db/ident
+   :query [:db/id
+           :db/ident
            :role.type/label
            :role.type/uuid]})
 

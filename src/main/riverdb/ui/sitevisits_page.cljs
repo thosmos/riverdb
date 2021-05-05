@@ -317,7 +317,15 @@
    :componentDidMount (fn [this]
                         (debug "DID MOUNT SiteVisitForm")
                         ;; start state machine
-                        (uism/begin! this rmsv/sv-sm ::uism-sv {:actor/sv (comp/get-ident this)}))}
+                        (uism/begin! this rmsv/sv-sm ::uism-sv {:actor/sv (comp/get-ident this)})
+                        (let [{:ui/keys [ready create globals add-person-modal error]
+                               :db/keys [id]
+                               :sitevisit/keys [CheckPersonRef DataEntryDate DataEntryPersonRef
+                                                Notes QAPersonRef QACheck QADate
+                                                Samples SiteVisitDate StationID StationFailCode
+                                                Visitors VisitType WorkTimes] :as props} (comp/props this)]
+                          (sync-worktimes this Visitors WorkTimes)))}
+
 
 
 
