@@ -81,6 +81,7 @@
 
                                      (when (seq years)
                                        [(keyword ProjectID) {:id      ProjectID
+                                                             :proj-k  (keyword ProjectID)
                                                              :agency  AgencyCode
                                                              :project (tu/walk-modify-k-vals pj :db/id str)
                                                              :name    Name

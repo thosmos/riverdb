@@ -68,7 +68,8 @@
     [riverdb.roles :as roles]
     [edn-query-language.core :as eql]
     [tick.core :as t]
-    [testdouble.cljs.csv :as csv]))
+    [testdouble.cljs.csv :as csv]
+    [com.fulcrologic.fulcro.application :as app]))
 
 (declare SVRouter)
 (declare SiteVisitList)
@@ -315,7 +316,7 @@
                         :sitevisit/WorkTimes}
 
    :componentDidMount (fn [this]
-                        (debug "DID MOUNT SiteVisitForm")
+                        ;(debug "DID MOUNT SiteVisitForm")
                         ;; start state machine
                         (uism/begin! this rmsv/sv-sm ::uism-sv {:actor/sv (comp/get-ident this)})
                         (let [{:ui/keys [ready create globals add-person-modal error]
@@ -343,7 +344,7 @@
         sv-time       (:sitevisit/Time props)
         sv-date       (:sitevisit/SiteVisitDate props)
         ;worktimes     (:worktime/_sitevisit props)
-        _ (debug "monitor hours" WorkTimes)
+        ;_ (debug "monitor hours" WorkTimes)
 
         {person-options            :entity.ns/person
          stationlookup-options     :entity.ns/stationlookup
@@ -628,11 +629,12 @@
 
 (def ui-sv-form (comp/factory SiteVisitForm {:keyfn :db/id}))
 
+
 (fm/defmutation sort-load->select-options
   "sorts the load results, and then creates a seq that can be used as the options for a select dropdown"
   [{:keys [target select-target text-fn sort-fn]}]
   (action [{:keys [state]}]
-    (debug "sort-load->select-options" target select-target text-fn sort-fn)
+    ;(debug "sort-load->select-options" target select-target text-fn sort-fn)
     (let [ms   (->>
                  (get-in @state target)
                  (sort-by sort-fn))
@@ -644,10 +646,33 @@
                        (assoc-in target (into {} ms))
                        (assoc-in select-target opts)))))))
 
+(defn ref->gid
+  "Sometimes references on the client are actual idents and sometimes they are
+  nested maps, this function attempts to return an ident regardless."
+  [x]
+  ;(debug "ref->gid" x)
+  (cond
+    (eql/ident? x)
+    (second x)
+    (and (map? x) (:db/id x))
+    (:db/id x)))
+
 (fm/defmutation form-ready
   [{:keys [route-target form-ident]}]
-  (action [{:keys [state]}]
-    (debug "MUTATION FORM READY" route-target form-ident)
+  (action [{:keys [app state]}]
+    ;(debug "MUTATION FORM READY" route-target form-ident)
+    (let [st                 @state
+          current-project-id (ref->gid (:ui.riverdb/current-project st))
+          sv                 (get-in st form-ident)
+          sv-project-id      (ref->gid (:sitevisit/ProjectID sv))
+          same?              (= current-project-id sv-project-id)]
+      ;(log/debug "CURRENT PROJECT" (pr-str current-project-id) "SV PROJECT" (pr-str sv-project-id) "same?" same?)
+      (when-not same?
+        ;(log/debug "NOT SAME, LOADING PROJECT" sv-project-id)
+        (let [sv-proj (get-in st [:org.riverdb.db.projectslookup/gid sv-project-id])
+              proj-k  (keyword (:projectslookup/ProjectID sv-proj))]
+          ;(log/debug "SV PROJECT" proj-k)
+          (comp/transact! app `[(rm/process-project-years {:proj-k ~proj-k})]))))
     (try
       (swap! state
         (fn [st]
@@ -657,8 +682,9 @@
             (fs/entity->pristine* form-ident)
             (update-in form-ident assoc :ui/ready true))))
       (catch js/Object ex (debug "FORM LOAD FAILED" ex)))
-    (debug "DONE SETTING UP SV FORM READY")
+    ;(debug "DONE SETTING UP SV FORM READY")
     (dr/target-ready! SPA route-target)))
+
 
 (fm/defmutation merge-new-sv2
   [{:keys []}]
@@ -666,11 +692,10 @@
     (let [current-project (get @state :ui.riverdb/current-project)
           current-agency  (get @state :ui.riverdb/current-agency)
           sv              (comp/get-initial-state SiteVisitForm {:project current-project :agency current-agency})
-          _               (debug "Merge SV!" sv current-project current-agency)
+          ;_               (debug "Merge SV!" sv current-project current-agency)
           sv              (walk-ident-refs @state sv)
           sv              (fs/add-form-config SiteVisitForm sv)]
-
-      (debug "Merge new SV! do we have DB globals yet?" (get-in @state [:component/id :globals]))
+      ;(debug "Merge new SV! do we have DB globals yet?" (get-in @state [:component/id :globals]))
       (swap! state
         (fn [st]
           (-> st
@@ -709,24 +734,27 @@
                                        roles/user->roles
                                        roles/admin?)
                               result (and valid? admin?)]
-                          (debug "CHECK SESSION SiteVisitEditor" "valid?" valid? "admin?" admin? "result" result)
+                          ;(debug "CHECK SESSION SiteVisitEditor" "valid?" valid? "admin?" admin? "result" result)
                           result))
 
    :will-enter        (fn [app {:keys [sv-id] :as params}]
                         (let [is-new?      (= sv-id "new")
                               ident-key    :org.riverdb.db.sitevisit/gid
                               editor-ident [:component/id :sitevisit-editor]]
-                          (log/debug "WILL ENTER SiteVisitEditor" "NEW?" is-new? "PARAMS" params)
+                          ;(log/debug "WILL ENTER SiteVisitEditor" "NEW?" is-new? "PARAMS" params)
                           (if is-new?
                             (dr/route-deferred editor-ident
                               #(let [] ;(riverdb.ui.util/shortid)]]
-                                 (log/debug "CREATING A NEW SITEVISIT")
+                                 ;(log/debug "CREATING A NEW SITEVISIT")
                                  (comp/transact! app `[(merge-new-sv2)])
                                  (dr/target-ready! app editor-ident)))
                             (dr/route-deferred editor-ident
                               #(let [sv-ident [ident-key sv-id]]
-                                 (log/debug "LOADING AN EXISTING SITEVISIT" sv-ident)
-                                 ;(dr/target-ready! SPA editor-ident)
+                                 ;(log/debug "LOADING AN EXISTING SITEVISIT" sv-ident)
+                                 (let [app-state (app/current-state app)
+                                       current-project (:ui.riverdb/current-project app-state)])
+                                   ;(log/debug "SV PROJECT" current-project))
+
                                  (f/load! app sv-ident SiteVisitForm
                                    {:target               (targeting/multiple-targets
                                                             [:ui.riverdb/current-sv]
@@ -737,7 +765,7 @@
                                                            :form-ident   sv-ident}
                                     :without              #{[:riverdb.theta.options/ns '_]}}))))))
    :will-leave        (fn [this props]
-                        (debug "WILL LEAVE EDITOR")
+                        ;(debug "WILL LEAVE EDITOR")
                         (dr/route-immediate [:component/id :sitevisit-editor]))
 
    :componentDidMount (fn [this]
@@ -745,8 +773,8 @@
                               {:keys [sitevisit]} props
                               {:sitevisit/keys [AgencyCode ProjectID]} sitevisit
                               projID (if (eql/ident? ProjectID) (second ProjectID) (:db/id ProjectID))
-                              agID   (if (eql/ident? AgencyCode) (second AgencyCode) (:db/id AgencyCode))
-                              _      (log/debug "DID MOUNT SiteVisitEditor" "AGENCY" AgencyCode "PROJECT" ProjectID "projID" projID "agID" agID)]
+                              agID   (if (eql/ident? AgencyCode) (second AgencyCode) (:db/id AgencyCode))]
+                              ;_      (log/debug "DID MOUNT SiteVisitEditor" "AGENCY" AgencyCode "PROJECT" ProjectID "projID" projID "agID" agID)]
 
                           (preload-agency agID)
 
@@ -776,7 +804,7 @@
   (let [parameters (get-in current-project [:projectslookup/Parameters])
         parameters (vec (riverdb.util/sort-maps-by parameters [:parameter/Order]))
         marker     (get props [df/marker-table ::sv])]
-    (debug "RENDER SiteVisitsEditor")
+    ;(debug "RENDER SiteVisitsEditor")
     (div {}
       #_(button
           {:onClick
@@ -828,6 +856,7 @@
 
 (def ui-sv-summary (comp/factory SiteVisitSummary {:keyfn :db/id}))
 
+
 (defn load-sitevisits
   ([this filter limit offset sortField sortOrder]
    (let [params {:filter filter :limit limit :offset offset :sortField sortField :sortOrder sortOrder}]
@@ -842,6 +871,7 @@
         :target   [:component/id :sitevisit-list :sitevisits]
         :params   params}))))
 
+
 ;(defn load-sites [this agencyCode]
 ;  (debug "LOAD SITES" agencyCode)
 ;  (let [target [:component/id :sitevisit-list :sites]]
@@ -854,6 +884,7 @@
 ;                              :ident-key   :org.riverdb.db.stationlookup/gid
 ;                              :sort-fn     :stationlookup/StationID}})))
 
+
 (defn reset-sites [this]
   (let [sites  (get (comp/props this) :ui.riverdb/current-project-sites)
         target [:ui.riverdb/current-project-sites]]
@@ -862,6 +893,7 @@
     (comp/transact! this `[(rm/sort-ident-list-by {:idents-path ~target
                                                    :ident-key   :org.riverdb.db.stationlookup/gid
                                                    :sort-fn     :stationlookup/StationID})])))
+
 
 (defn make-filter
   ([props]
@@ -890,7 +922,6 @@
 
      (debug "MAKE FILTER" "project" pj-id "from" year-from "to" year-to)
      filter)))
-
 
 
 (defsc SiteVisitList
