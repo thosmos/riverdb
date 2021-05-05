@@ -115,9 +115,8 @@
         ;_ (pprint selection)
         selections (vec (:selections selection))
         ;_ (pprint selections)
-        fields     (vec (map :field selections))
-        ;_          (debug "FIELDS" fields)
-        tk         (get selection :field)
+        fields     (vec (map :field-name selections))
+        _          (debug "FIELDS" fields)
         fromDate   (when (:fromYear args)
                      (jt/java-date (jt/zoned-date-time (:fromYear args))))
         toDate     (when (:toYear args)
@@ -233,11 +232,11 @@
   (try
     (let [selection   (:com.walmartlabs.lacinia/selection context)
           selections  (vec (:selections selection))
-          fields      (vec (map :field selections))
+          fields      (vec (map :field-name selections))
 
           ;fields     (vec (remove
           ;                  #(clojure.string/starts-with? (name %) "__")
-          ;                  (map :field selections)))
+          ;                  (map :field-name selections)))
 
           id-field?   (some #{:id} fields)
           get-latest? (some #{:latest} fields)
@@ -405,7 +404,7 @@
           selections  (vec (:selections selection))
           pull-q      (parse-sels selections)
           pull-q      (walk-ids pull-q)
-          fields      (vec (map :field selections))
+          fields      (vec (map :field-name selections))
           id-field?   (some #{:id} fields)
           inst-field? (some #{:inst} fields)
           args        (into {} (mapv (fn [[k v]] identity [k (Long/parseLong v)]) args))
@@ -524,7 +523,7 @@
 ;               pull-q          (parse-selections selections)
 ;               _               (pprint pull-q)
 ;
-;               fields          (map :field selections)
+;               fields          (map :field-name selections)
 ;               tk              (get selection :field)
 ;
 ;               table           (name tk)
@@ -872,8 +871,8 @@
 
                _               (pprint pull-q)
 
-               fields          (map :field selections)
-               tk              (get selection :field)
+               fields          (map :field-name selections)
+               tk              (get selection :field-name)
 
                table           (name tk)
                table           (if (str/starts-with? table "all")

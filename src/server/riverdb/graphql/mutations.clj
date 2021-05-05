@@ -105,7 +105,7 @@
           _          (debug "IS Admin?" is-admin? user?)
           selection  (:com.walmartlabs.lacinia/selection ctx)
           selections (vec (:selections selection))
-          fields     (vec (map :field selections))
+          fields     (vec (map :field-name selections))
           ;table      (get selection :field)
           ;table-nm   (name table)
           table-nm   ent
@@ -179,7 +179,7 @@
     (debug "ENTITY CREATE" ent args)
     (let [selection  (:com.walmartlabs.lacinia/selection ctx)
           selections (vec (:selections selection))
-          fields     (map :field selections)
+          fields     (map :field-name selections)
           ;tk             (get selection :field)
           id-field?  (some #{:id} fields)
           fields     (if id-field?
