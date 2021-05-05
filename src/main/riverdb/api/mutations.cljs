@@ -129,16 +129,17 @@
            :projectslookup/Name
            {:projectslookup/AgencyRef (comp/get-query Agency)}]})
 
-(defmutation process-project-years [{:keys [desired-route]}]
+(defmutation process-project-years [{:keys [desired-route proj-k]}]
   (action [{:keys [state]}]
     (debug (clojure.string/upper-case "process-project-years"))
     (let [agency-project-years (get-in @state [:component/id :proj-years :agency-project-years])
           _                    (debug "agency-project-years" agency-project-years)
           current-project      (get @state :ui.riverdb/current-project)
           current-year         (get @state :ui.riverdb/current-year)
-          proj-k               (if current-project
-                                 (keyword (:projectslookup/ProjectID current-project))
-                                 (ffirst agency-project-years))
+          proj-k               (or proj-k
+                                 (if current-project
+                                   (keyword (:projectslookup/ProjectID current-project))
+                                   (ffirst agency-project-years)))
           project              (when proj-k
                                  (get-in agency-project-years [proj-k :project]))
           sites                (when proj-k
@@ -387,12 +388,14 @@
       (debug "DELETE ENTITY" ident)
       (debug "SAVE ENTITY" ident))
     (swap! state set-saving* ident true))
-  (remote [env]
+  (remote [{:keys [state] :as env}]
+    (debug "SAVE ENTITY REMOTE" (:ui.riverdb/current-agency @state))
     (-> env
       (update-in [:ast :params] #(-> %
                                    (dissoc :post-mutation)
                                    (dissoc :post-params)
-                                   (dissoc :success-msg)))
+                                   (dissoc :success-msg)
+                                   (assoc :agency (get-in @state [:ui.riverdb/current-agency 1]))))
       ;; remove reverse keys
       (update-in [:ast :params :diff]
         (fn [diff]

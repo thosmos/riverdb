@@ -8,12 +8,42 @@
     [riverdb.util :refer [sort-maps-by with-index]]
     [riverdb.ui.session :refer [Session]]
     [riverdb.ui.lookups :as looks :refer [stationlookup-sum]]
+    [riverdb.ui.project :refer [Project]]
     [theta.log :as log :refer [debug info]]
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]))
 
 
-(defsc ProjectYears [this {:keys                 [agency-project-years]
+(defn update-em [this agency-project-years current-year proj-k]
+  {:pre [(keyword? proj-k)]}
+  (debug "UPDATE SELECTED PROJECT" proj-k)
+  (let [project (when proj-k
+                  (get-in agency-project-years [proj-k :project]))
+        sites   (when proj-k
+                  (get-in agency-project-years [proj-k :sites]))
+        years   (when proj-k
+                  (get-in agency-project-years [proj-k :years]))
+        year    (when years
+                  (rm/get-year-fn current-year years))]
+    (when project
+      (merge/merge-component! this looks/projectslookup-sum project :replace [:ui.riverdb/current-project]))
+    ;(rm/merge-ident! (comp/get-ident looks/projectslookup-sum project) project
+    ;  :replace [:ui.riverdb/current-project]))
+    (when sites
+      (rm/set-root-key! :ui.riverdb/current-project-sites [])
+      (rm/merge-idents! :org.riverdb.db.stationlookup/gid :db/id sites
+        :append [:ui.riverdb/current-project-sites]))
+    (when year
+      (rm/set-root-key! :ui.riverdb/current-year year)))
+  proj-k)
+
+(defsc AgencyProjectYears [this props]
+  {:ident [:ui.riverdb/agency-project-years :proj-k]
+   :query [:proj-k :agencyCode :id :name :years
+           {:sites (comp/get-query looks/stationlookup-sum)}
+           {:project (comp/get-query Project)}]})
+
+(defsc ProjectYears [this {:keys            [agency-project-years]
                            :ui.riverdb/keys [current-agency current-project current-year]}]
   {:ident             (fn [] [:component/id :proj-years])
    :query             [:agency-project-years
@@ -25,57 +55,28 @@
    :componentDidMount (fn [this]
                         (debug "PROJECT YEARS MOUNTED")
                         (let [{:ui.riverdb/keys [current-agency]
-                               :keys                 [agency-project-years]} (comp/props this)
+                               :keys            [agency-project-years]} (comp/props this)
                               agencyCode (:agencylookup/AgencyCode current-agency)]
                           (when (and agencyCode (not agency-project-years))
                             (f/load this :agency-project-years nil
                               {:params {:agencies [agencyCode]}
                                :target [:component/id :proj-years :agency-project-years]}))))}
 
-  (let [get-year-fn (fn [ui-year years]
-                      (if (some #{ui-year} years)
-                        ui-year
-                        (when-let [year (first years)]
-                          year)))
+  (let [proj-k     (if current-project
+                     (keyword (:projectslookup/ProjectID current-project))
+                     (let [proj-k (ffirst agency-project-years)]
+                       (when proj-k
+                         (update-em this agency-project-years current-year proj-k))))
 
-        update-em   (fn [proj-k]
-                      {:pre [(keyword? proj-k)]}
-                      (debug "UPDATE SELECTED PROJECT" proj-k)
-                      (let [project (when proj-k
-                                      (get-in agency-project-years [proj-k :project]))
-                            sites   (when proj-k
-                                      (get-in agency-project-years [proj-k :sites]))
-                            years   (when proj-k
-                                      (get-in agency-project-years [proj-k :years]))
-                            year    (when years
-                                      (get-year-fn current-year years))]
-                        (when project
-                          (merge/merge-component! this looks/projectslookup-sum project :replace [:ui.riverdb/current-project]))
-                          ;(rm/merge-ident! (comp/get-ident looks/projectslookup-sum project) project
-                          ;  :replace [:ui.riverdb/current-project]))
-                        (when sites
-                          (rm/set-root-key! :ui.riverdb/current-project-sites [])
-                          (rm/merge-idents! :org.riverdb.db.stationlookup/gid :db/id sites
-                            :append [:ui.riverdb/current-project-sites]))
-                        (when year
-                          (rm/set-root-key! :ui.riverdb/current-year year)))
-                      proj-k)
-
-        proj-k      (if current-project
-                      (keyword (:projectslookup/ProjectID current-project))
-                      (let [proj-k (ffirst agency-project-years)]
-                        (when proj-k
-                          (update-em proj-k))))
-
-        proj-nm     (when proj-k
-                      (name proj-k))
-        proj-name   (when proj-k
-                      (get-in agency-project-years [proj-k :name]))
-        agencyCode  (when proj-k
-                      (get-in agency-project-years [proj-k :agency]))
-        years       (when proj-k
-                      (get-in agency-project-years [proj-k :years]))
-        proj-year   (get-year-fn current-year years)]
+        proj-nm    (when proj-k
+                     (name proj-k))
+        proj-name  (when proj-k
+                     (get-in agency-project-years [proj-k :name]))
+        agencyCode (when proj-k
+                     (get-in agency-project-years [proj-k :agency]))
+        years      (when proj-k
+                     (get-in agency-project-years [proj-k :years]))
+        proj-year  (rm/get-year-fn current-year years)]
 
     (debug "RENDER ProjectYears" proj-nm proj-year)
     (when current-agency
@@ -87,7 +88,7 @@
                        :onChange #(let [proj-nm (.. % -target -value)
                                         proj-k  (keyword proj-nm)]
                                     (when proj-k
-                                      (update-em proj-k)))}
+                                      (update-em this agency-project-years current-year proj-k)))}
             (doall
               (for [[prj-k prj] agency-project-years]
                 (let [prj-nm   (name prj-k)

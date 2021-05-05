@@ -6,7 +6,16 @@
 (defsc Project [this props]
   {:ident [:org.riverdb.db.projectslookup/gid :db/id]
    :query [:db/id
-           {:projectslookup/Parameters (comp/get-query Parameter)}
+           :riverdb.entity/ns
            :projectslookup/Active
+           :projectslookup/AgencyCode
+           :projectslookup/AgencyRef
            :projectslookup/Name
-           :projectslookup/ProjectID]})
+           {:projectslookup/Parameters (comp/get-query Parameter)}
+           :projectslookup/ProjectID
+           :projectslookup/ProjectsComments
+           :projectslookup/Public
+           :projectslookup/QAPPVersion
+           :projectslookup/qappURL
+           :projectslookup/Stations
+           :projectslookup/uuid]})

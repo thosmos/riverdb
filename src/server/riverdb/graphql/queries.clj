@@ -170,18 +170,18 @@
         ;fields     (vec (remove
         ;                  #(clojure.string/starts-with? (name %) "__")
         ;                  (map :field selections)))
-        fields     (map :field selections)
+        fields     (map :field-name selections)
         ;tk         (get selection :field)
 
         id-field?  (some #{:id} fields)
 
 
+        ;_          (debug "FIELDS" fields args)
         query      (vec (for [field fields]
                           (if
                             (= :id field)
                             :db/id
                             [(keyword "stationlookup" (name field)) :as field])))
-        _          (debug "FIELDS" fields args)
         results    (riverdb.station/get-stations (db) query args)
         results    (if id-field?
                      (for [r results]

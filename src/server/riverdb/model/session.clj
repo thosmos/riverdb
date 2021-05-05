@@ -40,7 +40,12 @@
   (log/info "Authenticating" username)
   (let [user? (user/pull-email->user username
                 [:db/id :user/uuid :user/name :user/email :user/password
-                 {:user/roles '[* {:role/agency [:db/id :agencylookup/AgencyCode :agencylookup/Name :agencylookup/uuid]}]}])
+                 {:user/role [:db/id
+                              :db/ident
+                              :role.type/label
+                              :role.type/uuid]}
+                 {:user/agency [:db/id :agencylookup/AgencyCode :agencylookup/Name :agencylookup/uuid]}
+                 #_{:user/roles '[* {:role/agency [:db/id :agencylookup/AgencyCode :agencylookup/Name :agencylookup/uuid]}]}])
         res   (when user?
                 (auth/auth-password {:email username :password password :verify (:user/password user?)}))
         _     (log/debug "AUTH RESULT" res)]
@@ -48,7 +53,7 @@
       (let [res (-> res
                   (dissoc :success)
                   (dissoc :msg)
-                  (assoc :user (tu/walk-modify-k-vals (dissoc user? :user/password) :db/id str)))]
+                  (assoc :user (dissoc user? :user/password)))]
         (response-updating-session env
           {:session/valid? true
            :account/name   username
