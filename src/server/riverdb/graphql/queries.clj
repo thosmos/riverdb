@@ -116,7 +116,7 @@
         selections (vec (:selections selection))
         ;_ (pprint selections)
         fields     (vec (map :field-name selections))
-        _          (debug "FIELDS" fields)
+        ;_          (debug "FIELDS" fields)
         fromDate   (when (:fromYear args)
                      (jt/java-date (jt/zoned-date-time (:fromYear args))))
         toDate     (when (:toYear args)
@@ -234,6 +234,7 @@
           selections  (vec (:selections selection))
           fields      (vec (map :field-name selections))
 
+
           ;fields     (vec (remove
           ;                  #(clojure.string/starts-with? (name %) "__")
           ;                  (map :field-name selections)))
@@ -262,7 +263,7 @@
                         stations)
 
           eids        (map :db/id stations)]
-      (debug "EIDS" eids "ARGS" args)
+      ;(debug "EIDS" eids "ARGS" args)
 
       ;; TODO for each station, we want latest lab result for the given constituent
       (if-not (or get-data? get-latest?)
@@ -433,10 +434,11 @@
 
 (defn resolve-agency-ref [context args value]
   (let [selection    (:com.walmartlabs.lacinia/selection context)
-        fk           (:field selection)
+        fk           (:field-name selection)
+        ;_            (log/debug "FK" fk)
         fk-field-val (get value fk)
         fields       (vec (for [field (-> selection :selections)]
-                            [(keyword "agencylookup" (name (:field field))) :as (:field field)]))]
+                            [(keyword "agencylookup" (name (:field-name field))) :as (:field-name field)]))]
     ;(debug "AGENCY-REF" fk-field-val fields)
     (d/q '[:find (pull ?e q) .
            :in $ ?e q]
@@ -1148,7 +1150,7 @@
     ;(debug "FK Resolver" spec-ns)
     (debug "RESOLVE FK" spec-ns args value)
     (let [selection (:com.walmartlabs.lacinia/selection context)
-          fk        (:field selection)
+          fk        (:field-name selection)
           fk-val    (get value fk)]
       (if (nil? fk-val)
         (do
@@ -1314,8 +1316,8 @@
 ;                            :where [?e :samplingdevice/CommonID]] (db))
 ;          selection  (:com.walmartlabs.lacinia/selection ctx)
 ;          selections (vec (:selections selection))
-;          fields     (map :field selections)
-;          tk         (get selection :field)
+;          fields     (map :field-name selections)
+;          tk         (get selection :field-name)
 ;          id-field?  (some #{:id} fields)
 ;          fields     (if id-field?
 ;                       (remove #(= % :id) fields)
