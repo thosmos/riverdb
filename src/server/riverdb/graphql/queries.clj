@@ -1,7 +1,7 @@
 (ns riverdb.graphql.queries
   (:require [clojure.pprint :refer [pprint]]
             [clojure.string :as str]
-            [clojure.tools.logging :as log :refer [debug info warn error]]
+            [theta.log :as log :refer [debug info warn error]]
             [clojure.walk]
             [com.rpl.specter :refer [select transform ALL FIRST LAST MAP-KEYS MAP-VALS]]
             [com.walmartlabs.lacinia.executor :as executor]
@@ -64,13 +64,19 @@
 
 
 (defn parse-sels [sels]
-  (vec
-    (for [sel sels]
+  ;; use reduce so we can skip fields like :__typename
+  (reduce
+    (fn [sels sel]
       (let [leaf? (:leaf? sel)
             nskw  (get-in sel [:field-definition :qualified-name])]
-        (if leaf?
-          nskw
-          {nskw (parse-sels (:selections sel))})))))
+        (cond
+          (and nskw leaf?)
+          (conj sels nskw)
+          (and nskw (not leaf?))
+          (conj sels {nskw (parse-sels (:selections sel))})
+          :else
+          sels)))
+    [] sels))
 
 (defn walk-ids [form]
   (clojure.walk/prewalk
@@ -857,7 +863,9 @@
    ;(debug "RESOLVE RIMDB DEFAULT" spec-ns)
    (resolve-rimdb2 spec-ns :query-single))
   ([spec-ns query-type]
+   ;(debug "RESOLVE RIMDB" spec-ns query-type)
    (fn [context args value]
+     (debug "RESOLVE RIMDB" args value)
      (if (and (= query-type :query-single) (not (:id args)))
        (do
          (debug "requested a single result with no ID arg?  Returning NIL")
@@ -871,9 +879,9 @@
                pull-q          (parse-sels selections)
                pull-q          (walk-ids pull-q)
 
-               _               (pprint pull-q)
+               ;_               (pprint pull-q)
 
-               fields          (map :field-name selections)
+               ;fields          (map :field-name selections)
                tk              (get selection :field-name)
 
                table           (name tk)
@@ -887,11 +895,11 @@
                                  (subs table 4 (- (count table) 5))
                                  table)
 
-               _               (debug "RESOLVE v2!" (if meta? "META" "TABLE") (or query-type "NIL") spec-ns "table:" table "args:" args "fields:" fields)
+               ;_               (debug "RESOLVE" (if meta? "META" "TABLE") spec-ns (or query-type "NIL") "table:" table  "args:" args "fields:" fields)
 
-               fields          (vec (->> fields
-                                      (map name)
-                                      (remove #(or (= % "id") (str/starts-with? % "rk_") (str/starts-with? % "__") (= % "count")))))
+               ;fields          (vec (->> fields
+               ;                       (map name)
+               ;                       (remove #(or (= % "id") (str/starts-with? % "rk_") (str/starts-with? % "__") (= % "count")))))
 
 
                spec-entity     (do
@@ -931,32 +939,32 @@
                childSortNSKW   (when nestedSort?
                                  (nskw nestedSortTable childSortField))
 
-               recursive-q     (fn [table fields spec-attrs]
-                                 (vec
-                                   (concat
-                                     [:db/id]
-                                     (for [field fields]
-                                       (let [field-as   (nskw table field)
-                                             ;; get the field's attr spec
-                                             field-attr (get-spec-attr-by-key field-as spec-attrs)
-                                             ;; is it a :ref type?
-                                             is-ref?    (= :ref (:attr/type field-attr))
-                                             ;; if it's a :ref, then we need to recurse
-                                             hmm        (ds/pull @table-specs-ds '[*] [:entity/ns spec-ns])]
-                                         (cond
-                                           (and nestedSort? (= field-as sortFieldNSKW))
-                                           {field-as [:db/id childSortNSKW]}
-                                           :else
-                                           field-as))))))
-               query           (vec
-                                 (concat
-                                   [:db/id]
-                                   (for [field fields]
-                                     (let [field-as (nskw table field)]
-                                       ;(let [field-as [(nskw table field) :as (keyword field)]]
-                                       (if (and nestedSort? (= field parentSortField))
-                                         {field-as [:db/id childSortNSKW]}
-                                         field-as)))))
+               ;recursive-q     (fn [table fields spec-attrs]
+               ;                  (vec
+               ;                    (concat
+               ;                      [:db/id]
+               ;                      (for [field fields]
+               ;                        (let [field-as   (nskw table field)
+               ;                              ;; get the field's attr spec
+               ;                              field-attr (get-spec-attr-by-key field-as spec-attrs)
+               ;                              ;; is it a :ref type?
+               ;                              is-ref?    (= :ref (:attr/type field-attr))
+               ;                              ;; if it's a :ref, then we need to recurse
+               ;                              hmm        (ds/pull @table-specs-ds '[*] [:entity/ns spec-ns])]
+               ;                          (cond
+               ;                            (and nestedSort? (= field-as sortFieldNSKW))
+               ;                            {field-as [:db/id childSortNSKW]}
+               ;                            :else
+               ;                            field-as))))))
+               ;query           (vec
+               ;                  (concat
+               ;                    [:db/id]
+               ;                    (for [field fields]
+               ;                      (let [field-as (nskw table field)]
+               ;                        ;(let [field-as [(nskw table field) :as (keyword field)]]
+               ;                        (if (and nestedSort? (= field parentSortField))
+               ;                          {field-as [:db/id childSortNSKW]}
+               ;                          field-as)))))
 
                ;sortData        (when nestedSort?
                ;                  {:parent sortFieldNSKW
@@ -1015,14 +1023,14 @@
 
                ;;; if there are more filters, add 'em
                filter          (apply dissoc filter [:ids :id :q])
-               _               (debug "FILTERS" filter)
+               ;_               (debug "FILTERS" filter)
                q               (fn-add-filters q table filter)
 
                ;;; if there are more args, add 'em
                args            (apply dissoc args
                                  [:id :offset :limit :filter :page
                                   :perPage :sortField :sortOrder])
-               _               (debug "ARGS" args)
+               ;_               (debug "ARGS" args)
                q               (fn-add-filters q table args)
 
                first-nsk       (get-identity-key table-specs-ds spec-ns)
@@ -1051,7 +1059,7 @@
                                    (assoc :find ['[?e ...]])))
 
                q               (remap-query q)
-               _               (debug "Datomic query: " q)
+               ;_               (debug "Datomic query: " q)
 
                d-results       (try
                                  (d/query q)
@@ -1061,13 +1069,13 @@
                                      (debug "Failed Query" q))))
 
 
-               _               (debug "QUERY FINISHED")
+               ;_               (debug "QUERY FINISHED")
 
                ;d-results   (try
                ;              (d/query q)
                ;              (catch Exception ex (warn "RiverDB Resolver query failed" (.getMessage ex))))
 
-               _               (debug (count d-results) "RESULTS\n\n" (take 3 d-results) "\n\n")
+               ;_               (debug (count d-results) "RESULTS\n\n" (take 3 d-results) "\n\n")
 
                compare-fn      (cond
                                  (= sortOrder "ASC")
@@ -1091,8 +1099,8 @@
                                    (sort-by sort-fn compare-fn d-results))
                                  d-results)
 
-               _               (when doSort?
-                                 (debug "SORTED RESULTS" (take 5 d-results)))
+               ;_               (when doSort?
+               ;                  (debug "SORTED RESULTS" (take 5 d-results)))
 
                d-results       (cond
                                  meta?
@@ -1100,15 +1108,15 @@
 
                                  (or limit offset)
                                  (do
-                                   (debug "STARTING LIMIT")
+                                   ;(debug "STARTING LIMIT")
                                    (let [res (limit-fn limit offset d-results)]
-                                     (debug "DONE LIMITING")
+                                     ;(debug "DONE LIMITING")
                                      res))
 
                                  ;; return exact list that was requested
                                  (seq ids)
                                  (do
-                                   (debug "Returning Exact Results for IDS" ids)
+                                   ;(debug "Returning Exact Results for IDS" ids)
                                    (let [id-map (into {} (for [res d-results]
                                                            [(:db/id res) res]))
                                          _      (debug "ID-MAP keys" (keys id-map))]
@@ -1122,12 +1130,12 @@
                                  :else
                                  d-results)
 
-               _               (debug "Pre-walk D-Results" (if (map? d-results) d-results (take 1 d-results)))
+               ;_               (debug "Pre-walk D-Results" (if (map? d-results) d-results (take 1 d-results)))
                ;;; remove namespaces
                d-results       (walk-response d-results)]
 
 
-           (debug "FINAL RESULTS" (if (map? d-results) d-results (take 5 d-results)))
+           ;(debug "FINAL RESULTS" (if (map? d-results) d-results (take 5 d-results)))
 
            ;d-results   (if id-field?
            ;              (for [r d-results]
