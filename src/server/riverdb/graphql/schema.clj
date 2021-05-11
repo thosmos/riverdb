@@ -1,5 +1,6 @@
 (ns riverdb.graphql.schema
-  (:require [clojure.tools.logging :as log :refer [debug info warn error]]
+  (:require ;[clojure.tools.logging :as log :refer [debug info warn error]]
+            [theta.log :as log :refer [debug info warn error]]
             [clojure.pprint :refer [pprint]]
             [riverdb.state :as st :refer [db cx]]
             [riverdb.db :refer [limit-fn remap-query]]
@@ -129,6 +130,44 @@
    :rk    :resolve-rimdb-rk})
 
 
+(def default-args
+  {:id     {:type 'ID}
+   :limit  {:type 'Int}
+   :offset {:type 'Int}})
+
+(defn get-filter-args [attrs]
+  (let [;ent (ds/pull @specs-ds '[*] [:entity/ns ref-k])
+        ;_ (debug "GET REF" ref-k)
+        ;ent (get specs-map ref-k)
+        ;_ (debug "ENT" (:db/id ent))
+        ;attrs (:entity/attrs ent)
+        ;_ (debug "ATTRS" (map first attrs))
+        args (reduce-kv
+               (fn [args _ {:attr/keys [key type cardinality doc] :as attr}]
+                 (let [arg-k (keyword (gql-name attr))
+                       type? (case type
+                               :string
+                               'String
+                               :boolean
+                               'Boolean
+                               :ref
+                               'ID
+                               ;:long
+                               ;'Int
+                               ;:double
+                               ;'Float
+                               nil)]
+                   (if (and type? (= cardinality :one))
+                     (assoc args arg-k (if doc
+                                         {:type        type?
+                                          :description doc}
+                                         {:type type?}))
+                     args)))
+               default-args attrs)]
+    ;(debug "REF ATTRS" ref-k args)
+    args))
+
+
 (defn generate-schemas
   [specs-ds resolvers]
   (debug "Generating schemas ...")
@@ -142,15 +181,15 @@
                                     nm      (name spec-ns)
                                     ;_       (debug "OBJECT" nm)
                                     k       (keyword nm)
-                                    pks     (:entity/pks spec)
+                                    ;pks     (:entity/pks spec)
                                     attrs   (:entity/attrs spec)
 
-                                    rks     (ds/q '[:find [(pull ?e [*]) ...]
-                                                    :in $ ?spec-ns
-                                                    :where
-                                                    [?rf :entity/ns ?spec-ns]
-                                                    [?e :attr/ref ?rf]]
-                                              @specs-ds spec-ns)
+                                    ;rks     (ds/q '[:find [(pull ?e [*]) ...]
+                                    ;                :in $ ?spec-ns
+                                    ;                :where
+                                    ;                [?rf :entity/ns ?spec-ns]
+                                    ;                [?e :attr/ref ?rf]]
+                                    ;          @specs-ds spec-ns)
 
                                     v       {:fields
                                              (into {}
@@ -167,12 +206,14 @@
 
                                                                      ;; ref?
                                                                      ref-type?
-                                                                     (let [col-type (if
+                                                                     (let [ref-k    (when ref (get-ref-key specs-ds attr))
+                                                                           col-type (if
                                                                                       ref
-                                                                                      (keyword (name (get-ref-key specs-ds attr)))
+                                                                                      (keyword (name ref-k))
                                                                                       'ID)
                                                                            col-val  {:type    col-type}]
-                                                                                     ;:resolve [:resolve-rimdb-fk spec-ns]}]
+                                                                       ;:args args}]
+                                                                       ;:resolve [:resolve-rimdb-fk spec-ns]}]
                                                                        col-val)
 
                                                                      ;; all others
@@ -223,10 +264,7 @@
                                 ;    [k v]))))}]
 
 
-
-
                                 [k v])))
-
 
         convert-ref-to-ID (fn [object ref-key specs-map]
                             (let [ref-spec (ref-key specs-map)]
@@ -274,19 +312,67 @@
                                   inputs (get ent :entity/attrs)))
                               {} specs-map))
 
+        input-objects     (let [specs-map (dspec/get-spec-map specs-ds)]
+                            (reduce-kv
+                              (fn [inputs ent-k ent]
+                                (let [ent-nm (name ent-k)
+                                      attrs (get ent :entity/attrs)
+                                      args (reduce-kv
+                                             (fn [args _ {:attr/keys [key type cardinality doc] :as attr}]
+                                               (let [arg-k (keyword (gql-name attr))
+                                                     type? (case type
+                                                             :string
+                                                             'String
+                                                             :boolean
+                                                             'Boolean
+                                                             :ref
+                                                             'ID
+                                                             ;:long
+                                                             ;'Int
+                                                             ;:double
+                                                             ;'Float
+                                                             nil)]
+                                                 (if (and type? (= cardinality :one))
+                                                   (assoc args arg-k (if doc
+                                                                       {:type        type?
+                                                                        :description doc}
+                                                                       {:type type?}))
+                                                   args)))
+                                             default-args attrs)
+                                      filter-kw (keyword (str ent-nm "_filter"))
+                                      inputs (assoc inputs filter-kw {:fields args})
+                                      inputs (reduce-kv
+                                               (fn [inputs attr-key {:attr/keys [ref component] :as attr}]
+                                                 (if (and ref component)
+                                                   (let [ref-key  (get-ref-key specs-ds attr)
+                                                         ref-nm   (name ref-key)
+                                                         input-kw (keyword (str "input_" ref-nm))
+                                                         ref-type (keyword ref-nm)]
+                                                     ;; use it if we already have it, otherwise, make it
+                                                     (if-let [i-object (get inputs input-kw)]
+                                                       i-object
+                                                       (assoc inputs input-kw (->
+                                                                                (get objects ref-type)
+                                                                                strip-resolvers
+                                                                                (convert-ref-to-ID ref-key specs-map)))))
+                                                   inputs))
+                                               inputs attrs)]
+                                  inputs))
+                              {} specs-map))
+
         queries           (reduce
                             (fn [queries spec]
-                              (let [spec-ns   (:entity/ns spec)
-                                    nm        (name spec-ns)
+                              (let [ent-k     (:entity/ns spec)
+                                    nm        (name ent-k)
                                     ;_         (debug "QUERY" nm)
 
-                                    nm-cap    (clojure.string/capitalize nm)
+                                    ;nm-cap    (clojure.string/capitalize nm)
                                     k         (keyword nm)
 
                                     lst       `(~'list ~k)
 
                                     v         {:type    k
-                                               :resolve [(:query resolvers) spec-ns]
+                                               :resolve [(:query resolvers) ent-k]
                                                :args    {:id     {:type 'ID}
                                                          :limit  {:type 'Int :default 1}
                                                          :offset {:type 'Int :default 0}}}
@@ -309,20 +395,22 @@
                                                   v bools?)
                                                 v)
 
+                                    ;filter-k (keyword (str nm "_filter"))
+
                                     list-args {:page      {:type 'Int}
                                                :perPage   {:type 'Int}
                                                :sortField {:type 'String}
                                                :sortOrder {:type 'String}
-                                               :filter    {:type :post_filter}}]
+                                               :filter    {:type (keyword (str nm "_filter"))}}]
 
 
                                 (-> queries
                                   (assoc k v)
                                   (assoc (keyword (str "all" nm "s"))
-                                         {:type lst :resolve [:resolve-list-query spec-ns]
+                                         {:type lst :resolve [:resolve-list-query ent-k]
                                           :args list-args})
                                   (assoc (keyword (str "_all" nm "sMeta"))
-                                         {:type :list_meta :resolve [:resolve-list-meta spec-ns]
+                                         {:type :list_meta :resolve [:resolve-list-meta ent-k]
                                           :args list-args}))))
 
 
