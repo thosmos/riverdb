@@ -136,13 +136,7 @@
    :offset {:type 'Int}})
 
 (defn get-filter-args [attrs]
-  (let [;ent (ds/pull @specs-ds '[*] [:entity/ns ref-k])
-        ;_ (debug "GET REF" ref-k)
-        ;ent (get specs-map ref-k)
-        ;_ (debug "ENT" (:db/id ent))
-        ;attrs (:entity/attrs ent)
-        ;_ (debug "ATTRS" (map first attrs))
-        args (reduce-kv
+  (let [args (reduce-kv
                (fn [args _ {:attr/keys [key type cardinality doc] :as attr}]
                  (let [arg-k (keyword (gql-name attr))
                        type? (case type
@@ -290,28 +284,6 @@
                                       object)))
                                 object (:fields object))))
 
-
-        input-objects     (let [specs-map (dspec/get-spec-map specs-ds)]
-                            (reduce-kv
-                              (fn [inputs ent-ns ent]
-                                (reduce-kv
-                                  (fn [inputs attr-key {:keys [attr/ref attr/component] :as attr}]
-                                    (if (and ref component)
-                                      (let [ref-key  (get-ref-key specs-ds attr)
-                                            ref-nm   (name ref-key)
-                                            input-kw (keyword (str "input_" ref-nm))
-                                            ref-type (keyword ref-nm)]
-                                        ;; use it if we already have it, otherwise, make it
-                                        (if-let [i-object (get inputs input-kw)]
-                                          i-object
-                                          (assoc inputs input-kw (->
-                                                                   (get objects ref-type)
-                                                                   strip-resolvers
-                                                                   (convert-ref-to-ID ref-key specs-map)))))
-                                      inputs))
-                                  inputs (get ent :entity/attrs)))
-                              {} specs-map))
-
         input-objects     (let [specs-map (dspec/get-spec-map specs-ds)]
                             (reduce-kv
                               (fn [inputs ent-k ent]
@@ -366,7 +338,6 @@
                                     nm        (name ent-k)
                                     ;_         (debug "QUERY" nm)
 
-                                    ;nm-cap    (clojure.string/capitalize nm)
                                     k         (keyword nm)
 
                                     lst       `(~'list ~k)
@@ -394,8 +365,6 @@
                                                           {:type 'Boolean}))))
                                                   v bools?)
                                                 v)
-
-                                    ;filter-k (keyword (str nm "_filter"))
 
                                     list-args {:page      {:type 'Int}
                                                :perPage   {:type 'Int}
