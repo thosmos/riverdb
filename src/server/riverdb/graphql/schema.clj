@@ -1,14 +1,14 @@
 (ns riverdb.graphql.schema
   (:require ;[clojure.tools.logging :as log :refer [debug info warn error]]
-            [theta.log :as log :refer [debug info warn error]]
-            [clojure.pprint :refer [pprint]]
-            [riverdb.state :as st :refer [db cx]]
-            [riverdb.db :refer [limit-fn remap-query]]
-            [riverdb.station]
-            [clojure.edn :as edn]
-            [thosmos.util :as tu]
-            [datascript.core :as ds]
-            [domain-spec.core :as dspec]))
+    [theta.log :as log :refer [debug info warn error]]
+    [clojure.pprint :refer [pprint]]
+    [riverdb.state :as st :refer [db cx]]
+    [riverdb.db :refer [limit-fn remap-query]]
+    [riverdb.station]
+    [clojure.edn :as edn]
+    [thosmos.util :as tu]
+    [datascript.core :as ds]
+    [domain-spec.core :as dspec]))
 
 ;; specs for the specs themselves
 (def spec-specs (dspec/spec-specs))
@@ -130,14 +130,17 @@
    :rk    :resolve-rimdb-rk})
 
 
-(def default-args
+(def default-list-args
   {:id     {:type 'ID}
    :limit  {:type 'Int}
    :offset {:type 'Int}})
 
+(def default-single-args
+  {:id {:type 'ID}})
+
 (defn get-filter-args [attrs]
   (let [args (reduce-kv
-               (fn [args _ {:attr/keys [key type cardinality doc] :as attr}]
+               (fn [args _ {:attr/keys [key type cardinality doc identity] :as attr}]
                  (let [arg-k (keyword (gql-name attr))
                        type? (case type
                                :string
@@ -151,13 +154,15 @@
                                ;:double
                                ;'Float
                                nil)]
-                   (if (and type? (= cardinality :one))
+                   (cond
+                     (and type? (= cardinality :one))
                      (assoc args arg-k (if doc
                                          {:type        type?
                                           :description doc}
                                          {:type type?}))
+                     :else
                      args)))
-               default-args attrs)]
+               default-single-args attrs)]
     ;(debug "REF ATTRS" ref-k args)
     args))
 
@@ -190,7 +195,7 @@
                                                (concat
                                                  {:id {:type 'ID}}
                                                  (for [{:attr/keys [key type ref component cardinality gql doc]
-                                                        :as   attr} attrs]
+                                                        :as        attr} attrs]
                                                    (let [col-k-nm  (gql-name attr)
                                                          col-k     (keyword col-k-nm)
 
@@ -205,7 +210,7 @@
                                                                                       ref
                                                                                       (keyword (name ref-k))
                                                                                       'ID)
-                                                                           col-val  {:type    col-type}]
+                                                                           col-val  {:type col-type}]
                                                                        ;:args args}]
                                                                        ;:resolve [:resolve-rimdb-fk spec-ns]}]
                                                                        col-val)
@@ -287,48 +292,27 @@
         input-objects     (let [specs-map (dspec/get-spec-map specs-ds)]
                             (reduce-kv
                               (fn [inputs ent-k ent]
-                                (let [ent-nm (name ent-k)
-                                      attrs (get ent :entity/attrs)
-                                      args (reduce-kv
-                                             (fn [args _ {:attr/keys [key type cardinality doc] :as attr}]
-                                               (let [arg-k (keyword (gql-name attr))
-                                                     type? (case type
-                                                             :string
-                                                             'String
-                                                             :boolean
-                                                             'Boolean
-                                                             :ref
-                                                             'ID
-                                                             ;:long
-                                                             ;'Int
-                                                             ;:double
-                                                             ;'Float
-                                                             nil)]
-                                                 (if (and type? (= cardinality :one))
-                                                   (assoc args arg-k (if doc
-                                                                       {:type        type?
-                                                                        :description doc}
-                                                                       {:type type?}))
-                                                   args)))
-                                             default-args attrs)
+                                (let [ent-nm    (name ent-k)
+                                      attrs     (get ent :entity/attrs)
+                                      args      (merge default-list-args (get-filter-args attrs))
                                       filter-kw (keyword (str ent-nm "_filter"))
-                                      inputs (assoc inputs filter-kw {:fields args})
-                                      inputs (reduce-kv
-                                               (fn [inputs attr-key {:attr/keys [ref component] :as attr}]
-                                                 (if (and ref component)
-                                                   (let [ref-key  (get-ref-key specs-ds attr)
-                                                         ref-nm   (name ref-key)
-                                                         input-kw (keyword (str "input_" ref-nm))
-                                                         ref-type (keyword ref-nm)]
-                                                     ;; use it if we already have it, otherwise, make it
-                                                     (if-let [i-object (get inputs input-kw)]
-                                                       i-object
-                                                       (assoc inputs input-kw (->
-                                                                                (get objects ref-type)
-                                                                                strip-resolvers
-                                                                                (convert-ref-to-ID ref-key specs-map)))))
-                                                   inputs))
-                                               inputs attrs)]
+                                      inputs    (assoc inputs filter-kw {:fields args})
+                                      inputs    (reduce-kv
+                                                  (fn [inputs attr-key {:attr/keys [ref component] :as attr}]
+                                                    (if (and ref component)
+                                                      (let [ref-key  (get-ref-key specs-ds attr)
+                                                            ref-nm   (name ref-key)
+                                                            input-kw (keyword (str "input_" ref-nm))
+                                                            ref-type (keyword ref-nm)]
+                                                        ;; use it if we already have it, otherwise, make it
+                                                        (if-let [i-object (get inputs input-kw)]
+                                                          i-object
+                                                          (assoc inputs input-kw (->
+                                                                                   (get objects ref-type)
+                                                                                   strip-resolvers
+                                                                                   (convert-ref-to-ID ref-key specs-map)))))
+                                                      inputs))
+                                                  inputs attrs)]
                                   inputs))
                               {} specs-map))
 
@@ -342,29 +326,14 @@
 
                                     lst       `(~'list ~k)
 
+                                    attrs     (:entity/attrs spec)
+
+
+                                    args      (get-filter-args attrs)
+
                                     v         {:type    k
                                                :resolve [(:query resolvers) ent-k]
-                                               :args    {:id     {:type 'ID}
-                                                         :limit  {:type 'Int :default 1}
-                                                         :offset {:type 'Int :default 0}}}
-
-
-                                    attrs     (:entity/attrs spec)
-                                    bools?    (filterv #(= (:attr/type %) :boolean) attrs)
-
-                                    ;;; add boolean args
-                                    v         (if (seq bools?)
-                                                (reduce
-                                                  (fn [v boo]
-                                                    (let [boo-k (keyword (gql-name boo))
-                                                          doc   (:attr/doc boo)]
-                                                      (assoc-in v [:args boo-k]
-                                                        (if doc
-                                                          {:type        'Boolean
-                                                           :description doc}
-                                                          {:type 'Boolean}))))
-                                                  v bools?)
-                                                v)
+                                               :args    args}
 
                                     list-args {:page      {:type 'Int}
                                                :perPage   {:type 'Int}
@@ -486,55 +455,55 @@
                    ;                       :entity_prn_dash_keys {:type 'String}}}
 
                    :list_meta          {:fields {:count {:type 'Int}}}
-                   :fldresult            {:fields {:count         {:type 'Int}
-                                                   :matrix        {:type 'String}
-                                                   :type          {:type 'String}
-                                                   :qual          {:type 'String}
-                                                   :analyte       {:type 'String}
-                                                   :unit          {:type 'String}
-                                                   :vals          {:type '(list Float)}
-                                                   :is_valid      {:type 'Boolean}
-                                                   :max           {:type 'Float}
-                                                   :min           {:type 'Float}
-                                                   :range         {:type 'Float}
-                                                   :stddev        {:type 'Float}
-                                                   :mean          {:type 'Float}
-                                                   :prec          {:type 'Float}
-                                                   :is_too_low    {:type 'Boolean}
-                                                   :is_too_high   {:type 'Boolean}
-                                                   :is_too_few    {:type 'Boolean}
-                                                   :is_exceedance {:type 'Boolean}}}
-                   :labrslt          {:fields {:matrix        {:type 'String}
-                                               :qual          {:type 'String
-                                                               :description "Result qualifier"}
-                                               :analyte       {:type 'String}
-                                               :unit          {:type 'String}
-                                               :result        {:type 'Float}
-                                               :is_too_low    {:type 'Boolean}
-                                               :is_too_high   {:type 'Boolean}
-                                               :is_exceedance {:type 'Boolean}}}
-                   :fieldobs           {:fields {:analyte       {:type 'String}
-                                                 :intvalue      {:type 'Int}
-                                                 :textvalue     {:type 'String}}}
+                   :fldresult          {:fields {:count         {:type 'Int}
+                                                 :matrix        {:type 'String}
+                                                 :type          {:type 'String}
+                                                 :qual          {:type 'String}
+                                                 :analyte       {:type 'String}
+                                                 :unit          {:type 'String}
+                                                 :vals          {:type '(list Float)}
+                                                 :is_valid      {:type 'Boolean}
+                                                 :max           {:type 'Float}
+                                                 :min           {:type 'Float}
+                                                 :range         {:type 'Float}
+                                                 :stddev        {:type 'Float}
+                                                 :mean          {:type 'Float}
+                                                 :prec          {:type 'Float}
+                                                 :is_too_low    {:type 'Boolean}
+                                                 :is_too_high   {:type 'Boolean}
+                                                 :is_too_few    {:type 'Boolean}
+                                                 :is_exceedance {:type 'Boolean}}}
+                   :labrslt            {:fields {:matrix        {:type 'String}
+                                                 :qual          {:type        'String
+                                                                 :description "Result qualifier"}
+                                                 :analyte       {:type 'String}
+                                                 :unit          {:type 'String}
+                                                 :result        {:type 'Float}
+                                                 :is_too_low    {:type 'Boolean}
+                                                 :is_too_high   {:type 'Boolean}
+                                                 :is_exceedance {:type 'Boolean}}}
+                   :fieldobs           {:fields {:analyte   {:type 'String}
+                                                 :intvalue  {:type 'Int}
+                                                 :textvalue {:type 'String}}}
                    :station            {:fields {:id           {:type 'ID}
                                                  :station_id   {:type 'Int}
                                                  :station_code {:type 'String}
                                                  :river_fork   {:type 'String}
                                                  :trib_group   {:type 'String}}}
                    :site_visit         {:description "summary info about a sitevisit"
-                                        :fields      {:id       {:type 'ID}
-                                                      :date     {:type 'String}
-                                                      :notes    {:type 'String}
-                                                      :valid    {:type 'Boolean}
-                                                      :station  {:type :station}
-                                                      :resultsv {:type '(list :fldresult)
-                                                                 :description "a field result"}
-                                                      :fieldmeas {:type '(list :fldresult)
-                                                                  :description "Field Measurements"}
-                                                      :labresults {:type '(list :labrslt)
+                                        :fields      {:id         {:type 'ID}
+                                                      :date       {:type 'String}
+                                                      :notes      {:type 'String}
+                                                      :valid      {:type 'Boolean}
+                                                      :station    {:type :station}
+                                                      :resultsv   {:type        '(list :fldresult)
+                                                                   :description "a field result"}
+                                                      :fieldmeas  {:type        '(list :fldresult)
                                                                    :description "Field Measurements"}
-                                                      :fieldobs  {:type '(list :fieldobs)
-                                                                  :description "Field Observations"}}}
+                                                      :labresults {:type        '(list :labrslt)
+                                                                   :description "Field Measurements"}
+                                                      :fieldobs   {:type        '(list :fieldobs)
+                                                                   :description "Field Observations"}}}
 
 
                    :agency_detail      {:fields {:AgencyCode     {:type 'String}
@@ -597,8 +566,8 @@
                                                  :value {:type 'Float}
                                                  :inst  {:type 'Int}}}
 
-                   :logger             {:fields {:id         {:type 'ID}
-                                                 :name       {:type 'String}
+                   :logger             {:fields {:id            {:type 'ID}
+                                                 :name          {:type 'String}
                                                  :projectRef    {:type :projectslookup}
                                                  :parameterRef  {:type :parameter}
                                                  :deviceTypeRef {:type :samplingdevicelookup}
@@ -662,12 +631,13 @@
                    {:type        '(list :stationdetail)
                     :resolve     :resolve-stationdetail
                     :description "Station details"
-                    :args        {:agency {:type 'String}
-                                  :active {:type 'Boolean}
-                                  :limit  {:type    'Int
-                                           :default 10}
-                                  :offset {:type    'Int
-                                           :default 0}}}
+                    :args        {:agency  {:type 'String}
+                                  :project {:type 'String}
+                                  :active  {:type 'Boolean}
+                                  :limit   {:type    'Int
+                                            :default 10}
+                                  :offset  {:type    'Int
+                                            :default 0}}}
 
                    :safetoswim
                    {:type        '(list :safetoswim)
@@ -685,16 +655,16 @@
                    {:type        '(list :logger)
                     :resolve     :resolve-loggers
                     :description "loggers"
-                    :args        {:projectRef    {:type 'ID}
-                                  :stationRef    {:type 'ID}
-                                  :parameterRef  {:type 'ID}}}
+                    :args        {:projectRef   {:type 'ID}
+                                  :stationRef   {:type 'ID}
+                                  :parameterRef {:type 'ID}}}
 
                    :logsamples
                    {:type    '(list :logsample)
                     :resolve :resolve-logsamples
                     :args    {:loggerRef {:type 'ID}
-                              :before {:type 'Int}
-                              :after  {:type 'Int}}}
+                              :before    {:type 'Int}
+                              :after     {:type 'Int}}}
 
 
                    ;:line_snap
