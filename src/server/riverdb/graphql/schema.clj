@@ -455,6 +455,7 @@
                    ;                       :entity_prn_dash_keys {:type 'String}}}
 
                    :list_meta          {:fields {:count {:type 'Int}}}
+                   :param              {:fields {:name          {:type 'String}}}
                    :fldresult          {:fields {:count         {:type 'Int}
                                                  :matrix        {:type 'String}
                                                  :type          {:type 'String}
@@ -472,7 +473,8 @@
                                                  :is_too_low    {:type 'Boolean}
                                                  :is_too_high   {:type 'Boolean}
                                                  :is_too_few    {:type 'Boolean}
-                                                 :is_exceedance {:type 'Boolean}}}
+                                                 :is_exceedance {:type 'Boolean}
+                                                 :param         {:type :param}}}
                    :labrslt            {:fields {:matrix        {:type 'String}
                                                  :qual          {:type        'String
                                                                  :description "Result qualifier"}
@@ -497,13 +499,13 @@
                                                       :valid      {:type 'Boolean}
                                                       :station    {:type :station}
                                                       :resultsv   {:type        '(list :fldresult)
-                                                                   :description "a field result"}
-                                                      :fieldmeas  {:type        '(list :fldresult)
-                                                                   :description "Field Measurements"}
-                                                      :labresults {:type        '(list :labrslt)
-                                                                   :description "Field Measurements"}
-                                                      :fieldobs   {:type        '(list :fieldobs)
-                                                                   :description "Field Observations"}}}
+                                                                   :description "a field result"}}}
+                                                      ;:fieldmeas  {:type        '(list :fldresult)
+                                                      ;             :description "Field Measurements"}
+                                                      ;:labresults {:type        '(list :labrslt)
+                                                      ;             :description "Field Measurements"}
+                                                      ;:fieldobs   {:type        '(list :fieldobs)
+                                                      ;             :description "Field Observations"}}}
 
 
                    :agency_detail      {:fields {:AgencyCode     {:type 'String}
@@ -625,7 +627,8 @@
                                   :limit       {:type    'Int
                                                 :default 10}
                                   :offset      {:type    'Int
-                                                :default 0}}}
+                                                :default 0}
+                                  :sampleType  {:type 'String}}}
 
                    :stations
                    {:type        '(list :stationdetail)

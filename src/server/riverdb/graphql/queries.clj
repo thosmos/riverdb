@@ -3,6 +3,8 @@
             [clojure.string :as str]
             [theta.log :as log :refer [debug info warn error]]
             [clojure.walk]
+            [com.fulcrologic.rad.type-support.date-time :as datetime]
+            [cljc.java-time.zone-id]
             [com.rpl.specter :refer [select transform ALL FIRST LAST MAP-KEYS MAP-VALS]]
             [com.walmartlabs.lacinia.executor :as executor]
             [datascript.core :as ds]
@@ -15,6 +17,7 @@
             [riverdb.model.logger :refer [get-loggers get-logger-samples]]
             [riverdb.model.user :as user]
             [riverdb.api.tac-report :as tac-report]
+            [riverdb.api.qc-report :as qc-report]
             [thosmos.util :as tu]
             [tick.core :as t])
   (:import [java.util Date]
@@ -36,14 +39,14 @@
 
 (def key-change
   {:db/id        :id,
-   :fieldresults :results})
+   :samples :resultsv})
 
-(defn add-resultsv [sv fields]
-  (let [field? (contains? (set fields) :resultsv)
-        sv     (if field?
-                 (assoc sv :resultsv (vec (for [[_ rslt] (:results sv)] rslt)))
-                 sv)]
-    sv))
+;(defn add-resultsv [sv fields]
+;  (let [field? (contains? (set fields) :resultsv)
+;        sv     (if field?
+;                 (assoc sv :resultsv (:results sv))
+;                 sv)]
+;    sv))
 
 (defn add-results [sv fields]
   (let [resultsv?   (contains? (set fields) :resultsv)
@@ -136,7 +139,7 @@
                      (merge
                        {:toDate toDate}))
 
-        svs        (tac-report/get-sitevisits (db) opts)
+        svs        (qc-report/get-sitevisits (db) opts)
 
         limit      (get args :limit)
         offset     (get args :offset)
@@ -144,8 +147,12 @@
                      (limit-fn limit offset svs)
                      svs)
 
-        svs        (tac-report/create-sitevisit-summaries3 svs)
-        svs        (tac-report/filter-empty-fieldresults svs)
+        ;svs        (tac-report/create-sitevisit-summaries3 svs opts)
+
+        svs        (binding [datetime/*current-timezone* (cljc.java-time.zone-id/of "America/Los_Angeles")]
+                            (qc-report/sitevisit-summaries (merge args {:sitevisits svs})))
+        ;_ (debug "FIRST SV" (first svs))
+        svs        (qc-report/filter-empty-samples svs)
         svs        (riverdb.util/sort-maps-by svs [:date :site])
 
 
@@ -157,9 +164,9 @@
                        (update :station thosmos.util/walk-remove-ns)
                        (clojure.set/rename-keys key-change)
                        (tu/walk-modify-k-vals :id str)
-                       (update :date #(.format formatter %))
+                       (update :date #(.format formatter %))))]
                        ;(add-results fields)
-                       (add-resultsv fields)))]
+                       ;(add-resultsv fields)))]
     ;(debug "SITEVISITS first:" (first svs))
     svs))
 

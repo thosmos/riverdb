@@ -2404,6 +2404,10 @@
           :cardinality :one,
           :type :string,
           :strlen 20}
+   #:attr{:name "Name",
+          :key :sampletypelookup/Name,
+          :cardinality :one,
+          :type :string}
    #:attr{:name "SampleTypeCode",
           :key :sampletypelookup/SampleTypeCode,
           :position 1,
