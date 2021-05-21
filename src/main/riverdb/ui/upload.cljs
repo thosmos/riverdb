@@ -73,16 +73,109 @@
     [thosmos.util :as tu]
     [testdouble.cljs.csv :as csv]))
 
+(defn coll->opts [text-k val-k coll]
+  (if (seq coll)
+    (vec
+      (map-indexed
+        (fn [i m]
+          {:key   i
+           :text  (get m text-k)
+           :value (get m val-k)})
+        coll))
+    []))
 
-(defsc UploadComp [this {:ui/keys []}]
-  {:query []
-   :initLocalState     (fn [this _]
-                         {:save-ref (fn [r] (gobj/set this "input-ref" r))})}
-  (let [save-ref (comp/get-state this :save-ref)
-        csv-params (comp/get-state this :csv-params)
-        projects  []
-        types    []
-        stations []]
+(defsc ImportColumn [this {:ui/keys [config column] :as props} {:keys [set-config]}]
+  {:query [:ui/config
+           :ui/column]}
+  (dom/tr {}
+    (dom/td {} (dom/b (str column)))
+    (dom/td (ui-dropdown {:options  [{:key -1 :text "Select Type" :value -1}
+                                     {:key 0 :text "Result" :value "result"}
+                                     {:key 1 :text "Date" :value "date"}
+                                     {:key 2 :text "Station" :value "station"}
+                                     {:key 3 :text "Unit" :value "unit"}
+                                     {:key 4 :text "Device Type" :value "devType"}
+                                     {:key 5 :text "Device ID" :value "devID"}]
+                          :value    -1
+                          :style    {:width "auto" :minWidth "10em"}
+                          :onChange (fn [_ d]
+                                      (when-let [v (-> d .-value)]
+                                        (when set-config
+                                          (set-config (assoc-in config [column :type] v)))))}))
+    (dom/td (ui-dropdown {:options          [{:key -1 :text "" :valuw -1}
+                                             {:key 1 :text "Temp" :value 1}
+                                             {:key 2 :text "E. coli" :value 2}
+                                             {:key 3 :text "Coliform" :value 3}
+                                             {:key 4 :text "Entero" :value 4}]
+                          :value            -1
+                          :style            {:width "auto" :minWidth "10em"}}))
+    (dom/td (ui-dropdown {:options          [{:key -1 :text "" :value -1}
+                                             {:key 1 :text "°C" :value 1}
+                                             {:key 2 :text "MPN/100mL" :value 2}]
+                          :value            -1
+                          :style            {:width "auto" :minWidth "10em"}}))))
+
+(def ui-import-column (comp/factory ImportColumn {:keyfn :ui/column}))
+
+(defn set-csv-params [this file]
+  (if file
+    (let [js-file (:js-value (meta (:file/content file)))]
+      (.then (.text js-file)
+        (fn [text]
+          (let [text   (str/replace text "\r" "")
+                parsed (csv/read-csv text)]
+            (debug "CSV" (first parsed))
+            (comp/set-state! this {:csv-params parsed})))))
+    (comp/set-state! this {:csv-params nil})))
+
+(defsc UploadComp [this {:ui/keys [project-code samp-type station skip-line] :as props}]
+  {:ident         (fn [] [:component/id :upload-comp])
+   :query          [{[:ui.riverdb/current-agency '_] (comp/get-query Agency)}
+                    :ui/project-code
+                    :ui/samp-type
+                    :ui/station
+                    :ui/skip-line]
+   :initLocalState (fn [this _]
+                     {:save-ref  (fn [r] (gobj/set this "input-ref" r))
+                      :on-change-proj (fn [_ d]
+                                        (when-let [val (. d -value)]
+                                          (fm/set-string! this :ui/project-code :value val)))})
+   :initial-state  {:ui/skip-line false}}
+  (let [save-ref     (comp/get-state this :save-ref)
+        csv-params   (comp/get-state this :csv-params)
+        files        (comp/get-state this :files)
+        stationIDs   (vec
+                       (for [file files]
+                         (let [filename (:file/name file)]
+                           (subs filename 0 (clojure.string/index-of filename "_")))))
+
+
+
+
+        agency       (:ui.riverdb/current-agency props)
+        {:agencylookup/keys [AgencyCode Projects]} agency
+        proj-opts    (coll->opts :projectslookup/Name :projectslookup/ProjectID Projects)
+        projs-map    (nest-by [:projectslookup/ProjectID] Projects)
+        project-code (or project-code (:value (first proj-opts)))
+        project      (get projs-map project-code)
+        {:projectslookup/keys [Parameters SampleTypes]} project
+
+        samps-map    (nest-by [:sampletypelookup/SampleTypeCode] SampleTypes)
+        samps-opts   (coll->opts :sampletypelookup/Name :sampletypelookup/SampleTypeCode SampleTypes)
+        samp-type    (or samp-type (:value (first samps-opts)))
+
+        params-map   (nest-by [:parameter/NameShort] Parameters)
+        params-opts  (coll->opts :parameter/Name :parameter/NameShort Parameters)
+
+        config       (when csv-params
+                       {:sampletype samp-type
+                        :params     params-map
+                        :columns    (first csv-params)
+                        :first      (second csv-params)})
+
+
+        stations     []]
+    (debug "RENDER UploadComp" "code" AgencyCode "agency" agency "project-code" project-code "proj-opts" proj-opts "projs" projs-map "samps" samps-map "samps-opts" samps-opts "params" params-map "csv-params" (first csv-params) "stationIDs" stationIDs)
     (dom/div :.ui.segment
       (dom/div :.ui.header "BULK IMPORT CSV DATA")
       (dom/div :.ui.form
@@ -96,9 +189,12 @@
                           :clearable        false
                           :allowAdditions   false
                           :additionPosition "bottom"
-                          :options          projects
-                          :value            0
-                          :style            {:width "auto" :minWidth "10em"}}))
+                          :options          proj-opts
+                          :value            project-code
+                          :style            {:width "auto" :minWidth "10em"}
+                          :onChange         (fn [_ d]
+                                              (when-let [val (. d -value)]
+                                                (fm/set-string! this :ui/project-code :value val)))}))
           (dom/div :.field
             (dom/label "Sample Type")
             (ui-dropdown {:loading          false
@@ -108,8 +204,8 @@
                           :clearable        false
                           :allowAdditions   false
                           :additionPosition "bottom"
-                          :options          types
-                          :value            0
+                          :options          samps-opts
+                          :value            samp-type
                           :style            {:width "auto" :minWidth "10em"}}))
           (dom/div :.field
             (dom/label "Station")
@@ -121,54 +217,65 @@
                           :allowAdditions   false
                           :additionPosition "bottom"
                           :options          stations
-                          :value            0
+                          :value            station
                           :style            {:width "auto" :minWidth "10em"}})))
 
         (dom/div :.field
-          (dom/label "CSV File")
+          (dom/label "Files")
           (dom/input
             {:type     "file"
+             :multiple true
              :accept   "text/csv"
              :ref      save-ref
              :onChange (fn [evt]
-                         (let [file    (first (file-upload/evt->uploads evt))
-                               js-file (:js-value (meta (:file/content file)))]
-                           (comp/set-state! this {:file file})
-                           (.then (.text js-file)
-                             (fn [text]
-                               (let [text (str/replace text "\r" "")
-                                     parsed (csv/read-csv text)]
-                                 (debug "CSV" (first parsed))
-                                 (comp/set-state! this {:csv-params parsed}))))
-                           (debug "FILE" file)))}))
+                         (let [files (file-upload/evt->uploads evt)]
+                           (debug "FILES" files)
+                           (comp/set-state! this {:files files})
+                           (set-csv-params this (if skip-line
+                                                  (second files)
+                                                  (first files)))))}))
+        (dom/div :.field
+          (dom/label "Skip first line")
+          (ui-checkbox
+            {:label    "Skip First Line"
+             :value    skip-line
+             :onChange (fn []
+                         (debug "CHECKBOX")
+                         (fm/set-value! this :ui/skip-line (not skip-line))
+                         (when (seq files)
+                           (set-csv-params this (if (not skip-line)
+                                                  (second files)
+                                                  (first files)))))}))
+        (if (and csv-params stationIDs)
+          (dom/div :.field {:key "stationIDS"}
+            (dom/label "Station IDs")
+            (dom/p (str stationIDs)))
+          (dom/div :.ui.negative.message
+            (dom/div :.header "Error")
+            (dom/p "Failed to parse StationID from file name")
+            (dom/p "Format: StationID_station_name.csv")
+            (dom/p "Example: 101_Above_Scotchman_Creek.csv")))
         (when csv-params
-          (dom/div :.field
-            (dom/label "Import Parameters")
+          (dom/div :.field {:key "columns"}
+            (dom/label "Import Columns")
             (dom/table {:className "ui selectable small table"}
               (dom/thead
                 (dom/tr
-                  (dom/th "CSV Column")
+                  (dom/th "Column")
                   (dom/th "Type")
                   (dom/th "Parameter")
                   (dom/th "Unit")
                   (dom/th "")))
               (dom/tbody
-                (map-indexed
-                  (fn [i col]
-                    (dom/tr {:key i}
-                      (dom/td {} (dom/b (str col)))
-                      (dom/td (ui-dropdown {:options          [{:text "" :value -1} {:text "Result" :value 0}
-                                                               {:text "Date" :value 1} {:text "Station" :value 2}
-                                                               {:text "Unit" :value 3} {:text "Device Type" :value 4}
-                                                               {:text "Device ID" :value 5}]
-                                            :value            -1
-                                            :style            {:width "auto" :minWidth "10em"}}))
-                      (dom/td (ui-dropdown {:options          [{:text "" :valuw -1} {:text "Temp" :value 1} {:text "E. coli" :value 2} {:text "Coliform" :value 3} {:text "Entero" :value 4}]
-                                            :value            -1
-                                            :style            {:width "auto" :minWidth "10em"}}))
-                      (dom/td (ui-dropdown {:options          [{:text "" :value -1} {:text "°C" :value 1} {:text "MPN/100mL" :value 2}]
-                                            :value            -1
-                                            :style            {:width "auto" :minWidth "10em"}}))))
+                (mapv
+                  (fn [col]
+                    (ui-import-column
+                      (comp/computed
+                        {:ui/column col
+                         :ui/config config}
+                        {:set-config
+                         (fn [config]
+                           (debug "SET CONFIG" config))})))
                   (first csv-params))))))
         (dom/div
           (dom/button :.ui.button {:onClick (fn []
@@ -184,13 +291,15 @@
       (ui-upload-comp {}))))
 (def ui-upload-modal (comp/factory UploadModal))
 
-(defsc UploadPage [this {:ui/keys [] :as props}]
-  {:query         [:ui/filename]
-   :initial-state {:ui/filename nil}
+(defsc UploadPage [this {:ui/keys [uploadcomp] :as props}]
+  {:query         [:ui/filename
+                   {:ui/uploadcomp (comp/get-query UploadComp)}]
+   :initial-state {:ui/filename nil
+                   :ui/uploadcomp {}}
    :ident         (fn [] [:component/id :upload-page])
    :route-segment ["upload"]}
-  (debug "RENDER UploadPage")
-  (ui-upload-comp {}))
+  (debug "RENDER UploadPage" props)
+  (ui-upload-comp uploadcomp))
 
 
 (def ui-upload-page (comp/factory UploadPage))

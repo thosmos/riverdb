@@ -1941,6 +1941,13 @@
           :cardinality :one,
           :type :string,
           :strlen 100}
+   #:attr{:name "SampleTypes",
+          :key :projectslookup/SampleTypes,
+          :cardinality :many,
+          :type :ref,
+          :ref #:entity{:ns :entity.ns/sampletypelookup},
+          :refKey :entity.ns/sampletypelookup,
+          :doc "A cached set of sample types based on the project's parameters. Used to test for smaple type rules. For example, a logger project can only have the Logger sample type"}
    #:attr{:name "Stations",
           :key :projectslookup/Stations,
           :cardinality :many,

@@ -178,6 +178,7 @@
                                        :analytelookup/AnalyteName
                                        :analytelookup/AnalyteShort]}
       {:constituentlookup/MatrixCode [:matrixlookup/MatrixCode
+                                      :matrixlookup/MatrixName
                                       :matrixlookup/MatrixShort]}
       {:constituentlookup/UnitCode [:unitlookup/UnitCode
                                     :unitlookup/Unit]}
