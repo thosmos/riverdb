@@ -14,8 +14,7 @@
     [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
     [com.fulcrologic.fulcro.ui-state-machines :as uism :refer [defstatemachine]]
     [com.fulcrologic.fulcro.mutations :as fm :refer [defmutation]]
-    [com.fulcrologic.fulcro.networking.file-upload :as file-upload]
-
+    [com.fulcrologic.fulcro.networking.file-upload :as fup]
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
     [com.fulcrologic.fulcro-css.css :as css]
@@ -79,8 +78,8 @@
       (map-indexed
         (fn [i m]
           {:key   i
-           :text  (get m text-k)
-           :value (get m val-k)})
+           :text  (str (text-k m))
+           :value (str (val-k m))})
         coll))
     []))
 
@@ -137,8 +136,9 @@
             (comp/set-state! this {:csv parsed})))))
     (comp/set-state! this {:csv nil})))
 
-(defn update-config [config params-map csv-cols]
-  (let [param-keys (set (keys params-map))]
+(defn update-config [config up-config params-map csv-cols]
+  (let [param-keys (set (keys params-map))
+        {:keys [station-source station-column]} up-config]
     (loop [i 1 cols csv-cols config config]
       (let [col      (first cols)
             cfg      (get config i)
@@ -146,7 +146,16 @@
             param    (:param cfg)
             matches? (contains? param-keys col)
             date?    (= col "date")
+            station? (and
+                       (= station-source "column")
+                       (= station-column i))
             config   (cond-> config
+                       station?
+                       (assoc-in [i :type] "station")
+                       (and
+                         (not station?)
+                         (= (get-in config [i :type]) "station"))
+                       (update i dissoc :type)
                        (and (not typ) (or date? matches?))
                        (assoc-in [i :type] (cond
                                              date? "date"
@@ -158,13 +167,15 @@
           config)))))
 
 
-(defsc UploadComp [this {:ui/keys [project-code samp-type station-id stations station-source skip-line config] :as props}]
+
+(defsc UploadComp [this {:ui/keys [project-code samp-type station-id stations station-source station-column skip-line config] :as props}]
   {:ident              (fn [] [:component/id :upload-comp])
    :query              [{[:ui.riverdb/current-agency '_] (comp/get-query Agency)}
                         :ui/project-code
                         :ui/samp-type
                         :ui/station-id
                         :ui/station-source
+                        :ui/station-column
                         :ui/config
                         :ui/skip-line
                         {:ui/stations (comp/get-query looks/stationlookup-sum)}]
@@ -178,74 +189,106 @@
                                agency  (:ui.riverdb/current-agency props)
                                {:agencylookup/keys [Projects]} agency
                                project (first Projects)
+                               ident   (comp/get-ident this)
                                id      (when project (:db/id project))]
                            (when id
                              (df/load! this :org.riverdb.db.stationlookup looks/stationlookup-sum
                                {:params {:limit  -1
                                          :filter {:stationlookup/Project id}}
-                                :target [:hmm]}))))
+                                :target (conj ident :ui/stations)}))))
    :componentDidUpdate (fn [this prev-props prev-state]
                          (let [props         (comp/props this)
                                proj-changed? (not= (:ui/project-code props) (:ui/project-code prev-props))]
                            (when proj-changed?
-                             (let [ident     (comp/get-ident this)
-                                   agency    (:ui.riverdb/current-agency props)
-                                   {:ui/keys [project-code]} props
+                             (let [agency    (:ui.riverdb/current-agency props)
                                    {:agencylookup/keys [Projects]} agency
+                                   {:ui/keys [project-code]} props
                                    projs-map (nest-by [:projectslookup/ProjectID] Projects)
                                    project   (get projs-map project-code)
+                                   ident     (comp/get-ident this)
                                    id        (:db/id project)]
                                (when id
                                  (df/load! this :org.riverdb.db.stationlookup looks/stationlookup-sum
                                    {:params {:limit  -1
                                              :filter {:stationlookup/Project id}}
                                     :target (conj ident :ui/stations)}))))))}
-  (let [save-ref     (comp/get-state this :save-ref)
-        csv-data     (comp/get-state this :csv)
-        csv-cols     (if skip-line (second csv-data) (first csv-data))
+  (let [save-ref       (comp/get-state this :save-ref)
+        csv-data       (comp/get-state this :csv)
+        csv-cols       (if skip-line (second csv-data) (first csv-data))
         ;csv-row      (if skip-line (nth csv-data 2) (second csv-data))
 
-        files        (not-empty (comp/get-state this :files))
-        parse?       (and
-                       (= station-source "file")
-                       files)
-        parsedIDs    (when parse?
-                       (try
-                         (vec
-                           (for [file files]
-                             (let [filename (:file/name file)]
-                               (subs filename 0 (clojure.string/index-of filename "_")))))
-                         (catch js/Object _)))
+        station-source (or station-source "select")
+        files          (not-empty (comp/get-state this :files))
+        parse?         (and
+                         (= station-source "file")
+                         files)
+        parsedIDs      (when parse?
+                         (try
+                           (vec
+                             (for [file files]
+                               (let [filename (:file/name file)]
+                                 (subs filename 0 (clojure.string/index-of filename "_")))))
+                           (catch js/Object _)))
 
-        station-opts (coll->opts :stationlookup/StationID :stationlookup/StationID stations)
+        station-opts   (map-indexed
+                         (fn [i m]
+                           {:key   i
+                            :text  (str (:stationlookup/StationID m) " " (:stationlookup/StationName m))
+                            :value (str (:stationlookup/StationID m))})
+                         stations)
 
-        missing?     (when (and (seq parsedIDs) (seq stations))
-                       (let [station-set (set (map :value station-opts))
-                             parsed-set (set parsedIDs)]
-                         (not-empty
-                           (clojure.set/difference parsed-set station-set))))
+        missing?       (when (and (seq parsedIDs) (seq stations))
+                         (let [station-set (set (map :value station-opts))
+                               parsed-set  (set parsedIDs)]
+                           ;(debug "MISSING?" station-set parsed-set)
+                           (not-empty
+                             (clojure.set/difference parsed-set station-set))))
 
-        parse-err?   (when (and
-                             parse?
-                             (not parsedIDs)))
+        parse-err?     (when (and
+                               parse?
+                               (not parsedIDs)))
 
-        agency       (:ui.riverdb/current-agency props)
+        agency         (:ui.riverdb/current-agency props)
         {:agencylookup/keys [AgencyCode Projects]} agency
-        proj-opts    (coll->opts :projectslookup/Name :projectslookup/ProjectID Projects)
-        projs-map    (nest-by [:projectslookup/ProjectID] Projects)
-        project-code (or project-code (:value (first proj-opts)))
-        project      (get projs-map project-code)
+
+        proj-opts      (coll->opts :projectslookup/Name :projectslookup/ProjectID Projects)
+        projs-map      (nest-by [:projectslookup/ProjectID] Projects)
+        project-code   (or project-code (:value (first proj-opts)))
+        project        (get projs-map project-code)
+        {:projectslookup/keys [Parameters]} project
+
+        params-map     (nest-by [:parameter/NameShort] Parameters)
+        params-opts    (coll->opts :parameter/Name :parameter/NameShort Parameters)
 
         ;samps-map    (nest-by [:sampletypelookup/SampleTypeCode] SampleTypes)
         ;samps-opts   (coll->opts :sampletypelookup/Name :sampletypelookup/SampleTypeCode SampleTypes)
         ;samp-type    (or samp-type (:value (first samps-opts)))
 
-        {:projectslookup/keys [Parameters SampleTypes]} project
-        params-map   (nest-by [:parameter/NameShort] Parameters)
+        up-config      {:project        project-code
+                        :skip-line      skip-line
+                        :station-source station-source
+                        :station-column station-column
+                        :station-id     station-id
+                        :station-ids    parsedIDs}
 
-        params-opts  (coll->opts :parameter/Name :parameter/NameShort Parameters)
+        config         (update-config config up-config params-map csv-cols)
 
-        config       (update-config config params-map csv-cols)]
+        up-config      (assoc up-config :col-config config)
+
+        enable         (if
+                         (or
+                           (not files)
+                           (empty? config)
+                           parse-err?
+                           missing?
+                           (and
+                             (= station-source "select")
+                             (not station-id))
+                           (and
+                             (= station-source "column")
+                             (not station-column)))
+                         false
+                         true)]
 
 
 
@@ -259,6 +302,7 @@
                         :search           true
                         :selection        true
                         :multiple         false
+                        ;:error true
                         :clearable        false
                         :allowAdditions   false
                         :additionPosition "bottom"
@@ -277,7 +321,7 @@
              :accept   "text/csv"
              :ref      save-ref
              :onChange (fn [evt]
-                         (let [files (file-upload/evt->uploads evt)]
+                         (let [files (fup/evt->uploads evt)]
                            (debug "FILES" files)
                            (comp/set-state! this {:files files})
                            (set-csv-data this (first files))
@@ -293,7 +337,7 @@
                           :clearable        false
                           :allowAdditions   false
                           :additionPosition "bottom"
-                          :options          [{:text "Select One" :value "select"}
+                          :options          [{:text "Select Single" :value "select"}
                                              {:text "File Name" :value "file"}
                                              {:text "CSV Column" :value "column"}]
                           :value            (or station-source "select")
@@ -303,7 +347,7 @@
                                                 (fm/set-string! this :ui/station-source :value val)))}))
           (when (= station-source "select")
             (dom/div :.field
-              (dom/label "Station")
+              (dom/label "Station ID")
               (ui-dropdown {:loading          false
                             :search           true
                             :selection        true
@@ -317,6 +361,26 @@
                             :onChange         (fn [_ d]
                                                 (when-let [val (. d -value)]
                                                   (fm/set-string! this :ui/station-id :value val)))})))
+          (when (and (= station-source "column") csv-data)
+            (let [col-opts (map-indexed
+                             (fn [i col]
+                               {:text (str (inc i) " - " col) :value (inc i)})
+                             csv-cols)]
+              (dom/div :.field
+                (dom/label "Station Column")
+                (ui-dropdown {:loading          false
+                              :search           true
+                              :selection        true
+                              :multiple         false
+                              :clearable        false
+                              :allowAdditions   false
+                              :additionPosition "bottom"
+                              :options          col-opts
+                              :value            station-column
+                              :style            {:width "auto" :minWidth "10em"}
+                              :onChange         (fn [_ d]
+                                                  (when-let [val (. d -value)]
+                                                    (fm/set-string! this :ui/station-column :value val)))}))))
 
           (when (and csv-data parsedIDs)
             (dom/div :.field {:key "stationIDS"}
@@ -335,9 +399,6 @@
             (dom/div :.header "Missing Stations")
             (dom/p "There are some parsed station IDs without matching stations in the database")
             (dom/p (str/join ", " missing?))))
-
-
-
 
         (when csv-data
           (dom/div :.field {:key "columns"}
@@ -371,16 +432,13 @@
                   csv-cols)))))
         (dom/div
           (dom/button :.ui.button
-            {:onClick
-             (fn []
-               (let [import-config {:project        project-code
-                                    :skip-line      skip-line
-                                    :station-source station-source
-                                    :station-id     station-id
-                                    :station-ids    parsedIDs
-                                    :config         config
-                                    :files          files}]
-                 (debug "IMPORT" import-config)))}
+            {:disabled (not enable)
+             :onClick  (fn []
+                         (let [up-config (fup/attach-uploads up-config files)
+                               hmm (meta (:file/content (first files)))]
+                           ;(debug "IMPORT" "HMM" hmm "CONFIG" up-config)
+                           (comp/transact! this `[(rm/upload-files {:config ~up-config})])))}
+
             "Import"))))))
 (def ui-upload-comp (comp/factory UploadComp))
 

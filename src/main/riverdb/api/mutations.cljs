@@ -461,4 +461,8 @@
               (assoc-in % [:root/tx-result :error] err)
               %)))))))
 
+(defmutation upload-files [{:keys [config]}]
+  (action [{:keys [state]}]
+    (debug "UPLOAD FILES" config))
+  (remote [_] true))
 

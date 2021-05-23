@@ -7,6 +7,7 @@
     [cognitect.transit :as transit]
     [com.wsscode.pathom.connect :as pc :refer [defresolver defmutation]]
     [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
+    [com.fulcrologic.fulcro.networking.file-upload :as fup]
     [com.rpl.specter :as sp]
     [com.wsscode.pathom.core :as p]
     [datomic.api :as d]
@@ -222,5 +223,13 @@
     (debug "RESULT save-entity" result)
     result))
 
-(def mutations [save-entity])
+(pc/defmutation upload-files [env {:keys [config]}]
+  {::pc/sym `upload-files
+   ::pc/params [:config]
+   ::pc/output [:error :tempids]}
+  (let []
+    (debug "UPLOAD FILES" config "UPLOADS" (::fup/uploads config))
+    {}))
+
+(def mutations [save-entity upload-files])
 
