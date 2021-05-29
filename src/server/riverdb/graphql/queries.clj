@@ -284,7 +284,7 @@
         stations
 
         (let [;; get the dates and results for the sites
-              const-coliform "5-56-23-20-7"
+              const-coliform "5-57-23-2-7"
               const-ecoli    "5-57-464-0-7"
               const-entero   "5-9000-9002-0-7"
               consts         [const-coliform const-ecoli const-entero]
@@ -293,7 +293,7 @@
                                     :where
                                     ;(or
                                     ;  ;; coliform
-                                    ;  [?cnst :constituentlookup/ConstituentCode "5-56-23-20-7"]
+                                    ;  [?cnst :constituentlookup/ConstituentCode "5-57-23-2-7"]
                                     ;  ;; ecoli
                                     ;  [?cnst :constituentlookup/ConstituentCode "5-57-464-0-7"]
                                     ;  ;; enterococcus

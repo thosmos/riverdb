@@ -15,6 +15,7 @@
            {:projectslookup/Parameters (comp/get-query Parameter)}
            :projectslookup/ProjectID
            :projectslookup/ProjectsComments
+           :projectslookup/ProjectType
            :projectslookup/Public
            :projectslookup/QAPPVersion
            :projectslookup/qappURL

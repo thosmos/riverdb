@@ -1329,6 +1329,66 @@
           :identity true,
           :cardinality :one,
           :type :uuid}]}
+ {:db/id "logger"
+  :entity/name "Logger"
+  :entity/ns :entity.ns/logger
+  :entity/pks [:logger/uuid]
+  :entity/prKeys [:logger/name]
+  :entity/nameKey :logger/name
+  :entity/attrs
+  [#:attr{:name "Name",
+          :key :logger/name,
+          :cardinality :one,
+          :type :string
+          :doc "Useful name for the logger"}
+   #:attr{:name "UUID",
+          :key :logger/uuid,
+          :cardinality :one,
+          :type :uuid
+          :identity true}
+   #:attr{:name "Project",
+          :key :logger/projectRef,
+          :cardinality :one,
+          :type :ref
+          :ref #:entity{:ns :entity.ns/projectslookup}
+          :refKey :entity.ns/projectslookup
+          :doc "The project that hosts this logger"}
+   #:attr{:name "Parameter",
+          :key :logger/parameterRef,
+          :cardinality :one,
+          :type :ref
+          :ref #:entity{:ns :entity.ns/parameter}
+          :refKey :entity.ns/parameter
+          :doc "The parameter this logger is associated with"}
+   #:attr{:name "DeviceType",
+          :key :logger/deviceTypeRef,
+          :cardinality :one,
+          :type :ref
+          :ref #:entity{:ns :entity.ns/samplingdevicelookup}
+          :refKey :entity.ns/samplingdevicelookup
+          :doc "The Device Type (if different than the parameter)"}
+   #:attr{:name "Device",
+          :key :logger/deviceRef,
+          :cardinality :one,
+          :type :ref
+          :ref #:entity{:ns :entity.ns/samplingdevice}
+          :refKey :entity.ns/samplingdevice
+          :doc "The Device ID (if relevant)"}
+   #:attr{:name "Station",
+          :key :logger/stationRef,
+          :cardinality :one,
+          :type :ref
+          :ref #:entity{:ns :entity.ns/stationlookup}
+          :refKey :entity.ns/stationlookup
+          :doc "The logger's station"}
+   #:attr{:name "name",
+          :key :logger/name,
+          :cardinality :one,
+          :type :string}
+   #:attr{:name "name",
+          :key :logger/name,
+          :cardinality :one,
+          :type :string}]}
  {:db/id "methodlookup",
   :entity/name "Method",
   :entity/ns :entity.ns/methodlookup,
@@ -1908,9 +1968,9 @@
           :position 3,
           :cardinality :one,
           :type :ref,
-          :ref #:entity{:ns :entity.ns/parentprojectlookup},
-          :strlen 25,
-          :refKey :entity.ns/parentprojectlookup}
+          :ref #:entity{:ns :entity.ns/projectslookup},
+          :refKey :entity.ns/projectslookup
+          :doc "A parent project can be used to share stations across several different projects, each with its own set of parameters. "}
    #:attr{:name "ProjectID",
           :key :projectslookup/ProjectID,
           :position 1,
@@ -1919,6 +1979,14 @@
           :cardinality :one,
           :type :string,
           :strlen 8}
+   #:attr{:name "ProjectType",
+          :key :projectslookup/ProjectType,
+          :cardinality :one,
+          :type :ref,
+          :enum true
+          :ref #:entity{:ns :entity.ns/projecttype},
+          :refKey :entity.ns/projecttype
+          :doc "enum: [sitevisit, logger]"}
    #:attr{:name "Description",
           :key :projectslookup/Description,
           :position 8,
@@ -1960,6 +2028,23 @@
           :identity true,
           :cardinality :one,
           :type :uuid}]}
+ {:db/id "projecttype"
+  :entity/name "Project Type"
+  :entity/ns :entity.ns/projecttype
+  :entity/pks [:projecttype/ident]
+  :entity/prKeys [:projecttype/name]
+  :entity/nameKey :projecttype/name
+  :entity/lookup :projecttype/ident
+  :entity/attrs
+  [#:attr{:name "ident"
+          :key :projecttype/ident
+          :cardinality :one
+          :type :string
+          :identity true}
+   #:attr{:name "name"
+          :key :projecttype/name
+          :cardinality :one
+          :type :string}]}
  {:db/id "qalookup",
   :entity/name "QA",
   :entity/ns :entity.ns/qalookup,
@@ -3082,6 +3167,10 @@
                           :strlen 255}
                    #:attr{:name "StationID",
                           :key :stationlookup/StationID,
+                          :cardinality :one,
+                          :type :string}
+                   #:attr{:name "StationIDLong",
+                          :key :stationlookup/StationIDLong,
                           :cardinality :one,
                           :type :long}
                    #:attr{:name "StationName",

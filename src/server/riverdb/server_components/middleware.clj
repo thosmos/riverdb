@@ -167,8 +167,8 @@
     (-> not-found-handler
       (wrap-api "/api")
       (file-upload/wrap-mutation-file-uploads {})
-      (blob/wrap-blob-service "/images" bs/image-blob-store)
-      (blob/wrap-blob-service "/files" bs/file-blob-store)
+      (blob/wrap-blob-service "/admin/images" bs/image-blob-store)
+      (blob/wrap-blob-service "/admin/files" bs/file-blob-store)
       (wrap-transit-params {})
       ;(wrap-transit-response {:opts {:transform t/write-meta}})
       (wrap-transit-response {})

@@ -432,7 +432,7 @@
             :H2O_PO4       [:constituentlookup/ConstituentCode "5-22-399-2-6"]
             :H2O_NO3       [:constituentlookup/ConstituentCode "5-20-69-0-6"]
             :Air_Temp      [:constituentlookup/ConstituentCode "10-42-100-0-31"]
-            :TotalColiform [:constituentlookup/ConstituentCode "5-56-23-20-7"] ;; "5-56-23-20-7" "5-57-23-2-7"
+            :TotalColiform [:constituentlookup/ConstituentCode "5-57-23-2-7"] ;; "5-56-23-20-7" "5-57-23-2-7"
             :EColi         [:constituentlookup/ConstituentCode "5-57-464-0-7"]}
    "WCCA"  {:Air_Temp   [:constituentlookup/ConstituentCode "10-42-100-0-31"]
             :Cond       [:constituentlookup/ConstituentCode "5-42-107-0-100"]
@@ -442,7 +442,7 @@
             :H2O_TempDO [:constituentlookup/ConstituentCode "5-42-100-0-31"]
             :pH         [:constituentlookup/ConstituentCode "5-42-78-0-0"]
             :Turb       [:constituentlookup/ConstituentCode "5-42-108-0-9"]}
-   "SYRCL" {:TotalColiform [:constituentlookup/ConstituentCode "5-56-23-20-7"]
+   "SYRCL" {:TotalColiform [:constituentlookup/ConstituentCode "5-57-23-2-7"]
             :EColi         [:constituentlookup/ConstituentCode "5-57-464-0-7"]
             :Enterococcus  [:constituentlookup/ConstituentCode "5-9000-9002-0-7"]}})
 

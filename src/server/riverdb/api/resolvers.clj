@@ -124,7 +124,9 @@
 
           ids?          (:ids params)
           ids           (when ids?
-                          (mapv #(Long/parseLong %) ids?))
+                          (if (= (type (first ids?)) java.lang.String)
+                            (mapv #(Long/parseLong %) ids?)
+                            ids?))
 
           ent-key?      (-> env :ast :key)
           ent-name?     (name ent-key?)
@@ -139,7 +141,7 @@
                           (keyword ent-name)
                           ent-key?)
 
-          ent-type      (tu/ns-kw "entity.ns" (last (st/split ent-name #"\.")))
+          ent-type      (tu/ns-kw "entity.ns" (clojure.string/replace ent-name "org.riverdb.db." ""))
           spec          (get specs-map ent-type)
           ;; if we have a spec for a different lookup key, use it
           lookup?       (get spec :entity/lookup)
@@ -278,7 +280,7 @@
           (log/debug "FINAL RESULTS" (first results))
           {ent-key results})))
 
-    (catch Exception ex (log/error "RESOLVER ERROR" ex))))
+    (catch Exception ex (log/error ex "RESOLVER ERROR") ex)))
 
 
 
@@ -363,7 +365,9 @@
                       (get input uuid-key)
                       (catch IllegalArgumentException _ nil))
             result  (when id-val?
-                      (d/pull (db) query [uuid-key id-val?]))]
+                      (d/pull (db) query [uuid-key id-val?]))
+            result  (when result
+                      (walk-modify-k-vals result :db/id str))]
         ;(log/debug "RESULT" result)
         result)
       (catch Exception ex (log/error ex)))))
@@ -412,7 +416,9 @@
                       :where
                       [(> ?e 1000)]
                       [?e :db/ident ?id]]
-                 (db) ident)]
+                 (db) ident)
+        result (when result
+                 (walk-modify-k-vals result :db/id str))]
     ;(debug "DB-IDENT QUERY" ident result)
     result))
 
@@ -459,10 +465,13 @@
   "Returns a sequence of ..."
   [db]
   [any? => (s/coll-of map? :kind vector?)]
-  (d/q '[:find [(pull ?e qu) ...]
-         :in $ qu
-         :where [?e :agencylookup/Active true]]
-    db agency-query))
+  (let [result (d/q '[:find [(pull ?e qu) ...]
+                      :in $ qu
+                      :where [?e :agencylookup/Active true]]
+                 db agency-query)
+        result (when result
+                 (walk-modify-k-vals result :db/id str))]
+    result))
 
 (defresolver agencylookup-resolver [{:keys [db] :as env} input]
   {;;GIVEN nothing key, gets all agency records
@@ -480,9 +489,12 @@
                :in $ qu
                :where]
         find (add-filters '?e find query-params)
-        find (conj find '[?e :person/uuid])]
-    (log/debug "ALL PEOPLE PARAMS" query-params find)
-    (d/q find db people-query)))
+        find (conj find '[?e :person/uuid])
+        _ (log/debug "ALL PEOPLE PARAMS" query-params find)
+        result (d/q find db people-query)
+        result (when result
+                 (walk-modify-k-vals result :db/id str))]
+    result))
 
 (defresolver all-people-resolver [{:keys [db query-params] :as env} input]
   {;;GIVEN nothing (e.g. this is usable as a root query)

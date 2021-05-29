@@ -781,7 +781,7 @@
                           (preload-options :entity.ns/person {:query-params {:filter {:person/Agency agID}}})
                           (preload-options :entity.ns/stationlookup
                             {:query-params {:filter {:stationlookup/Project projID}}
-                             :sort-key     :stationlookup/StationID
+                             :sort-key     :stationlookup/StationName
                              :text-fn      {:keys #{:stationlookup/StationID :stationlookup/StationName}
                                             :fn   (fn [{:stationlookup/keys [StationID StationName]}]
                                                     (str StationID ": " StationName))}})

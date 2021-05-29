@@ -520,7 +520,7 @@
                    ;                              :AgencyCode      {:type 'String}}}
 
                    :stationdetail      {:fields {:id              {:type 'ID}
-                                                 :StationID       {:type 'Int}
+                                                 :StationID       {:type 'String}
                                                  :Agency          {:type    :agency_detail
                                                                    :resolve :resolve-agency-ref}
                                                  :Description     {:type 'String}

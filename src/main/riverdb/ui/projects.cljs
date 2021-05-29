@@ -661,13 +661,19 @@
                                            :type       ~type})])}
                          "Add")))))}))
 
-(defsc ProjectForm [this {:keys [db/id ui/ready ui/editing root/tx-result] :projectslookup/keys [ProjectID Name Parameters Active Public] :as props}]
-  {:ident             [:org.riverdb.db.projectslookup/gid :db/id]
+(defsc ProjectTypeQuery [this props]
+  {:ident [:org.riverdb.db.projecttype/gid :db/id]
+   :query [:db/id :db/ident :projecttype/name :projecttype/ident]})
 
+(defsc ProjectForm [this {:keys [db/id ui/ready ui/editing root/tx-result ui/ptypes]
+                          :projectslookup/keys [ProjectID Name Parameters Active Public ProjectType] :as props}]
+  {:ident             [:org.riverdb.db.projectslookup/gid :db/id]
    :query             [:riverdb.entity/ns
                        :db/id
                        :ui/ready
                        :ui/editing
+
+                       {:ui/ptypes (comp/get-query ProjectTypeQuery)}
                        fs/form-config-join
                        :projectslookup/uuid
                        :projectslookup/ProjectID
@@ -679,6 +685,7 @@
                        ;{:projectslookup/AgencyRef (comp/get-query Agency)}
                        :projectslookup/AgencyRef
                        :projectslookup/Description
+                       {:projectslookup/ProjectType (comp/get-query ProjectTypeQuery)}
                        {:stationlookup/_Project (comp/get-query looks/stationlookup-sum)}
                        {:projectslookup/Parameters (comp/get-query ParameterForm)}
                        {[:root/tx-result '_] (comp/get-query TxResult)}]
@@ -692,6 +699,7 @@
                         :projectslookup/qappURL
                         :projectslookup/Parameters
                         :projectslookup/AgencyRef
+                        :projectslookup/ProjectType
                         :projectslookup/uuid
                         :riverdb.entity/ns}
 
@@ -704,30 +712,40 @@
                            :projectslookup/Parameters []
                            :projectslookup/AgencyRef  agencyRef
                            :ui/ready                  true
-                           :ui/editing                false}))
-
+                           :ui/editing                false
+                           :ui/ptypes                 []}))
 
    :componentDidMount (fn [this]
-                        (let [props (comp/props this)]
+                        (let [props (comp/props this)
+                              ident (comp/get-ident this)]
+                          (df/load! this :org.riverdb.db.projecttype ProjectTypeQuery
+                            {:target (conj ident :ui/ptypes)})
                           #_(fm/set-value! this :ui/ready true)))}
-  (let [this-ident   (comp/get-ident this)
-        Parameters   (vec (riverdb.util/sort-maps-by Parameters [:parameter/Order]))
-        fm-params    (filter-param-typecode :sampletypelookup.SampleTypeCode/FieldMeasure Parameters)
-        obs-params   (filter-param-typecode :sampletypelookup.SampleTypeCode/FieldObs Parameters)
-        lab-params   (filter-param-typecode :sampletypelookup.SampleTypeCode/Grab Parameters)
+  (let [this-ident    (comp/get-ident this)
+        Parameters    (vec (riverdb.util/sort-maps-by Parameters [:parameter/Order]))
+        fm-params     (filter-param-typecode :sampletypelookup.SampleTypeCode/FieldMeasure Parameters)
+        obs-params    (filter-param-typecode :sampletypelookup.SampleTypeCode/FieldObs Parameters)
+        lab-params    (filter-param-typecode :sampletypelookup.SampleTypeCode/Grab Parameters)
         logger-params (filter-param-typecode :sampletypelookup.SampleTypeCode/Logger Parameters)
-        dirty-fields (fs/dirty-fields props true)
-        dirty?       (some? (seq dirty-fields))
-        _            (debug "DIRTY?" dirty? dirty-fields)
-        on-save      #(let [dirty?       (some? (seq dirty-fields))
-                            dirty-fields (fs/dirty-fields props true)]
-                        (debug "SAVE!" dirty? dirty-fields)
-                        (comp/transact! this
-                          `[(rm/save-entity ~{:ident       this-ident
-                                              :diff        dirty-fields
-                                              :success-msg "Project saved"})]))]
 
-    ;(debug "RENDER ProjectForm" id Parameters props)
+        ptypes-opts   (mapv
+                        (fn [ptype]
+                          {:value (:db/id ptype) :text (:projecttype/name ptype)})
+                        ptypes)
+        _             (debug "ptypes" ptypes "ptypes-opts" ptypes-opts)
+
+        dirty-fields  (fs/dirty-fields props true)
+        dirty?        (some? (seq dirty-fields))
+        _             (debug "DIRTY?" dirty? dirty-fields)
+        on-save       #(let [dirty?       (some? (seq dirty-fields))
+                             dirty-fields (fs/dirty-fields props true)]
+                         (debug "SAVE!" dirty? dirty-fields)
+                         (comp/transact! this
+                           `[(rm/save-entity ~{:ident       this-ident
+                                               :diff        dirty-fields
+                                               :success-msg "Project saved"})]))]
+
+    (debug "RENDER ProjectForm" id ProjectType)
     (if editing
       (ui-modal {:open editing :dimmer "inverted"}
         (ui-modal-header {:content (str "Edit Project: " Name)})
@@ -741,6 +759,18 @@
                   {:trigger (rui-input this :projectslookup/ProjectID {:label (label {} "ID" info-icon) :disabled true :required true})}
                   "This must be unique across all organizations and must remained unchanged after the project has data.  To change it contact RiverDB Support")
                 (rui-input this :projectslookup/Name {:required true})
+                (div :.field {}
+                  (dom/label {} "Project Type")
+                  (ui-dropdown {:selection true
+                                :multiple  false
+                                :clearable false
+                                :options   ptypes-opts
+                                :value     (or (:db/id ProjectType) "")
+                                :style     {:width "auto" :minWidth "10em"}
+                                :onChange  (fn [_ d]
+                                             (when-let [v (-> d .-value)]
+                                               (debug "PROJECT TYPE" v)
+                                               (rm/set-enum! this :projectslookup/ProjectType ProjectType)))}))
                 (rui-checkbox this :projectslookup/Active {})
                 (rui-checkbox this :projectslookup/Public {}))
               (div :.fields {}
@@ -794,7 +824,7 @@
 
 (defmutation init-projects-forms [{:keys [ids]}]
   (action [{:keys [state]}]
-    (debug "MUTATION" init-projects-forms)
+    (debug "MUTATION" init-projects-forms (pr-str ids))
     (swap! state
       (fn [s]
         (let [s (assoc-in s [:component/id :projects :projects] [])
@@ -802,6 +832,7 @@
           (-> (reduce
                 (fn [s id]
                   (let [proj-ident [:org.riverdb.db.projectslookup/gid id]]
+                    (debug "PROJECT ID" (pr-str id))
                     (-> s
                       (rm/sort-ident-list-by* (conj proj-ident :projectslookup/Parameters) :parameter/Order)
                       (fs/add-form-config* ProjectForm proj-ident)

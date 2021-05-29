@@ -6,6 +6,7 @@
     [com.fulcrologic.fulcro.mutations :refer [defmutation]]
     [com.fulcrologic.semantic-ui.collections.message.ui-message :refer [ui-message]]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
+    [com.fulcrologic.fulcro.networking.http-remote :as http-remote]
     [theta.log :as log :refer [debug]]
     [riverdb.application :refer [SPA]]
     [riverdb.ui.lookups :as looks]
@@ -163,7 +164,7 @@
       (when desired-route
         (debug "ROUTE TO desired-route" desired-route)
         (let [params (:params desired-route)
-              rad? (:_rp_ params)]
+              rad?   (:_rp_ params)]
           (if rad?
             (do
               (log/debug "RAD ROUTE" desired-route)
@@ -286,7 +287,6 @@
 
 
 
-
 (defmutation save-project [{:keys [id diff]}]
   (action [{:keys [state]}]
     (swap! state (fn [s]
@@ -304,8 +304,16 @@
     (debug "MUTATION cancel-new-form!" ident)))
 
 
+(defmutation set-enum [{:keys [key value]}]
+  (action [{:keys [state component]}]
+    (debug "set-enum" key value (get-in @state (comp/get-ident component)))
+    (let [])))
+
+(defn set-enum! [this key value]
+  (comp/transact! this [(set-enum {:key key :value value})]))
+
 (defn clear-tx-result* [state]
-  (debug "CLEAR TX RESULT")
+  ;(debug "CLEAR TX RESULT")
   (assoc state :root/tx-result {}))
 (defmutation clear-tx-result [{:keys [] :as params}]
   (action [{:keys [state]}]
@@ -314,7 +322,7 @@
   (comp/transact! SPA `[(clear-tx-result)]))
 
 (defn show-tx-result* [state result]
-  (debug "SHOW TX RESULT")
+  ;(debug "SHOW TX RESULT")
   (when-not (:error result)
     (js/setTimeout clear-tx-result! 2000))
   (assoc state :root/tx-result result))
@@ -335,20 +343,26 @@
 (defn set-saving! [ident busy]
   (comp/transact! SPA `[(set-saving {:ident ~ident :busy ~busy})]))
 
-(comp/defsc TxResult [this {:keys [result error com.wsscode.pathom.core/reader-error]}]
+(comp/defsc TxResult [this {:keys [result msgs error com.wsscode.pathom.core/reader-error]}]
   {:query             [:result
+                       :msgs
                        :error
-                       :com.wsscode.pathom.core/reader-error]
+                       :com.wsscode.pathom.core/reader-error
+                       :sticky]
    :initial-state     {:result                               nil
+                       :msgs                                 nil
                        :error                                nil
-                       :com.wsscode.pathom.core/reader-error nil}
+                       :com.wsscode.pathom.core/reader-error nil
+                       :sticky                               false}
    :componentDidMount (fn [this]
                         (let [props (comp/props this)]
-                         (debug "DID MOUNT TxResult" "props" props)
-                         (when-not (:error props)
-                           (js/setTimeout clear-tx-result! 2000))))}
+                          ;(debug "DID MOUNT TxResult" "props" props)
+                          (when (and
+                                  (not (:error props))
+                                  (not (:sticky props)))
+                            (js/setTimeout clear-tx-result! 2000))))}
   (let [error (or error reader-error)]
-    (debug "TxResult" "error" error "result" result)
+    ;(debug "TxResult" "error" error "result" result)
     (div {:style {:position "fixed" :top "50px" :left 0 :right 0 :maxWidth 500 :margin "auto" :zIndex 1000}}
       (if error
         (ui-message {:error true}
@@ -356,13 +370,23 @@
             (div :.ui.right.floated.negative.button
               {:onClick clear-tx-result!}
               "OK")
-            (div :.header {} "Server Error")
+            (div :.header {} "Error")
             (div :.horizontal.items
-              (div :.item error))))
+              (div :.item error))
+            (when msgs
+              (map-indexed
+                (fn [i msg]
+                  (dom/p {:key i} msg))
+                msgs))))
         (ui-message {:success true :onDismiss clear-tx-result!}
           (div :.content {}
             (div :.header {} "Success")
-            (dom/p {} result)))))))
+            (dom/p {} result)
+            (when msgs
+              (map-indexed
+                (fn [i msg]
+                  (dom/p {:key i} msg))
+                msgs))))))))
 
 (def ui-tx-result (comp/factory TxResult))
 
@@ -410,7 +434,7 @@
   (ok-action [{:keys [state result] :as env}]
     (debug "OK ACTION" "IDENT" ident "REF" (:ref env) "result" result "(comp/get-ident (:component env))" (comp/get-ident (:component env)))
     (debug ":tempid->realid" (:tempid->realid env))
-    (debug "TRANSACTED AST"  (:transacted-ast env))
+    (debug "TRANSACTED AST" (:transacted-ast env))
     (if-let [ok-err (get-in result [:body `save-entity :error])]
       (do
         (debug "OK ERROR" ok-err)
@@ -449,8 +473,6 @@
                                     (set-saving* ident false)
                                     (assoc-in [:root/tx-result :error] (str "TX Result Handler failed: " ex))))))))))
 
-
-
   (error-action [{:keys [app ref result state] :as env}]
     (log/info "Mutation Error Result " ident diff result)
     (swap! state
@@ -461,8 +483,58 @@
               (assoc-in % [:root/tx-result :error] err)
               %)))))))
 
-(defmutation upload-files [{:keys [config]}]
+(defsc UploadResult [this props]
+  {:query [:errors :msgs]}
+  (debug "UploadResult" props))
+
+(defmutation upload-files [{:keys [config progress-target] :as params}]
   (action [{:keys [state]}]
     (debug "UPLOAD FILES" config))
-  (remote [_] true))
+  (remote [env]
+    (-> env
+      (fm/returning UploadResult)))
+  (progress-action [{:keys [progress state] :as env}]
+    ;(debug "PROGRESS" progress)
+    (swap! state assoc-in progress-target (http-remote/overall-progress env)))
+  (ok-action [{:keys [state result] :as env}]
+    (let [ident (comp/get-ident (:component env))
+          {:keys [tempids errors msgs] :as res} (get-in result [:body `upload-files])]
+      (debug "UPLOAD OK" ident res result)
+      (if (seq errors)
+        (do
+          (log/error "OK ERROR" (first errors))
+          (swap! state
+            (fn [s]
+              (-> s
+                (assoc-in [:root/tx-result :error] (str
+                                                     (if (= (count errors) 1)
+                                                       (first errors)
+                                                       errors)))
+                (assoc-in (conj ident :ui/import-error?) true)
+                (cond->
+                  (seq msgs)
+                  (assoc-in [:root/tx-result :msgs] msgs))))))
+        (swap! state
+          (fn [s]
+            (-> s
+              (assoc-in [:root/tx-result :result] "Import completed")
+              (cond->
+                (seq msgs)
+                (->
+                  (assoc-in [:root/tx-result :msgs] msgs)
+                  (assoc-in [:root/tx-result :sticky] true)))))))))
+  (error-action [{:keys [app ref result state] :as env}]
+    (let [ident        (comp/get-ident (:component env))
+          reader-error (get-in result [:body `upload-files :com.wsscode.pathom.core/reader-error])
+          error-text   (get-in result [:error-text])]
+
+      (log/error "UPLOAD FILES ERROR" ident result)
+      (when (or reader-error error-text)
+        (swap! state
+          (fn [s]
+            (-> s
+              (assoc-in [:root/tx-result :error] (or reader-error error-text))
+              (assoc-in (conj ident :ui/import-error?) true)
+              (cond->))))))))
+
 

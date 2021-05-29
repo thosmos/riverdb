@@ -6,6 +6,31 @@
     [java-time :as jt]
     [domain-spec.core]))
 
+(defn eids
+  ([attr]
+   (d/q '[:find [?e ...]
+          :in $ ?attr
+          :where
+          [?e ?attr]]
+     (db) attr))
+  ([attr val]
+   (d/q '[:find [?e ...]
+          :in $ ?attr ?val
+          :where
+          [?e ?attr ?val]]
+     (db) attr val)))
+
+(defn eids->retract-attr
+  ([eids attr]
+   (d/transact (cx)
+     (vec
+       (for [eid eids]
+         [:db/retract eid attr]))))
+  ([eids attr val]
+   (d/transact (cx)
+     (vec
+       (for [eid eids]
+         [:db/retract eid attr val])))))
 
 (defn pull-attr
   ([attr]
@@ -81,6 +106,8 @@
          :where
          [?e _ _ ?t]]
     (db) eid))
+
+
 
 (defn find-lab-parameters []
   (d/q '[:find ?param ?param2 ?matrix ?method ?unit ?code

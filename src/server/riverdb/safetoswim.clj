@@ -10,7 +10,7 @@
 (defn get-latest-results []
   (let [latest (d/q '[:find ?si ?siid ?sinm ?ag (max ?svdt)
                       :where
-                      [?cnst :constituentlookup/ConstituentCode "5-56-23-20-7"]
+                      [?cnst :constituentlookup/ConstituentCode "5-57-23-2-7"]
                       [?frs :labresult/ConstituentRowID ?cnst]
                       ;[?frs :labresult/Result ?rslt]
                       [?sa :sample/LabResults ?frs]

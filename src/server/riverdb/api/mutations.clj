@@ -17,7 +17,8 @@
     [taoensso.timbre :as log :refer [debug]]
     [thosmos.util :as tu :refer [walk-modify-k-vals limit-fn]]
     [riverdb.roles :as roles]
-    [riverdb.db :as rdb])
+    [riverdb.db :as rdb]
+    [riverdb.api.import :as import])
   (:import (java.math BigDecimal)))
 
 ;;;;  SERVER
@@ -68,7 +69,6 @@
 ;        ent-ns (keyword "entity.ns" table)]
 ;    ent-ns))
 
-
 (defn ref->gid
   "Sometimes references on the client are actual idents and sometimes they are
   nested maps, this function attempts to return an ident regardless."
@@ -84,7 +84,6 @@
         (second x)))
     (and (map? x) (:db/id x))
     (parse-long (:db/id x))))
-
 
 (defn delta->datomic-txn
   "Takes in a normalized form delta, usually from client, and turns in
@@ -223,13 +222,31 @@
     (debug "RESULT save-entity" result)
     result))
 
-(pc/defmutation upload-files [env {:keys [config]}]
+(pc/defmutation upload-files [env {:keys [config] ::fup/keys [files] :as params}]
   {::pc/sym `upload-files
    ::pc/params [:config]
-   ::pc/output [:error :tempids]}
-  (let []
-    (debug "UPLOAD FILES" config "UPLOADS" (::fup/uploads config))
-    {}))
+   ::pc/output [:errors :tempids :msgs]}
+  (let [{:keys [agency project]} config
+        session-valid? (get-in env [:ring/request :session :session/valid?])
+        user           (when session-valid?
+                         (get-in env [:ring/request :session :account/auth :user]))
+        role?          (when user
+                         (get-in user [:user/role :db/ident]))
+        agency?        (when user
+                         (get-in user [:user/agency :agencylookup/AgencyCode]))
+        match?         (= agency? agency)]
+    (debug "UPLOAD" "role?" role? "agency?" agency? "match?" match?)
+    (cond
+      (or (not agency) (not role?) (not match?))
+      (do
+        (debug "ERROR upload-files" "Unauthorized")
+        {:errors ["Unauthorized"]})
+      (= role? :role.type/data-entry)
+      (do
+        (debug "ERROR: Data Entry role is not authorized")
+        {:errors ["Unauthorized: Data Entry role is not authorized"]})
+      :else
+      (import/process-uploads {:config config :files files}))))
 
 (def mutations [save-entity upload-files])
 

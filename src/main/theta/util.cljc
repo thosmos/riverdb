@@ -24,8 +24,12 @@
 (defn parse-long [str]
   (when str
     #?(:clj (try
-              (Long/parseLong str)
+              (Long/parseLong ^String (re-find #"\d+" str))
               (catch Exception ex (warn "parse-long failed for: " str (type str)))))))
+
+(defn parse-int [s]
+  #?(:clj
+      (Integer/parseInt ^String (re-find #"\d+" s))))
 
 (defn parse-bigdec [str]
   (when str

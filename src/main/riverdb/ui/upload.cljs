@@ -1,24 +1,12 @@
 (ns riverdb.ui.upload
   (:require
     [clojure.string :as str]
-    [cljs.spec.alpha :as s]
-    [cljs.tools.reader.edn :as edn]
-    [cognitect.transit :as transit]
-    [com.fulcrologic.fulcro.application :as app]
     [com.fulcrologic.fulcro.data-fetch :as df]
     [com.fulcrologic.fulcro.dom :as dom :refer [div ul li p h3 button label span table tr th td thead tbody]]
-    [com.fulcrologic.fulcro.dom.html-entities :as ent]
-    [com.fulcrologic.fulcro.dom.events :as evt]
-    [com.fulcrologic.fulcro.application :as fapp]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
-    [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
-    [com.fulcrologic.fulcro.ui-state-machines :as uism :refer [defstatemachine]]
     [com.fulcrologic.fulcro.mutations :as fm :refer [defmutation]]
     [com.fulcrologic.fulcro.networking.file-upload :as fup]
-    [com.fulcrologic.fulcro.algorithms.merge :as merge]
-    [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
-    [com.fulcrologic.fulcro-css.css :as css]
-    [com.fulcrologic.fulcro.algorithms.form-state :as fs]
+    [com.fulcrologic.fulcro.ui-state-machines :as uism :refer [defstatemachine]]
     [com.fulcrologic.semantic-ui.elements.loader.ui-loader :refer [ui-loader]]
     [com.fulcrologic.semantic-ui.modules.dimmer.ui-dimmer :refer [ui-dimmer]]
     [com.fulcrologic.semantic-ui.elements.input.ui-input :refer [ui-input]]
@@ -31,6 +19,8 @@
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal-content :refer [ui-modal-content]]
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal-actions :refer [ui-modal-actions]]
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal-description :refer [ui-modal-description]]
+
+    [com.fulcrologic.semantic-ui.modules.progress.ui-progress :refer [ui-progress]]
 
     [com.fulcrologic.semantic-ui.collections.form.ui-form-checkbox :refer [ui-form-checkbox]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-radio :refer [ui-form-radio]]
@@ -51,6 +41,7 @@
     [com.fulcrologic.semantic-ui.modules.tab.ui-tab-pane :refer [ui-tab-pane]]
     [com.fulcrologic.semantic-ui.elements.icon.ui-icon :refer [ui-icon]]
     [com.fulcrologic.semantic-ui.modules.popup.ui-popup :refer [ui-popup]]
+
     [goog.object :as gobj]
     [riverdb.application :refer [SPA]]
     [riverdb.api.mutations :as rm :refer [TxResult ui-tx-result]]
@@ -68,7 +59,6 @@
       get-ref-set-val lookup-db-ident db-ident->db-ref filter-param-typecode]]
     [riverdb.util :refer [nest-by]]
     [theta.log :as log :refer [debug]]
-    [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
     [thosmos.util :as tu]
     [testdouble.cljs.csv :as csv]))
 
@@ -87,7 +77,7 @@
   {:query [:i :column :config]}
   (let [{:keys [type param]} (get config i)]
     (dom/tr
-      (dom/td i)
+      (dom/td (inc i))
       (dom/td (dom/b (str column)))
       (dom/td (ui-dropdown {:options  [{:key -1 :text "" :value 0}
                                        {:key -2 :text "Result" :value "result"}
@@ -139,13 +129,17 @@
 (defn update-config [config up-config params-map csv-cols]
   (let [param-keys (set (keys params-map))
         {:keys [station-source station-column]} up-config]
-    (loop [i 1 cols csv-cols config config]
+    (loop [i 0 cols csv-cols config config]
       (let [col      (first cols)
             cfg      (get config i)
             typ      (:type cfg)
             param    (:param cfg)
-            matches? (contains? param-keys col)
-            date?    (= col "date")
+            rep?     (when (string? col) (re-find #"_\d" col))
+            col_rep  (if rep?
+                       (clojure.string/replace-first col rep? "")
+                       col)
+            matches? (contains? param-keys col_rep)
+            date?    (= (clojure.string/lower-case col) "date")
             station? (and
                        (= station-source "column")
                        (= station-column i))
@@ -161,14 +155,18 @@
                                              date? "date"
                                              matches? "result"))
                        (and (not param) matches?)
-                       (assoc-in [i :param] col))]
+                       (assoc-in [i :param] col_rep))]
         (if-let [cols (not-empty (rest cols))]
           (recur (inc i) cols config)
           config)))))
 
+(defn reset-progress [this]
+  (fm/set-value! this :ui/progress 0)
+  (fm/set-value! this :ui/import-error? false)
+  (fm/set-string! this :ui/phase :value "uploading ...")
+  (fm/set-value! this :ui/active true))
 
-
-(defsc UploadComp [this {:ui/keys [project-code samp-type station-id stations station-source station-column skip-line config] :as props}]
+(defsc UploadComp [this {:ui/keys [active import-error? progress phase project-code samp-type station-id stations station-source station-column skip-line config device-suffix] :as props}]
   {:ident              (fn [] [:component/id :upload-comp])
    :query              [{[:ui.riverdb/current-agency '_] (comp/get-query Agency)}
                         :ui/project-code
@@ -178,12 +176,22 @@
                         :ui/station-column
                         :ui/config
                         :ui/skip-line
+                        :ui/active
+                        :ui/progress
+                        :ui/phase
+                        :ui/import-error?
+                        :ui/device-suffix
                         {:ui/stations (comp/get-query looks/stationlookup-sum)}]
    :initLocalState     (fn [this _]
                          {:save-ref (fn [r] (gobj/set this "input-ref" r))})
    :initial-state      {:ui/skip-line false
                         :ui/config    {}
-                        :ui/stations  {}}
+                        :ui/stations  {}
+                        :ui/station-source "file"
+                        :ui/active false
+                        :ui/import-error? false
+                        :ui/progress 0
+                        :ui/device-suffix nil}
    :componentDidMount  (fn [this]
                          (let [props   (comp/props this)
                                agency  (:ui.riverdb/current-agency props)
@@ -217,7 +225,6 @@
         csv-cols       (if skip-line (second csv-data) (first csv-data))
         ;csv-row      (if skip-line (nth csv-data 2) (second csv-data))
 
-        station-source (or station-source "select")
         files          (not-empty (comp/get-state this :files))
         parse?         (and
                          (= station-source "file")
@@ -264,14 +271,16 @@
         ;samps-opts   (coll->opts :sampletypelookup/Name :sampletypelookup/SampleTypeCode SampleTypes)
         ;samp-type    (or samp-type (:value (first samps-opts)))
 
-        up-config      {:project        project-code
+        up-config      {:agency         AgencyCode
+                        :project        project-code
                         :skip-line      skip-line
                         :station-source station-source
-                        :station-column station-column
-                        :station-id     station-id
-                        :station-ids    parsedIDs}
+                        :station-column (when (= station-source "column") station-column)
+                        :station-id     (when (= station-source "select") station-id)
+                        :station-ids    (when parse? parsedIDs)}
 
-        config         (update-config config up-config params-map csv-cols)
+        config         (when csv-cols
+                         (update-config config up-config params-map csv-cols))
 
         up-config      (assoc up-config :col-config config)
 
@@ -280,7 +289,8 @@
                            (not files)
                            (empty? config)
                            parse-err?
-                           missing?
+                           ;; TODO re-enable this
+                           ;missing?
                            (and
                              (= station-source "select")
                              (not station-id))
@@ -288,11 +298,18 @@
                              (= station-source "column")
                              (not station-column)))
                          false
-                         true)]
-
+                         true)
+        phase (cond
+                (= progress 100)
+                "complete"
+                (< progress 49)
+                "uploading ..."
+                (>= progress 49)
+                "processing ...")]
 
 
     #_(debug "RENDER UploadComp" "code" AgencyCode "agency" agency "project-code" project-code "proj-opts" proj-opts "projs" projs-map "samps" samps-map "samps-opts" samps-opts "params" params-map "params-opts" params-opts "csv-data" (take 3 csv-data) "parsedIDs" parsedIDs "stations" stations "config" config)
+
     (dom/div :.ui.segment
       (dom/div :.ui.header "BULK IMPORT CSV DATA")
       (dom/div :.ui.form
@@ -325,7 +342,7 @@
                            (debug "FILES" files)
                            (comp/set-state! this {:files files})
                            (set-csv-data this (first files))
-                           (fm/set-value! this :ui/config {})))}))
+                           #_(fm/set-value! this :ui/config {})))}))
 
         (div :.dimmable.fields {:key "import-source"}
           (dom/div :.field
@@ -337,10 +354,10 @@
                           :clearable        false
                           :allowAdditions   false
                           :additionPosition "bottom"
-                          :options          [{:text "Select Single" :value "select"}
-                                             {:text "File Name" :value "file"}
+                          :options          [{:text "File Name" :value "file"}
+                                             {:text "Select Single" :value "select"}
                                              {:text "CSV Column" :value "column"}]
-                          :value            (or station-source "select")
+                          :value            (or station-source "file")
                           :style            {:width "auto" :minWidth "10em"}
                           :onChange         (fn [_ d]
                                               (when-let [val (. d -value)]
@@ -364,7 +381,7 @@
           (when (and (= station-source "column") csv-data)
             (let [col-opts (map-indexed
                              (fn [i col]
-                               {:text (str (inc i) " - " col) :value (inc i)})
+                               {:text (str (inc i) " - " col) :value i})
                              csv-cols)]
               (dom/div :.field
                 (dom/label "Station Column")
@@ -402,13 +419,15 @@
 
         (when csv-data
           (dom/div :.field {:key "columns"}
-            (dom/label "Column Config")
+            ;(dom/label "Column Config")
             (ui-checkbox
               {:label    "Skip First Line"
                :checked  skip-line
                :onChange (fn []
                            (debug "CHECKBOX")
                            (fm/set-value! this :ui/skip-line (not skip-line)))})
+            #_(ui-input
+                {:placeholder "Device Column Suffix"})
             (dom/table {:className "ui selectable small table"}
               (dom/thead
                 (dom/tr
@@ -422,7 +441,7 @@
                 (map-indexed
                   (fn [i col]
                     (ui-import-column
-                      {:i      (inc i)
+                      {:i      i
                        :column col
                        :config config}
                       {:params-opts params-opts
@@ -430,14 +449,19 @@
                                       (debug "SET CONFIG" config)
                                       (fm/set-value! this :ui/config config))}))
                   csv-cols)))))
+        (when active
+          (dom/div
+            (ui-progress
+              {:indicating true :active true :autoSuccess true :percent progress :error import-error?}
+              (when phase phase))))
         (dom/div
           (dom/button :.ui.button
             {:disabled (not enable)
              :onClick  (fn []
-                         (let [up-config (fup/attach-uploads up-config files)
-                               hmm (meta (:file/content (first files)))]
-                           ;(debug "IMPORT" "HMM" hmm "CONFIG" up-config)
-                           (comp/transact! this `[(rm/upload-files {:config ~up-config})])))}
+                         (let [params (fup/attach-uploads {:config up-config} files)
+                               params (assoc params :progress-target (conj (comp/get-ident this) :ui/progress))]
+                           (reset-progress this)
+                           (comp/transact! this `[(rm/upload-files ~params)])))}
 
             "Import"))))))
 (def ui-upload-comp (comp/factory UploadComp))
@@ -449,6 +473,7 @@
     (ui-modal-content {}
       (ui-upload-comp {}))))
 (def ui-upload-modal (comp/factory UploadModal))
+
 
 (defsc UploadPage [this {:ui/keys [uploadcomp] :as props}]
   {:query         [:ui/filename
