@@ -78,7 +78,7 @@
            {:worktime/person (comp/get-query PersonQuery)}
            {:worktime/agency (comp/get-query AgencyQuery)}]
    :ident :worktime/uuid}
-  ;(log/debug "RENDER WorkTimeListItem props" props)
+  (log/debug "RENDER WorkTimeListItem props" props)
   (let [person-nm (:person/Name person)]
     (dom/tr
       (dom/td
@@ -90,7 +90,7 @@
       (dom/td
         (dom/div task))
       (dom/td
-        (dom/div (str (datetime/inst->local-date date)))))))
+        (dom/div (when date (str (datetime/inst->local-date date))))))))
 
 (def ui-user-list-item (comp/factory WorkTimeListItem {:keyfn :db/id}))
 

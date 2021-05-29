@@ -32,6 +32,13 @@
        (for [eid eids]
          [:db/retract eid attr val])))))
 
+(defn eid-attr->val [eid attr]
+  (d/q '[:find ?v .
+         :in $ ?e ?a
+         :where
+         [?e ?a ?v]]
+    (db) eid attr))
+
 (defn pull-attr
   ([attr]
    (pull-attr attr '[*]))

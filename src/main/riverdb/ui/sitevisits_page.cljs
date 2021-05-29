@@ -119,15 +119,17 @@
                    :worktime/sitevisit
                    {:worktime/person (comp/get-query Monitor)}
                    :worktime/hours
+                   :worktime/date
                    :worktime/uuid
                    :worktime/task
                    :worktime/agency]
-   :initial-state (fn [{:keys [person sitevisit agency] :as params}]
+   :initial-state (fn [{:keys [person sitevisit agency date] :as params}]
                     {:db/id              (tempid/tempid)
                      :riverdb.entity/ns  :entity.ns/worktime
                      :worktime/uuid      (tempid/uuid)
                      :worktime/sitevisit sitevisit
                      :worktime/person    person
+                     :worktime/date      date
                      :worktime/hours     (transit/bigdec "1")
                      :worktime/task      "sitevisit"
                      :worktime/agency    agency})
@@ -138,6 +140,7 @@
                     :worktime/sitevisit
                     :worktime/person
                     :worktime/task
+                    :worktime/date
                     :worktime/agency}}
 
   (let [name (:person/Name person)]
@@ -204,6 +207,7 @@
   (let [props          (comp/props this)
         sv-id          (:db/id props)
         ag-id          (:sitevisit/AgencyCode props)
+        sv-date        (:sitevisit/SiteVisitDate props)
         visitor-ids    (set (select [ALL LAST] visitors))
         worker-ids     (set (select [ALL :worktime/person :db/id] worktimes))
         add-workers    (clojure.set/difference visitor-ids worker-ids)
@@ -213,7 +217,8 @@
     (doseq [add-id add-workers]
       (let [args {:person    {:db/id add-id}
                   :sitevisit [:org.riverdb.db.sitevisit/gid sv-id]
-                  :agency    ag-id}]
+                  :agency    ag-id
+                  :date      sv-date}]
         (comp/transact! this `[(add-worktime ~args)])))
 
     ;; remove missing workers
@@ -225,6 +230,19 @@
         ;(debug "REMOVE WORKTIME" worktime-id)
         (comp/transact! this `[(del-worktime ~args)])))))
 
+(fm/defmutation set-sv-date
+  [{:keys [date]}]
+  (action [{:keys [state component]}]
+    (let [sv-ident (comp/get-ident component)
+          wts (get-in @state (conj sv-ident :sitevisit/WorkTimes))]
+      ;(debug "SET DATE" date sv-ident wts)
+      (swap! state
+        (fn [st]
+          (let [st (rutil/set-value* st sv-ident :sitevisit/SiteVisitDate date)]
+            (reduce
+              (fn [st wt]
+                (rutil/set-value* st wt :worktime/date date))
+              st wts)))))))
 
 (defsc SiteVisitForm [this
                       {:ui/keys [ready create globals add-person-modal error]
@@ -365,31 +383,8 @@
       (when props
         (ui-form {:key "form" :size "tiny"}
           (div :.ui.grid {:key "sv-fields"}
-            (div :.eleven.wide.column
+            (div :.eight.wide.column
               (div :.dimmable.fields
-                (div :.field {:key "people"}
-                  (label {:style {}} "Monitors")
-                  (ui-theta-options
-                    (comp/computed
-                      (merge
-                        person-options
-                        {:riverdb.entity/ns :entity.ns/person
-                         :value             (or Visitors [])
-                         :opts              (merge
-                                              default-opts
-                                              {:multiple true})})
-                      {:changeMutation `set-value
-                       :changeParams   {:ident this-ident
-                                        :k     :sitevisit/Visitors}
-                       :onChange       (fn [ref-val]
-                                         (debug "person list changed" ref-val)
-                                         (sync-worktimes this ref-val WorkTimes))})))
-
-                ;:onAddItem      `add-option
-                ;:addParams      {:field-k :sitevisit/Visitors
-                ;                 :ent-ns  :entity.ns/person
-                ;                 :target  (conj this-ident :ui/add-person-modal)}
-
 
                 (div :.field {:key "site"}
                   (label {:style {}} "Station ID")
@@ -404,6 +399,33 @@
                        :changeParams   {:ident this-ident
                                         :k     :sitevisit/StationID}})))
 
+                (div :.field {:key "svdate" :style {:width 180}}
+                  (label {} "Site Visit Date")
+                  (ui-datepicker {:selected (or sv-date "")
+                                  :onChange #(when (inst? %)
+                                               (comp/transact! this [(set-sv-date {:date %})]))}))
+
+
+                (ui-form-input
+                  {:label    "Start Time"
+                   :value    (or sv-time "")
+                   :style    {:width 168}
+                   :onChange #(do
+                                (log/debug "Time change" (-> % .-target .-value))
+                                (set-value!! this :sitevisit/Time (-> % .-target .-value)))}))
+
+
+
+
+
+
+
+
+
+              (div :.dimmable.fields {:key "dates"}
+
+
+
                 (div :.field {:key "visittype"}
                   (label {:style {}} "Visit Type")
                   (ui-theta-options
@@ -416,7 +438,6 @@
                       {:changeMutation `set-value
                        :changeParams   {:ident this-ident
                                         :k     :sitevisit/VisitType}})))
-
 
                 (div :.field {:key "sitefail"}
                   (label {:style {}} "Failure?")
@@ -432,64 +453,48 @@
                                         :k     :sitevisit/StationFailCode}}))))
 
 
-              (div :.dimmable.fields {:key "dates"}
-                (div :.field {:key "svdate" :style {:width 180}}
-                  (label {} "Site Visit Date")
-                  (ui-datepicker {:selected (or sv-date "")
-                                  :onChange #(when (inst? %)
-                                               (log/debug "date change" %)
-                                               (set-value!! this :sitevisit/SiteVisitDate %))}))
 
 
-                (ui-form-input
-                  {:label    "Start Time"
-                   :value    (or sv-time "")
-                   :style    {:width 168}
-                   :onChange #(do
-                                (log/debug "Time change" (-> % .-target .-value))
-                                (set-value!! this :sitevisit/Time (-> % .-target .-value)))})
+              (div :.dimmable.fields {:key "entry"}
+               (div :.field {:key "enterer"}
+                 (label {:style {}} "Entered By")
+                 (ui-theta-options
+                   (comp/computed
+                     (merge person-options
+                       {:riverdb.entity/ns :entity.ns/person
+                        :value             DataEntryPersonRef
+                        :opts              default-opts})
+                     {:changeMutation `set-value
+                      :changeParams   {:ident this-ident
+                                       :k     :sitevisit/DataEntryPersonRef}})))
 
-                (div :.field {:key "enterer"}
-                  (label {:style {}} "Entered By")
-                  (ui-theta-options
-                    (comp/computed
-                      (merge person-options
-                        {:riverdb.entity/ns :entity.ns/person
-                         :value             DataEntryPersonRef
-                         :opts              default-opts})
-                      {:changeMutation `set-value
-                       :changeParams   {:ident this-ident
-                                        :k     :sitevisit/DataEntryPersonRef}})))
-                ;:onChange  #(do
-                ;              (log/debug "data person changed" %)
-                ;              (set-ref! this :sitevisit/DataEntryPersonRef %))
-                ;:onAddItem #(do
-                ;              (debug "ADD Entry Person" %))
+               (div :.field {:key "dedate" :style {:width 180}}
+                 (label {:style {}} "Data Entry Date")
+                 (do
+                   ;(debug "RENDER DataEntryDate" DataEntryDate)
+                   (ui-datepicker {:selected DataEntryDate
+                                   :onChange #(when (inst? %)
+                                                (log/debug "date change" %)
+                                                (set-value!! this :sitevisit/DataEntryDate %))})))
+
+               (div :.field {:key "checker"}
+                 (label {:style {}} "Checked By")
+                 (ui-theta-options
+                   (comp/computed
+                     (merge person-options
+                       {:riverdb.entity/ns :entity.ns/person
+                        :value             CheckPersonRef
+                        :opts              default-opts})
+                     {:changeMutation `set-value
+                      :changeParams   {:ident this-ident
+                                       :k     :sitevisit/CheckPersonRef}}))))
 
 
-                (div :.field {:key "dedate" :style {:width 180}}
-                  (label {:style {}} "Data Entry Date")
-                  (do
-                    ;(debug "RENDER DataEntryDate" DataEntryDate)
-                    (ui-datepicker {:selected DataEntryDate
-                                    :onChange #(when (inst? %)
-                                                 (log/debug "date change" %)
-                                                 (set-value!! this :sitevisit/DataEntryDate %))}))))
 
 
 
               (div :.dimmable.fields {:key "qa"}
-                (div :.field {:key "checker"}
-                  (label {:style {}} "Checked By")
-                  (ui-theta-options
-                    (comp/computed
-                      (merge person-options
-                        {:riverdb.entity/ns :entity.ns/person
-                         :value             CheckPersonRef
-                         :opts              default-opts})
-                      {:changeMutation `set-value
-                       :changeParams   {:ident this-ident
-                                        :k     :sitevisit/CheckPersonRef}})))
+
 
 
                 (div :.field {:key "qcer"}
@@ -520,7 +525,28 @@
                                              (log/debug "publish change" value)
                                              (set-value!! this :sitevisit/QACheck value))}))))
 
-            (div :.two.wide.column
+
+
+            (div :.three.wide.column
+              (div :.field {:key "people"}
+                (label {:style {}} "Monitors")
+                (ui-theta-options
+                  (comp/computed
+                    (merge
+                      person-options
+                      {:riverdb.entity/ns :entity.ns/person
+                       :value             (or Visitors [])
+                       :opts              (merge
+                                            default-opts
+                                            {:multiple true})})
+                    {:changeMutation `set-value
+                     :changeParams   {:ident this-ident
+                                      :k     :sitevisit/Visitors}
+                     :onChange       (fn [ref-val]
+                                       (debug "person list changed" ref-val)
+                                       (sync-worktimes this ref-val WorkTimes))}))))
+
+            (div :.three.wide.column
               (div :.field {:key "monitor hours"}
                 (label {:style {}} "Monitor Hours")
                 (ui-worktime-list
