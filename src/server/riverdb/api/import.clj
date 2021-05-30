@@ -1,7 +1,5 @@
 (ns riverdb.api.import
-  (:require [clj-time.coerce :as c]
-            [clj-time.core :as t]
-            [clj-time.local :as l]
+  (:require
             [clojure.core.rrb-vector :as fv]
             [clojure-csv.core :as csv :refer [write-csv parse-csv]]
             [clojure.edn :as edn]
@@ -16,7 +14,8 @@
             [riverdb.util :refer [nest-by]]
             [theta.util :refer [parse-bool parse-long parse-double parse-date parse-bigdec]]
             [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
-            [thosmos.util :as tu])
+            [thosmos.util :as tu]
+            [tick.alpha.api :as t])
   (:import (java.util Date)
            (java.io Reader File)
            (org.apache.commons.io FileUtils FileExistsException)

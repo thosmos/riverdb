@@ -19,7 +19,8 @@
             [riverdb.api.tac-report :as tac-report]
             [riverdb.api.qc-report :as qc-report]
             [thosmos.util :as tu]
-            [tick.core :as t])
+            [theta.util :as thu :refer [parse-long]]
+            [tick.alpha.api :as t])
   (:import [java.util Date]
            [java.text SimpleDateFormat]))
 
@@ -38,7 +39,7 @@
 
 
 (def key-change
-  {:db/id        :id,
+  {:db/id   :id,
    :samples :resultsv})
 
 ;(defn add-resultsv [sv fields]
@@ -165,8 +166,8 @@
                        (clojure.set/rename-keys key-change)
                        (tu/walk-modify-k-vals :id str)
                        (update :date #(.format formatter %))))]
-                       ;(add-results fields)
-                       ;(add-resultsv fields)))]
+    ;(add-results fields)
+    ;(add-resultsv fields)))]
     ;(debug "SITEVISITS first:" (first svs))
     svs))
 
@@ -396,7 +397,7 @@
       (debug "LOGGERS ERROR" ex)
       {:error (.toString ex)})))
 
-(defn resolve-logsamples [context {:keys [loggerRef before after] :as args} value]
+(defn resolve-logsamples [context {:keys [stationCode loggerRef before after] :as args} value]
   (log/debug "RESOLVE LOGSAMPLES" args)
 
   (comment
@@ -416,29 +417,60 @@
   (try
     (let [selection   (:com.walmartlabs.lacinia/selection context)
           selections  (vec (:selections selection))
-          pull-q      (parse-sels selections)
-          pull-q      (walk-ids pull-q)
+          ;pull-q      (parse-sels selections)
+          ;pull-q      (walk-ids pull-q)
           fields      (vec (map :field-name selections))
           id-field?   (some #{:id} fields)
           inst-field? (some #{:inst} fields)
-          args        (into {} (mapv (fn [[k v]] identity [k (Long/parseLong v)]) args))
+          ;args         (into {} (mapv (fn [[k v]] identity [k (Long/parseLong v)]) args))
           args        (cond-> args
                         loggerRef
                         (assoc :loggerRef (Long/parseLong loggerRef))
                         before
-                        (assoc :before (Date. ^Long (* 1000 before)))
+                        (assoc :before (Date. ^Long (* 1000 (Long/parseLong before))))
                         after
-                        (assoc :after (Date. ^Long (* 1000 after))))
+                        (assoc :after (Date. ^Long (* 1000 (Long/parseLong after)))))
 
-          rez         (get-logger-samples (db) pull-q args)
-          rez         (walk-response rez)
-          ;; if we have results with :inst, then convert to secs
-          rez         (if (and inst-field? (seq rez))
-                        (map #(assoc % :inst (int (/ (.getTime (:inst %)) 1000))) rez)
-                        rez)]
+          rez         (get-logger-samples (db) args)
+          rez         (when (seq rez) (sort-by first rez))
 
-      (log/debug "FIRST LOGSAMPLES" (first rez))
-      rez)
+          rez-daily   (if (seq rez)
+                        (let [[inst value] (first rez)
+                              ;; get the beginning and end of day for the first sample timestamp
+                              {:tick/keys [beginning end]} (t/bounds (t/date inst))
+                              daily (reduce
+                                      (fn [{:keys [beg end vals] :as daily} [inst value]]
+                                        (if
+                                          ;; if the new inst is the same day
+                                          (t/< (t/date-time inst) end)
+                                          ;; add this value to the daily vals list and continue
+                                          (update daily :vals conj value)
+                                          ;; if it's a new day, get the mean of the previous day and save it, then prep the new day
+                                          (let [{:tick/keys [beginning end]} (t/bounds (t/date inst))]
+                                            (-> daily
+                                              (merge
+                                                {:vals []
+                                                 :beg  beginning
+                                                 :end  end})
+                                              (update :rez conj {:date (str (t/date beg)) :value (thu/big-mean vals)})))))
+                                      {:beg  beginning
+                                       :end  end
+                                       :vals [value]
+                                       :rez  []} (rest rez))
+                              ;; if we have some leftovers, add the last day
+                              daily (if (seq (:vals daily))
+                                      (update daily :rez conj {:date (str (t/date (:beg daily))) :value (thu/big-mean (:vals daily))})
+                                      daily)]
+                          (:rez daily))
+                        [])
+          _           (debug "REZ DAILY" rez-daily)]
+      ;rez         (walk-response rez)
+      ;; if we have results with :inst, then convert to secs
+      ;rez         (if (and inst-field? (seq rez))
+      ;              (map #(assoc % :inst (int (/ (.getTime (:inst %)) 1000))) rez)
+      ;              rez)]
+
+      rez-daily)
     (catch Exception ex
       (debug "LOGSAMPLES ERROR" ex)
       {:error (.toString ex)})))
@@ -872,7 +904,7 @@
   ([spec-ns query-type]
    ;(debug "RESOLVE RIMDB" spec-ns query-type)
    (fn [context args value]
-     (debug "RESOLVE RIMDB!" spec-ns args value)
+     (debug "RESOLVE RIMDB" spec-ns args value)
      (let [spec-entity (get schema/specs-map spec-ns)
            spec-attrs  (vals (:entity/attrs spec-entity))
            id-attrs    (reduce
@@ -1029,7 +1061,7 @@
                  ;_              (debug "IDS 1" ids)
                  ids             (when (seq ids)
                                    (vec (for [id ids]
-                                          (read-string id))))
+                                          (parse-long id))))
                  ;_              (debug "IDS 2" ids)
 
 
@@ -1038,10 +1070,18 @@
                                    (if (seq filter)
                                      (reduce-kv
                                        (fn [q filt-k filt-v]
-                                         (let [filt-s (symbol (str "?" (name filt-k)))]
+                                         (let [k-nm   (name filt-k)
+                                               ref?   (clojure.string/ends-with? k-nm "_id")
+                                               k-nm   (if ref?
+                                                        (subs k-nm 0 (clojure.string/index-of k-nm "_id"))
+                                                        k-nm)
+                                               filt-s (symbol (str "?" k-nm))
+                                               filt-v (if ref?
+                                                        (parse-long filt-v)
+                                                        filt-v)]
                                            (-> q
                                              (update :in conj filt-s)
-                                             (update :where conj ['?e (nskw table filt-k) filt-s])
+                                             (update :where conj ['?e (nskw table k-nm) filt-s])
                                              (update :args conj filt-v))))
                                        q filter)
                                      q))
@@ -1089,8 +1129,8 @@
                                    (d/query q)
                                    (catch Exception ex
                                      (do
-                                       (warn "RiverDB Resolver query failed" (.getMessage ex))
-                                       (debug "Failed Query" q))))
+                                       (error ex "RiverDB Resolver query failed")
+                                       (debug "Failed Query" (pr-str q)))))
 
 
                  ;_               (debug "QUERY FINISHED")

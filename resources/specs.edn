@@ -1389,6 +1389,31 @@
           :key :logger/name,
           :cardinality :one,
           :type :string}]}
+ {:db/id "logsample"
+  :entity/name "Logger Sample"
+  :entity/ns :entity.ns/logsample
+  :entity/pks [:logsample/logger :logsample/inst]
+  :entity/prKeys [:logsample/inst :logsample/value]
+  :entity/nameKey :logsample/inst
+  :entity/lookup :logsample/inst
+  :entity/attrs
+  [#:attr{:name "Date",
+          :key :logsample/inst,
+          :cardinality :one,
+          :type :inst
+          :doc "moment of sample"}
+   #:attr{:name "Value",
+          :key :logsample/value,
+          :cardinality :one,
+          :type :bigdec
+          :doc "the value"}
+   #:attr{:name "Logger",
+          :key :logsample/logger,
+          :cardinality :one,
+          :type :ref
+          :ref #:entity{:ns :entity.ns/logger}
+          :refKey :entity.ns/logger
+          :doc "The logger"}]}
  {:db/id "methodlookup",
   :entity/name "Method",
   :entity/ns :entity.ns/methodlookup,

@@ -73,11 +73,11 @@
     <orderEntry type="library" name="Deps: org.eclipse.jetty.http2/http2-server:9.4.18.v20190429" level="project" />
     <orderEntry type="library" name="Deps: commons-fileupload:1.4" level="project" />
     <orderEntry type="library" name="Deps: ring/ring-ssl:0.3.0" level="project" />
-    <orderEntry type="library" name="Deps: tick:0.4.25-alpha" level="project" />
+    <orderEntry type="library" name="Deps: tick:0.4.31-alpha" level="project" />
     <orderEntry type="library" name="Deps: org.codehaus.mojo/animal-sniffer-annotations:1.14" level="project" />
     <orderEntry type="library" name="Deps: com.walmartlabs/lacinia-pedestal:0.15.0" level="project" />
     <orderEntry type="library" name="Deps: javax.activation/activation:1.1" level="project" />
-    <orderEntry type="library" name="Deps: henryw374/js-joda:1.12.0-1" level="project" />
+    <orderEntry type="library" name="Deps: henryw374/js-joda:3.2.0-0" level="project" />
     <orderEntry type="library" name="Deps: org.eclipse.jetty/jetty-http:9.4.18.v20190429" level="project" />
     <orderEntry type="library" name="Deps: org.eclipse.jetty/jetty-util:9.4.18.v20190429" level="project" />
     <orderEntry type="library" name="Deps: com.taoensso/encore:2.120.0" level="project" />
@@ -211,7 +211,7 @@
     <orderEntry type="library" name="Deps: org.graalvm.js/js-scriptengine:20.1.0" level="project" />
     <orderEntry type="library" name="Deps: org.jboss.threads/jboss-threads:3.1.0.Final" level="project" />
     <orderEntry type="library" name="Deps: com.google.j2objc/j2objc-annotations:1.1" level="project" />
-    <orderEntry type="library" name="Deps: cljc.java-time:0.1.9" level="project" />
+    <orderEntry type="library" name="Deps: cljc.java-time:0.1.16" level="project" />
     <orderEntry type="library" name="Deps: com.taoensso/timbre:4.10.0" level="project" />
     <orderEntry type="library" name="Deps: com.cognitect/transit-clj:1.0.324" level="project" />
     <orderEntry type="library" name="Deps: org.codehaus.plexus/plexus-classworlds:2.6.0" level="project" />
@@ -233,7 +233,7 @@
     <orderEntry type="library" name="Deps: com.fulcrologic/semantic-ui-wrapper:1.0.1" level="project" />
     <orderEntry type="library" name="Deps: crypto-equality:1.0.0" level="project" />
     <orderEntry type="library" name="Deps: org.wildfly.client/wildfly-client-config:1.0.1.Final" level="project" />
-    <orderEntry type="library" name="Deps: cljs.java-time:0.1.16" level="project" />
+    <orderEntry type="library" name="Deps: cljs.java-time:0.1.18" level="project" />
     <orderEntry type="library" name="Deps: net.java.dev.jna/jna:4.1.0" level="project" />
     <orderEntry type="library" name="Deps: com.google.inject/guice$no_aop:4.2.1" level="project" />
     <orderEntry type="library" name="Deps: cheshire:5.8.1" level="project" />
@@ -253,7 +253,7 @@
     <orderEntry type="library" name="Deps: org.apache.activemq/artemis-core-client:1.5.6" level="project" />
     <orderEntry type="library" name="Deps: net.java.dev.jna/jna-platform:4.1.0" level="project" />
     <orderEntry type="library" name="Deps: datascript:0.16.6" level="project" />
-    <orderEntry type="library" name="Deps: time-literals:0.1.3" level="project" />
+    <orderEntry type="library" name="Deps: time-literals:0.1.5" level="project" />
     <orderEntry type="library" name="Deps: javax.servlet/javax.servlet-api:3.1.0" level="project" />
     <orderEntry type="library" name="Deps: potemkin:0.4.1" level="project" />
     <orderEntry type="library" name="Deps: org.clojure/tools.gitlibs:0.2.64" level="project" />
@@ -314,7 +314,7 @@
     <orderEntry type="library" name="Deps: org.clojure/core.cache:0.8.2" level="project" />
     <orderEntry type="library" name="Deps: com.datomic/datomic-lucene-core:3.3.0" level="project" />
     <orderEntry type="library" name="Deps: org.ow2.asm/asm-tree:7.1" level="project" />
-    <orderEntry type="library" name="Deps: cljsjs/js-joda-locale-en-us:3.1.1-0" level="project" />
+    <orderEntry type="library" name="Deps: cljsjs/js-joda-locale-en-us:3.1.1-1" level="project" />
     <orderEntry type="library" name="Deps: org.apache.maven/maven-plugin-api:3.6.3" level="project" />
     <orderEntry type="library" name="Deps: org.openjfx/javafx-graphics$mac:13" level="project" />
     <orderEntry type="library" name="Deps: clojure-csv:2.0.2" level="project" />

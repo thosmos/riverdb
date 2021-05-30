@@ -141,7 +141,9 @@
 (defn get-filter-args [attrs]
   (let [args (reduce-kv
                (fn [args _ {:attr/keys [key type cardinality doc identity] :as attr}]
-                 (let [arg-k (keyword (gql-name attr))
+                 (let [arg-k (keyword (if (= type :ref)
+                                        (str (gql-name attr) "_id")
+                                        (gql-name attr)))
                        type? (case type
                                :string
                                'String
@@ -564,9 +566,8 @@
                                                  :latest          {:type :safe_data}
                                                  :values          {:type '(list :safe_data)}}}
 
-                   :logsample          {:fields {:id    {:type 'ID}
-                                                 :value {:type 'Float}
-                                                 :inst  {:type 'Int}}}
+                   :logsample          {:fields {:value {:type 'Float}
+                                                 :date  {:type 'String}}}
 
                    :logger             {:fields {:id            {:type 'ID}
                                                  :name          {:type 'String}
@@ -666,6 +667,7 @@
                    {:type    '(list :logsample)
                     :resolve :resolve-logsamples
                     :args    {:loggerRef {:type 'ID}
+                              :stationCode {:type 'String}
                               :before    {:type 'Int}
                               :after     {:type 'Int}}}
 

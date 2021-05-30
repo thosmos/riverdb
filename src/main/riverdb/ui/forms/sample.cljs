@@ -64,7 +64,7 @@
     [com.fulcrologic.fulcro.data-fetch :as df]
     [riverdb.roles :as roles]
     [edn-query-language.core :as eql]
-    [tick.core :as t]
+    [tick.alpha.api :as t]
     [testdouble.cljs.csv :as csv]))
 
 (defsc AnalyteRefForm [this props]

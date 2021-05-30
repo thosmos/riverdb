@@ -70,13 +70,14 @@
       rez)
     (catch Exception ex (log/debug "ERROR: " (.getMessage ex)))))
 
-(defn get-logger-samples [db query {:keys [loggerRef after before] :as args}]
-  (log/debug "GET-LOGSAMPLES" query args)
+(defn get-logger-samples [db {:keys [loggerRef after before stationCode] :as args}]
+  (log/debug "GET-LOGSAMPLES"  args)
   (try
-    (let [q   {:query {:find  ['[(pull ?e q) ...]]
-                       :in    '[$ q]
-                       :where []}
-               :args  [db query]}
+    (let [q   {:query {:find  '[?inst ?val]
+                       :in    '[$]
+                       :where ['[?e :logsample/inst ?inst]
+                               '[?e :logsample/value ?val]]}
+               :args  [db]}
 
           q   (cond-> q
 
@@ -86,6 +87,17 @@
                 ;  (update-in [:query :where] conj '[?e :logger.meta/active ?active])
                 ;  (update-in [:query :in] conj '?active)
                 ;  (update :args conj active))
+
+                stationCode
+                (->
+                  (update-in [:query :where]
+                    #(conj %
+                       '[?st :stationlookup/StationCode ?stc]
+                       '[?lgr :logger/stationRef ?st]
+                       '[?e :logsample/logger ?lgr]))
+                  (update-in [:query :in] conj '?stc)
+                  (update :args conj stationCode))
+
 
                 loggerRef
                 (->
@@ -110,16 +122,14 @@
 
                 (or after before)
                 (-> (update-in [:query :where]
-                      #(apply conj % '[[?e :logsample/inst ?inst]])))
+                      #(apply conj % '[[?e :logsample/inst ?inst]]))))
 
-                ;; last one, in case there are no conditions, get all samples
-                #(empty? (get-in q [:query :where]))
-                (->
-                  (update-in [:query :where] conj '[?e :logsample/inst])))
+                ;;; last one, in case there are no conditions, get all samples
+                ;#(empty? (get-in q [:query :where]))
+                ;(->
+                ;  (update-in [:query :where] conj '[?e :logsample/inst])))
 
-          rez (if (empty? (get-in q [:query :where]))
-                []
-                (d/query q))]
-      (log/debug "FIRST LOGSAMPLES" (first rez))
+          rez (not-empty (d/query q))]
+      (log/debug (if (seq rez) (str "FIRST LOGSAMPLES " (first rez)) "NO RESULTS"))
       rez)
     (catch Exception ex (log/debug "ERROR: " (.getMessage ex)))))
