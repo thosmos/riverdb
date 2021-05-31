@@ -30,9 +30,12 @@
   {:> #inst \"2019-11-03T00:00:00.000-00:00\"
    :< #inst \"2020-11-03T00:00:00.000-00:00\"}"
   [find arg conditions]
+  ;(debug "ADD CONDITIONS" find arg conditions)
   (reduce-kv
     (fn [find k v]
       (cond
+        ;(= k :reverse)
+        ;(conj find [v k arg])
         (= k :>)
         (conj find [(list '> arg v)])
         (= k :<)
@@ -49,7 +52,8 @@
   (try
     (reduce-kv
       (fn [find k v]
-        (let [ent-k        (keyword "entity.ns" (namespace k))
+        (let [ent-ns       (namespace k)
+              ent-k        (keyword "entity.ns" ent-ns)
               ent-nm       (name k)
               attr-spec    (get-in specs-map [ent-k :entity/attrs k])
               attr-type    (:attr/type attr-spec)
@@ -62,15 +66,22 @@
               val-nil?     (nil? v)
               val-vec?     (vector? v)
 
+              reverse-ref? (and type-ref? val-map? (= :reverse (ffirst v)))
+
               arg?         (cond
+                             reverse-ref?
+                             (symbol (str "?" ent-ns))
                              (and type-ref? val-map?)
                              (symbol (str "?" (str (namespace (ffirst v)) "_" (name (ffirst v)))))
                              (and type-inst? val-map?)
                              (symbol (str "?" ent-nm))
                              type-string?
                              (symbol (str "?" ent-nm)))
+              ;_ (debug "ADDING FOR" k v "type-ref?" type-ref?)
               find         (cond
-                             (and type-ref? val-map?)
+                             ;reverse-ref?
+                             ;(add-conditions find arg? v)
+                             (and type-ref? val-map? (not reverse-ref?))
                              (add-filters arg? find v) ;; if it's a nested field, then recurse
                              (and type-inst? val-map?)
                              (add-conditions find arg? v) ;; if it's got where conditions, add the bindings
@@ -81,6 +92,8 @@
               v            (cond
                              type-ref?
                              (cond
+                               reverse-ref?
+                               (Long/parseLong (:reverse v))
                                val-string?
                                (Long/parseLong v)
                                val-map?
@@ -98,6 +111,8 @@
                              :else
                              v)]
           (cond
+            reverse-ref?
+            (conj find [v k arg])
             val-nil?
             find
             :else
@@ -117,7 +132,7 @@
   (clojure.walk/prewalk-demo query))
 
 (defn lookup-resolve [env input]
-  (debug "LOOKUP RESOLVER" input)
+  (debug "LOOKUP RESOLVER" input (-> env :ast :key))
   (try
     (let [params        (-> env :ast :params)
           query         (:query env)
@@ -153,7 +168,7 @@
                           :else
                           ent-type)
 
-          _             (log/debug "List Resolver -> params" params "ent-key" ent-key "ent-type" ent-type "lookup-key" lookup-key)
+          ;_             (log/debug "List Resolver -> params" params "ent-key" ent-key "ent-type" ent-type "lookup-key" lookup-key)
           ;meta?         (some #{:org.riverdb.meta/query-count} query)
 
           ;; if it's a meta query, we don't need any query fields
@@ -198,7 +213,7 @@
           ;  (update :where conj
           ;    '[(< ?date ?toDate)]))
 
-          _             (debug "ADDING FILTERS ...")
+          ;_             (debug "ADDING FILTERS ...")
           ;; add the filter conditions first.
           ;; TODO we can probably skip this if we have IDs, but leaving for now
           filter        (:filter params)
@@ -206,7 +221,7 @@
                           (add-filters '?e find filter)
                           find)
 
-          _             (log/debug "POST FILTERS" find)
+          ;_             (log/debug "POST FILTERS" find)
 
           ;; add the type condition because filters are *probably* more restrictive than the type?
           find          (cond
@@ -219,12 +234,12 @@
                           :else
                           (conj find '[?e :riverdb.entity/ns ?typ]))
 
-          _             (log/debug "FINAL FIND" find)
+          ;_             (log/debug "FINAL FIND" find)
 
           results       (d/q find
                           (db) query lookup-key)
-          results-count (count results)
-          _             (log/debug "\nLIST RESULTS for" lookup-key "\nCOUNT" results-count "\nFIND" find "\nQUERY" query "\nFIRST RESULTS" (first results))]
+          results-count (count results)]
+          ;_             (log/debug "\nLIST RESULTS for" lookup-key "\nCOUNT" results-count "\nFIND" find "\nQUERY" query "\nFIRST RESULTS" (first results))]
 
       ;; if it's a metadata query, branch before doing all the limits and sorts
       (if meta?
@@ -264,7 +279,7 @@
                                 ; return exact list that was requested
                                 (seq ids)
                                 (fn [results]
-                                  (log/debug "Returning Exact Results for IDS" ids)
+                                  ;(log/debug "Returning Exact Results for IDS" ids)
                                   (let [id-map (into {} (for [res results]
                                                           [(:db/id res) res]))
                                         _      (log/debug "ID-MAP keys" (keys id-map))]
@@ -277,7 +292,7 @@
 
 
               results         (walk-modify-k-vals results :db/id str)]
-          (log/debug "FINAL RESULTS" (first results))
+          ;(log/debug "FINAL RESULTS" (first results))
           {ent-key results})))
 
     (catch Exception ex (log/error ex "RESOLVER ERROR") ex)))
@@ -357,7 +372,7 @@
 
 (defn uuid-resolve-factory [uuid-key]
   (fn [env input]
-    (log/debug "UUID PULL RESOLVER" uuid-key input)
+    ;(log/debug "UUID PULL RESOLVER" uuid-key input)
     (try
       (let [query   (-> env ::p/parent-query)
             ;_       (log/debug "Lookup Resolver Key" uuid-key "Input" input "QUERY" query)

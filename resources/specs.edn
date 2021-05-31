@@ -3020,7 +3020,6 @@
                    :stationlookup/StationID
                    :stationlookup/StationName
                    :stationlookup/Agency
-                   :stationlookup/Project
                    :stationlookup/TargetLong
                    :stationlookup/TargetLat
                    :stationlookup/RiverFork],
@@ -3148,12 +3147,12 @@
                           :key :stationlookup/NationalHydrographyDataReach,
                           :cardinality :one,
                           :type :bigdec}
-                   #:attr{:name "Project",
-                          :key :stationlookup/Project,
-                          :cardinality :one,
-                          :type :ref,
-                          :ref #:entity{:ns :entity.ns/projectslookup},
-                          :refKey :entity.ns/projectslookup}
+                   ;#:attr{:name "Project",
+                   ;       :key :stationlookup/Project,
+                   ;       :cardinality :one,
+                   ;       :type :ref,
+                   ;       :ref #:entity{:ns :entity.ns/projectslookup},
+                   ;       :refKey :entity.ns/projectslookup}
                    #:attr{:name "RiverFork",
                           :key :stationlookup/RiverFork,
                           :cardinality :one,

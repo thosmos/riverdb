@@ -98,13 +98,18 @@
                         (debug "DIFF FN" k diff)
                         (let [id (if-let [long-id (parse-long id)] long-id (str id))
                               {:keys [before after]} diff
-                              [before after] (if (= k :fieldresult/Result)
-                                               [(double before) (double after)]
+                              [before after] (if
+                                               (or
+                                                 (= k :fieldresult/Result)
+                                                 (= k :labresult/Result))
+                                               [(when before (double before))
+                                                (when after (double after))]
                                                [before after])]
                           (cond
                             (= k :db/id)
                             []
 
+                            ;; check if it's an ident
                             (ref->gid after)
                             [[:db/add id k (ref->gid after)]]
 
@@ -151,7 +156,7 @@
 
 
 (defn save-entity* [env {:keys [ident diff delete agency] :as params}]
-  (debug "MUTATION!!!" "save-entity" (str (when delete "DELETE ")) "IDENT" ident "DIFF" diff)
+  (debug "MUTATION!!!" "save-entity" (str (when delete "DELETE ")) "IDENT" ident)
   (let [session-valid? (get-in env [:ring/request :session :session/valid?])
         user           (when session-valid?
                          (get-in env [:ring/request :session :account/auth :user]))
@@ -160,22 +165,22 @@
         agency?        (when user
                          (get-in user [:user/agency :db/id]))
         match?         (= agency? agency)
-        _              (debug "match?" match?)
+        ;_              (debug "match?" match?)
         gid            (ref->gid ident)
-        _              (debug "gid" gid)
+        ;_              (debug "gid" gid)
         tempid?        (tempid/tempid? gid)
-        _              (debug "tempid?" tempid?)
+        ;_              (debug "tempid?" tempid?)
         exists?        (when (and gid (not tempid?)) (rdb/pull-tx gid))
-        _              (debug "exists?" exists?)
+        ;_              (debug "exists?" exists?)
         tx-user?       (when exists?
                          (get-in exists? [:riverdb/tx-user :db/id]))
-        _              (debug "tx-user?" tx-user?)
+        ;_              (debug "tx-user?" tx-user?)
         creator?       (= tx-user? (:db/id user))
-        _              (debug "creator?" creator?)
+        ;_              (debug "creator?" creator?)
         ;_              (debug "SAVE USER" user "CREATOR?" creator? "ROLE" role? "AGENCY" agency? "MATCH?" match?)
         tempids        (sp/select (sp/walker tempid/tempid?) diff)
-        tmp-map        (into {} (map (fn [t] [t (-> t :id str (subs 0 20))]) tempids))
-        _              (debug "PRE TEMPIDS" tempids tmp-map)]
+        tmp-map        (into {} (map (fn [t] [t (-> t :id str (subs 0 20))]) tempids))]
+        ;_              (debug "PRE TEMPIDS" tempids tmp-map)]
     (cond
       (not role?)
       (do
@@ -196,9 +201,9 @@
                            txds (conj txds {:db/id           "datomic.tx"
                                             :riverdb/tx-user (parse-long (:db/id user))
                                             :riverdb/tx-info "save-entity"})
-                           _    (debug "SAVE-ENTITY TXDS" txds)
+                           ;_    (debug "SAVE-ENTITY TXDS" txds)
                            tx   (d/transact (cx) txds)]
-                       (debug "TX" @tx)
+                       ;(debug "TX" @tx)
                        @tx)
                      (catch Exception ex (do
                                            (println "ERROR: " ex)
@@ -208,18 +213,18 @@
           (let [db-tmps (:tempids result)
                 tempids (into {}
                           (for [[t s] tmp-map]
-                            [t (str (get db-tmps s))]))
-                _       (debug "POST TEMPIDS" tempids)]
-            (debug "SAVE-ENTITY RESULT" result)
+                            [t (str (get db-tmps s))]))]
+                ;_       (debug "POST TEMPIDS" tempids)]
+            ;(debug "SAVE-ENTITY RESULT" result)
             {:tempids tempids}))))))
 
 (pc/defmutation save-entity [env {:keys [ident diff delete agency] :as params}]
   {::pc/sym    `save-entity
    ::pc/params [:ident :diff :delete]
    ::pc/output [:error :tempids]}
-  (let [_      (debug "SAVE ENTITY" "params" params "ident" ident "diff" diff)
+  (let [;_      (debug "SAVE ENTITY" "params" params "ident" ident "diff" diff)
         result (save-entity* env params)]
-    (debug "RESULT save-entity" result)
+    ;(debug "RESULT save-entity" result)
     result))
 
 (pc/defmutation upload-files [env {:keys [config] ::fup/keys [files] :as params}]

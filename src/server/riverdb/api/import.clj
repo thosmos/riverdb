@@ -345,8 +345,9 @@
 (defn gen-site-with-name
   ([cx project site-name]
    (let [tx    @(d/transact cx [{:db/id                     site-name
-                                 :stationlookup/StationName site-name
-                                 :stationlookup/Project     [:projectslookup/ProjectID project]}])
+                                 :stationlookup/StationName site-name}
+                                {:projectslookup/ProjectID project
+                                 :projectslookup/Stations site-name}])
          db-id (get-in tx [:tempids site-name])]
      db-id)))
 
@@ -366,7 +367,6 @@
   (let [station_code (str project "_" site-id)
         txd          {:db/id                     station_code
                       :stationlookup/StationCode station_code
-                      :stationlookup/Project     [:projectslookup/ProjectID project]
                       :riverdb.entity/ns         :entity.ns/stationlookup
                       :org.riverdb/import-key    (str project "-site-" (or site-id site-name))}
         active?      (not-empty (remove nil? [active-override active]))
@@ -447,15 +447,8 @@
 
 
 (defn gen-sites [cx project sites]
-  (let [existing-sites {}
+  (let [existing-sites {}]
         ;;; generating all sites every time, but they use import-key so it should just update existing entities
-        #_(into {}
-            (d/q '[:find ?id ?e
-                   :in $ ?proj
-                   :where
-                   [?pj :projectslookup/ProjectID ?proj]
-                   [?e :stationlookup/Project ?pj]
-                   [?e :stationlookup/StationID ?id]] (d/db cx) project))]
     (into {} (for [site sites]
                (let [site-id (:site-id site)
                      db-id   (if-let [db-id (get existing-sites site-id)]
@@ -635,12 +628,16 @@
         project  (rpull [:projectslookup/ProjectID project-code])
         {:db/keys [id] :projectslookup/keys [ParentProjectID]} project
         ;; get stations from parent or this project
-        stations (pull-entities :stationlookup/Project
-                   {:value (or (:db/id ParentProjectID) id)
-                    :query [:stationlookup/StationID
-                            :stationlookup/StationIDLong
-                            :stationlookup/StationCode
-                            :stationlookup/StationName]})]
+        station-q [:stationlookup/StationID
+                   :stationlookup/StationIDLong
+                   :stationlookup/StationCode
+                   :stationlookup/StationName]
+        stations (d/q '[:find [(pull ?e qu) ...]
+                        :in $ qu ?pj
+                        :where
+                        [?pj :projectslookup/Stations ?e]]
+                   (db) station-q (or (:db/id ParentProjectID) id))]
+
     (vec
       ;; remove any that have no station
       (filter #(:sitevisit/StationID (first %))
@@ -782,7 +779,6 @@
         station-ids (if (and (= station-source "select") station-id)
                       [station-id]
                       station-ids)
-        ;station-ids (map #(if (= (type %) java.lang.String) (Long/parseLong %) %) station-ids)
         stations    (when (seq station-ids)
                       (debug "GETTING STATIONS" (pr-str station-ids) project-code)
                       (let [qu   [:db/id :stationlookup/StationID :stationlookup/StationCode]
@@ -790,8 +786,8 @@
                                    :in $ ?st ?pjc qu
                                    :where
                                    [?pj :projectslookup/ProjectID ?pjc]
-                                   [?e :stationlookup/StationID ?st]
-                                   [?e :stationlookup/Project ?pj]]]
+                                   [?pj :projectslookup/Stations ?e]
+                                   [?e :stationlookup/StationID ?st]]]
                         (debug "FIND" find)
                         (for [st station-ids]
                           (d/q find (db) st project-code qu))))

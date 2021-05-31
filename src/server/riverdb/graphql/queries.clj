@@ -20,7 +20,8 @@
             [riverdb.api.qc-report :as qc-report]
             [thosmos.util :as tu]
             [theta.util :as thu :refer [parse-long]]
-            [tick.alpha.api :as t])
+            [tick.alpha.api :as t]
+            [riverdb.db :as rdb])
   (:import [java.util Date]
            [java.text SimpleDateFormat]))
 
@@ -189,12 +190,36 @@
         id-field?  (some #{:id} fields)
 
 
-        ;_          (debug "FIELDS" fields args)
+        _          (debug "FIELDS" fields)
+
         query      (vec (for [field fields]
                           (if
                             (= :id field)
                             :db/id
                             [(keyword "stationlookup" (name field)) :as field])))
+        proj-type  (when-let [project-code (:project args)]
+                     (d/q '[:find ?pti .
+                            :in $ ?pcode
+                            :where
+                            [?p :projectslookup/ProjectID ?pcode]
+                            [?p :projectslookup/ProjectType ?pt]
+                            [?pt :projecttype/ident ?pti]]
+                       (db) project-code))
+
+        project    (when-let [project-code (:project args)]
+                     (let [qu [{:projectslookup/ProjectType [:projecttype/ident]}
+                               :projectslookup/Active
+                               :projectslookup/ParentProjectID]]
+                      (d/q '[:find (pull ?p [:projects]) .
+                             :in $ qu ?pcode
+                             :where
+                             [?p :projectslookup/ProjectID ?pcode]]
+                        (db) qu project-code)))
+
+        args       (if proj-type
+                     (assoc args :projectType proj-type)
+                     args)
+
         results    (riverdb.station/get-stations (db) query args)
         results    (if id-field?
                      (for [r results]

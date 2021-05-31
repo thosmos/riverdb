@@ -641,7 +641,8 @@
                                   :limit   {:type    'Int
                                             :default 10}
                                   :offset  {:type    'Int
-                                            :default 0}}}
+                                            :default 0}
+                                  :params {:type '(list String)}}}
 
                    :safetoswim
                    {:type        '(list :safetoswim)

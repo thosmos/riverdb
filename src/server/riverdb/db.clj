@@ -20,6 +20,14 @@
           [?e ?attr ?val]]
      (db) attr val)))
 
+(defn attr->eid-val [attr]
+  (d/q '[:find ?e ?v
+         :in $ ?a
+         :where
+         [?e ?a ?v]]
+    (db) attr))
+
+
 (defn eids->retract-attr
   ([eids attr]
    (d/transact (cx)
@@ -84,7 +92,7 @@
 (defn pull-entities
   ([attr]
    (pull-entities attr {}))
-  ([attr {:keys [value query] :as opts}]
+  ([attr {:keys [value query wheres] :as opts}]
    (let [find (if value
                 '[:find [(pull ?e qu) ...]
                   :in $ ?attr qu ?value
@@ -94,6 +102,9 @@
                   :in $ ?attr qu
                   :where
                   [?e ?attr]])
+         find (if wheres
+                (apply conj find wheres)
+                find)
          qu (if query
               query
               '[*])]
@@ -154,7 +165,7 @@
          :in $ ?pj
          :where
          [?e :projectslookup/ProjectID ?pj]
-         [?st :stationlookup/Project ?e]]
+         [?e :projectslookup/Stations ?st]]
     (db) project))
 
 (defn get-constituent

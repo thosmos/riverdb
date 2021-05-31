@@ -323,14 +323,14 @@
 (defn gen-site-with-name
   ([cx project site-name]
    (let [tx    @(d/transact cx [{:db/id                     site-name
-                                 :stationlookup/StationName site-name
-                                 :stationlookup/Project     [:projectslookup/ProjectID project]}])
+                                 :stationlookup/StationName site-name}
+                                {:projectslookup/ProjectID project
+                                 :projectslookup/Stations site-name}])
          db-id (get-in tx [:tempids site-name])]
      db-id)))
 
 (defn site->txd [project {:keys [site-id site-name descript lat lon is-rm-site?] :as site-map}]
   (let [txd {:db/id                     (str (or site-id site-name))
-             :stationlookup/Project     [:projectslookup/ProjectID project]
              :stationlookup/StationCode (str project "_" site-id)
              :org.riverdb/import-key    (str project "-site-" (or site-id site-name))}
         txd (cond-> txd
@@ -361,7 +361,7 @@
                        :where
                        [?pj :projectslookup/ProjectID ?proj]
                        [?e :stationlookup/StationID ?site-id]
-                       [?e :stationlookup/Project ?pj]]
+                       [?pj :projectslookup/Stations ?e]]
                   db project site-id)]
     result))
 
@@ -371,7 +371,7 @@
          :where
          [?pj :projectslookup/ProjectID ?proj]
          [?e :stationlookup/StationName ?site-name]
-         [?e :stationlookup/Project ?pj]]
+         [?pj :projectslookup/Stations ?e]]
     db project site-name))
 
 (defn gen-site-with-map
@@ -385,15 +385,15 @@
 
 
 (defn gen-sites [cx project sites]
-  (let [existing-sites {}
+  (let [existing-sites {}]
         ;;; generating all sites every time, but they use import-key so it should just update existing entities
-        #_(into {}
-            (d/q '[:find ?id ?e
-                   :in $ ?proj
-                   :where
-                   [?pj :projectslookup/ProjectID ?proj]
-                   [?e :stationlookup/Project ?pj]
-                   [?e :stationlookup/StationID ?id]] (d/db cx) project))]
+        ;#_(into {}
+        ;    (d/q '[:find ?id ?e
+        ;           :in $ ?proj
+        ;           :where
+        ;           [?pj :projectslookup/ProjectID ?proj]
+        ;           [?e :stationlookup/Project ?pj]
+        ;           [?e :stationlookup/StationID ?id]] (d/db cx) project))]
     (into {} (for [site sites]
                (let [site-id (:site-id site)
                      db-id   (if-let [db-id (get existing-sites site-id)]

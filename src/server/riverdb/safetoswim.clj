@@ -20,7 +20,7 @@
                       ;[(> ?svdt #inst "2019")]
                       [?si :stationlookup/StationName ?sinm]
                       [?si :stationlookup/StationCode ?siid]
-                      [?si :stationlookup/Project ?pj]
+                      [?pj :projectslookup/Stations ?si]
                       ;[?pj :projectslookup/ProjectID ?agcd]
                       [?pj :projectslookup/AgencyCode ?ag]]
                  (db))

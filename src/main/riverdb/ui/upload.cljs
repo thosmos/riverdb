@@ -184,14 +184,14 @@
                         {:ui/stations (comp/get-query looks/stationlookup-sum)}]
    :initLocalState     (fn [this _]
                          {:save-ref (fn [r] (gobj/set this "input-ref" r))})
-   :initial-state      {:ui/skip-line false
-                        :ui/config    {}
-                        :ui/stations  {}
+   :initial-state      {:ui/skip-line      false
+                        :ui/config         {}
+                        :ui/stations       {}
                         :ui/station-source "file"
-                        :ui/active false
-                        :ui/import-error? false
-                        :ui/progress 0
-                        :ui/device-suffix nil}
+                        :ui/active         false
+                        :ui/import-error?  false
+                        :ui/progress       0
+                        :ui/device-suffix  nil}
    :componentDidMount  (fn [this]
                          (let [props   (comp/props this)
                                agency  (:ui.riverdb/current-agency props)
@@ -202,7 +202,7 @@
                            (when id
                              (df/load! this :org.riverdb.db.stationlookup looks/stationlookup-sum
                                {:params {:limit  -1
-                                         :filter {:stationlookup/Project id}}
+                                         :filter {:projectslookup/Stations {:reverse id}}}
                                 :target (conj ident :ui/stations)}))))
    :componentDidUpdate (fn [this prev-props prev-state]
                          (let [props         (comp/props this)
@@ -218,7 +218,7 @@
                                (when id
                                  (df/load! this :org.riverdb.db.stationlookup looks/stationlookup-sum
                                    {:params {:limit  -1
-                                             :filter {:stationlookup/Project id}}
+                                             :filter {:projectslookup/Stations {:reverse id}}}
                                     :target (conj ident :ui/stations)}))))))}
   (let [save-ref       (comp/get-state this :save-ref)
         csv-data       (comp/get-state this :csv)

@@ -778,9 +778,9 @@
                             (dr/route-deferred editor-ident
                               #(let [sv-ident [ident-key sv-id]]
                                  ;(log/debug "LOADING AN EXISTING SITEVISIT" sv-ident)
-                                 (let [app-state (app/current-state app)
+                                 (let [app-state       (app/current-state app)
                                        current-project (:ui.riverdb/current-project app-state)])
-                                   ;(log/debug "SV PROJECT" current-project))
+                                 ;(log/debug "SV PROJECT" current-project))
 
                                  (f/load! app sv-ident SiteVisitForm
                                    {:target               (targeting/multiple-targets
@@ -801,13 +801,13 @@
                               {:sitevisit/keys [AgencyCode ProjectID]} sitevisit
                               projID (if (eql/ident? ProjectID) (second ProjectID) (:db/id ProjectID))
                               agID   (if (eql/ident? AgencyCode) (second AgencyCode) (:db/id AgencyCode))]
-                              ;_      (log/debug "DID MOUNT SiteVisitEditor" "AGENCY" AgencyCode "PROJECT" ProjectID "projID" projID "agID" agID)]
+                          ;_      (log/debug "DID MOUNT SiteVisitEditor" "AGENCY" AgencyCode "PROJECT" ProjectID "projID" projID "agID" agID)]
 
                           (preload-agency agID)
 
                           (preload-options :entity.ns/person {:query-params {:filter {:person/Agency agID}}})
                           (preload-options :entity.ns/stationlookup
-                            {:query-params {:filter {:stationlookup/Project projID}}
+                            {:query-params {:filter {:projectslookup/Stations {:reverse projID}}}
                              :sort-key     :stationlookup/StationName
                              :text-fn      {:keys #{:stationlookup/StationID :stationlookup/StationName}
                                             :fn   (fn [{:stationlookup/keys [StationID StationName]}]
@@ -816,6 +816,10 @@
                           (preload-options :entity.ns/stationfaillookup)
                           (preload-options :entity.ns/samplingdevice {:filter-key :samplingdevice/DeviceType})
                           (preload-options :entity.ns/samplingdevicelookup)
+                          (preload-options :entity.ns/resquallookup
+                            {:text-fn      {:keys #{:resquallookup/ResQualCode :resquallookup/ResQualifier}
+                                            :fn   (fn [{:resquallookup/keys [ResQualCode ResQualifier]}]
+                                                    (str ResQualCode ": " ResQualifier))}})
                           (preload-options :entity.ns/fieldobsvarlookup
                             {:filter-key :fieldobsvarlookup/Analyte
                              :sort-key   :fieldobsvarlookup/IntCode})))
@@ -871,7 +875,7 @@
                   id)
         edit-fn #(onEdit props)]
     (tr {:key id :style {:cursor "pointer"} :onClick edit-fn} ;:onMouseOver #(println "HOVER" id)}
-      (td {:key 1}) (str (t/date (t/instant SiteVisitDate)))
+      (td {:key 1} (str (t/date (t/instant SiteVisitDate))))
       (td {:key 2} siteID)
       (td {:key 3} site)
       (td {:key 4} type)

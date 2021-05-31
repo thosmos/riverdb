@@ -147,13 +147,14 @@
         ref-id     (get-ref-val value)
         ;ref-props  (get-in (fapp/current-state SPA) this-ident)
         {:ui/keys [options loading]} props
-        {:keys [multiple clearable allowAdditions additionPosition style]} opts
+        {:keys [multiple clearable allowAdditions additionPosition style disabled]} opts
         show?      (not loading)
         options    (into [{:text "" :value ""}] (if (and filter-key filter-val)
                                                   (filterv #(= (:filt %) filter-val) options)
                                                   options))]
     ;(debug "RENDER ThetaOptions" theta-k "text-key:" text-key "value:" ref-id "filter-key:" filter-key "filter-val:" filter-val) ;"loading:" loading "query-params:" query-params "filter-key:" filter-key "filter-val:" filter-val)
     (ui-dropdown {:loading          (not show?)
+                  :disabled         (or disabled false)
                   :search           true
                   :selection        true
                   :multiple         (or multiple false)

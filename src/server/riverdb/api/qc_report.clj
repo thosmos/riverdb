@@ -76,7 +76,7 @@
                                          ;_ (log/debug "project" ProjectID "years" years)
                                          sites (d/q '[:find [(pull ?st [:db/id :stationlookup/StationName :stationlookup/StationID]) ...]
                                                       :in $ ?pj
-                                                      :where [?st :stationlookup/Project ?pj]]
+                                                      :where [?pj :projectslookup/Stations ?st]]
                                                  db id)]
                                      ;_ (log/debug "project" ProjectID "sites" sites)]
 

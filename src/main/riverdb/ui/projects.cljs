@@ -686,7 +686,7 @@
                        :projectslookup/AgencyRef
                        :projectslookup/Description
                        {:projectslookup/ProjectType (comp/get-query ProjectTypeQuery)}
-                       {:stationlookup/_Project (comp/get-query looks/stationlookup-sum)}
+                       {:projectslookup/Stations (comp/get-query looks/stationlookup-sum)}
                        {:projectslookup/Parameters (comp/get-query ParameterForm)}
                        {[:root/tx-result '_] (comp/get-query TxResult)}]
 
@@ -700,6 +700,7 @@
                         :projectslookup/Parameters
                         :projectslookup/AgencyRef
                         :projectslookup/ProjectType
+                        :projectslookup/Stations
                         :projectslookup/uuid
                         :riverdb.entity/ns}
 
@@ -710,6 +711,7 @@
                            :riverdb.entity/ns         :entity.ns/projectslookup
                            :projectslookup/uuid       (tempid/uuid)
                            :projectslookup/Parameters []
+                           :projectslookup/Stations   []
                            :projectslookup/AgencyRef  agencyRef
                            :ui/ready                  true
                            :ui/editing                false

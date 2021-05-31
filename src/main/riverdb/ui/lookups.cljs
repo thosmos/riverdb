@@ -1379,7 +1379,6 @@
    :stationlookup/NHDWaterbody
    :stationlookup/Name
    :stationlookup/NationalHydrographyDataReach
-   :stationlookup/Project
    :stationlookup/RiverFork
    :stationlookup/SWRCBNum221
    :stationlookup/SWRCBRegion
@@ -1411,7 +1410,6 @@
    :stationlookup/StationID
    :stationlookup/StationName
    :stationlookup/Agency
-   :stationlookup/Project
    :stationlookup/TargetLong
    :stationlookup/TargetLat
    :stationlookup/RiverFork]})

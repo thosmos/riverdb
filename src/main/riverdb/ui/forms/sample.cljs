@@ -272,6 +272,57 @@
                    :fieldobsresult/RefResults       :param/refs
                    :fieldobsresult/BigDecResult     :param/bigdec}})
 
+(comment
+  {:sample/Constituent           #:db{:id 17592186156795},
+   :sample/uuid                  #uuid"5ef96476-b262-43b5-af9d-4d7a956ed059",
+   :sample/SampleTypeCode        #:db{:id 17592186178106},
+   :sample/EventType             #:db{:id 17592186170823},
+   :sample/SampleDate            #inst"2001-01-13T08:00:00.000-00:00",
+   :sample/QCCheck               false,
+   :sample/Unit                  "m",
+   :sample/DepthSampleCollection 0.10000M,
+   :riverdb.entity/ns            :entity.ns/sample,
+   :db/id                        17592186311523,
+   :sample/SampleReplicate       1,
+   :sample/LabResults            [{:db/id                       17592186311524,
+                                   :labresult/ResQualCode       {:resquallookup/ResQualCode "ND",
+                                                                 :resquallookup/uuid #uuid"5e3e50f0-fa6e-4b30-a701-6f02d0351665",
+                                                                 :resquallookup/Type3 "Field",
+                                                                 :riverdb.entity/ns :entity.ns/resquallookup,
+                                                                 :resquallookup/Type1 "Lab",
+                                                                 :resquallookup/Active true,
+                                                                 :db/id 17592186158558,
+                                                                 :resquallookup/ResQualifier "Not Detected",
+                                                                 :resquallookup/Type2 "Tox"},
+                                   :labresult/DigestExtractCode {:db/id 17592186152306,
+                                                                 :digestextractlookup/DigestExtractRowID 6,
+                                                                 :digestextractlookup/DigestExtractCode 1,
+                                                                 :digestextractlookup/DigestExtractMethod "Not Recorded",
+                                                                 :digestextractlookup/DigestExtractDescr "Not Recorded",
+                                                                 :digestextractlookup/Active true,
+                                                                 :riverdb.entity/ns :entity.ns/digestextractlookup,
+                                                                 :digestextractlookup/uuid #uuid"5e3e50eb-30c9-4fe4-98f3-87c0c9bb601f"},
+                                   :labresult/LabResultComments "Orig value: ND",
+                                   :labresult/LabReplicate      1,
+                                   :labresult/PrepCode          {:db/id 17592186046970,
+                                                                 :preplookup/PrepRowID 6,
+                                                                 :preplookup/PrepCode 1,
+                                                                 :preplookup/Preparation "Not Recorded",
+                                                                 :preplookup/Filtered false,
+                                                                 :preplookup/Active true,
+                                                                 :riverdb.entity/ns :entity.ns/preplookup,
+                                                                 :preplookup/uuid #uuid"5e3e50f0-f8de-4e01-ae8e-6d1762a76176"}
+                                   :riverdb.entity/ns           :entity.ns/labresult,
+                                   :labresult/uuid              #uuid"5ef96476-148c-4c44-9796-b8aa5624dd20"}]})
+
+(defsc ResQualCodeForm [this props]
+  {:ident [:org.riverdb.db.resquallookup/gid :db/id]
+   :query [:db/id
+           :riverdb.entity/ns
+           fs/form-config-join
+           :resquallookup/ResQualCode
+           :resquallookup/ResQualifier]})
+
 (defsc LabResultForm [this {:keys [] :as props}]
   {:ident         [:org.riverdb.db.labresult/gid :db/id]
    :query         [:db/id
@@ -283,21 +334,24 @@
                    :labresult/LabResultComments
                    :labresult/Result
                    :labresult/SigFig
-                   {:labresult/ConstituentRowID
-                    (comp/get-query Constituent)}]
+                   {:labresult/ResQualCode (comp/get-query ResQualCodeForm)}]
+                   ;{:labresult/ConstituentRowID (comp/get-query Constituent)}]
    :form-fields   #{:db/id
                     :riverdb.entity/ns
                     :labresult/uuid
                     :labresult/AnalysisDate
-                    :labresult/ExpectedValue
+                    :labresult/LabReplicate
                     :labresult/LabResultComments
                     :labresult/Result
-                    :labresult/SigFig}
-   :initial-state {:db/id                      :param/id
-                   :riverdb.entity/ns          :entity.ns/labresult
-                   :labresult/uuid             :param/uuid
-                   :labresult/LabReplicate     :param/rep
-                   :labresult/ConstituentRowID :param/const}})
+                    :labresult/SigFig
+                    :labresult/ResQualCode}
+   :initial-state (fn [params]
+                    {:db/id                  (tempid/tempid)
+                     :riverdb.entity/ns      :entity.ns/labresult
+                     :labresult/uuid         (tempid/uuid)
+                     :labresult/LabReplicate 1
+                     :labresult/LabResultComments nil
+                     :labresult/ResQualCode nil})})
 
 (defsc SampleForm [this
                    {:ui/keys [ready]
