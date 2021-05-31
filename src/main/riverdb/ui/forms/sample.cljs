@@ -321,7 +321,8 @@
            :riverdb.entity/ns
            fs/form-config-join
            :resquallookup/ResQualCode
-           :resquallookup/ResQualifier]})
+           :resquallookup/ResQualifier]
+   :form-fields   #{:db/id}})
 
 (defsc LabResultForm [this {:keys [] :as props}]
   {:ident         [:org.riverdb.db.labresult/gid :db/id]

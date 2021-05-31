@@ -362,18 +362,20 @@
                        :style     {:maxWidth 168 :minWidth 168}}
         sv-time       (:sitevisit/Time props)
         sv-date       (:sitevisit/SiteVisitDate props)
-        ;worktimes     (:worktime/_sitevisit props)
-        ;_ (debug "monitor hours" WorkTimes)
-
         {person-options            :entity.ns/person
          stationlookup-options     :entity.ns/stationlookup
          sitevisittype-options     :entity.ns/sitevisittype
          stationfaillookup-options :entity.ns/stationfaillookup
-         fieldobsvarlookup-options :entity.ns/fieldobsvarlookup} (:riverdb.theta.options/ns props)]
+         fieldobsvarlookup-options :entity.ns/fieldobsvarlookup} (:riverdb.theta.options/ns props)
+        ;worktimes     (:worktime/_sitevisit props)
+        ;_ (debug "monitor hours" WorkTimes)
+
+        active        (or (not ready) (not props))
+        _ (debug "ACTIVE" active "(not ready)" (not ready) "(not props)" (not props))]
 
     ;(debug "RENDER SiteVisitForm" "props" props "params" active-params )
     (div :.dimmable.fields {:key "sv-form"}
-      (ui-dimmer {:inverted true :active (or (not ready) (not props))}
+      (ui-dimmer {:inverted true :active active}
         (ui-loader {:indeterminate true}))
       #_(button :.ui.button
           {:onClick (fn []
@@ -675,19 +677,21 @@
 
 (defn ref->gid
   "Sometimes references on the client are actual idents and sometimes they are
-  nested maps, this function attempts to return an ident regardless."
+  nested maps, this function attempts to return a gid regardless."
   [x]
   ;(debug "ref->gid" x)
-  (cond
-    (eql/ident? x)
-    (second x)
-    (and (map? x) (:db/id x))
-    (:db/id x)))
+  (let [gid (cond
+              (eql/ident? x)
+              (second x)
+              (and (map? x) (:db/id x))
+              (:db/id x))]
+    (debug "ref->gid" x "->" gid)
+    gid))
 
 (fm/defmutation form-ready
   [{:keys [route-target form-ident]}]
   (action [{:keys [app state]}]
-    ;(debug "MUTATION FORM READY" route-target form-ident)
+    (debug "MUTATION FORM READY" route-target form-ident)
     (let [st                 @state
           current-project-id (ref->gid (:ui.riverdb/current-project st))
           sv                 (get-in st form-ident)
@@ -709,7 +713,7 @@
             (fs/entity->pristine* form-ident)
             (update-in form-ident assoc :ui/ready true))))
       (catch js/Object ex (debug "FORM LOAD FAILED" ex)))
-    ;(debug "DONE SETTING UP SV FORM READY")
+    (debug "DONE SETTING UP SV FORM READY")
     (dr/target-ready! SPA route-target)))
 
 

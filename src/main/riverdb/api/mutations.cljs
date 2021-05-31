@@ -22,7 +22,8 @@
     [com.fulcrologic.rad.routing.html5-history :as hist5 :refer [url->route apply-route!]]
     [riverdb.ui.routes :as routes]
     [com.rpl.specter :as sp]
-    [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]))
+    [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
+    [edn-query-language.core :as eql]))
 
 ;;;  CLIENT
 
@@ -306,8 +307,14 @@
 
 (defmutation set-enum [{:keys [key value]}]
   (action [{:keys [state component]}]
-    (debug "set-enum" key value (get-in @state (comp/get-ident component)))
-    (let [])))
+    (let [comp-ident (comp/get-ident component)]
+      (debug "set-enum" comp-ident key value)
+      (if (eql/ident? value)
+        (swap! state
+          #(-> %
+             (assoc-in (conj comp-ident key) value)
+             (fs/mark-complete* comp-ident key)))
+        (log/error "set-enum requires an ident as a value")))))
 
 (defn set-enum! [this key value]
   (comp/transact! this [(set-enum {:key key :value value})]))

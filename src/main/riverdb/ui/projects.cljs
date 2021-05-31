@@ -127,9 +127,9 @@
   (let [props      (comp/props this)
         this-ident (comp/get-ident this)
         str-val    (attr-k props)
-        _          (debug "PRECISION STR" str-val)
+        ;_          (debug "PRECISION STR" str-val)
         edn-val    (try (cljs.reader/read-string str-val) (catch js/Object ex nil))
-        _          (debug "PRECISION EDN" edn-val)
+        ;_          (debug "PRECISION EDN" edn-val)
         {:keys [threshold range rsd]} edn-val
         range      (str range)
         rsd        (str rsd)
@@ -142,8 +142,8 @@
                              edn-val (if val
                                        (assoc edn-val k val)
                                        (dissoc edn-val k))]
-                         (save-edn edn-val))))
-        _          (debug "VALID? " (validator props attr-k true))]
+                         (save-edn edn-val))))]
+        ;_          (debug "VALID? " (validator props attr-k true))]
     (div :.field
       (dom/label {} "Precision")
       (invalid-msg props attr-k)
@@ -334,16 +334,16 @@
    :initLocalState     (fn [this props]
                          {:onEdit #(fm/toggle! this :ui/editing)})
    :initial-state      (fn [{:keys [type]}]
-                         (debug "INITIAL STATE ParameterForm" type)
-                         {:db/id                (tempid/tempid)
-                          :parameter/uuid       (tempid/uuid)
-                          :riverdb.entity/ns    :entity.ns/parameter
-                          :parameter/Name       ""
-                          :ui/editing           true
-                          :ui/saving            false
-                          :parameter/Active     false
-                          :parameter/Order      999
-                          :parameter/SampleType type
+                         ;(debug "INITIAL STATE ParameterForm" type)
+                         {:db/id                  (tempid/tempid)
+                          :parameter/uuid         (tempid/uuid)
+                          :riverdb.entity/ns      :entity.ns/parameter
+                          :parameter/Name         ""
+                          :ui/editing             true
+                          :ui/saving              false
+                          :parameter/Active       false
+                          :parameter/Order        999
+                          :parameter/SampleType   type
                           :parameter/FieldObsType :long})
    :form-fields        #{:db/id
                          :riverdb.entity/ns
@@ -386,10 +386,10 @@
         {;sampletypelookup-options     :entity.ns/sampletypelookup
          constituentlookup-options    :entity.ns/constituentlookup
          samplingdevicelookup-options :entity.ns/samplingdevicelookup
-         methodlookup-options :entity.ns/methodlookup} (:riverdb.theta.options/ns props)
-        field-obs (:org.riverdb.db.fieldobsvarlookup/gid props)]
-    (when (= sample-type :sampletypelookup.SampleTypeCode/FieldObs)
-      (debug "RENDER ParameterForm" Name props)) ;"fieldobsvarlookup-options" fieldobsvarlookup-options) ;props)
+         methodlookup-options         :entity.ns/methodlookup} (:riverdb.theta.options/ns props)
+        field-obs    (:org.riverdb.db.fieldobsvarlookup/gid props)]
+    ;(when (= sample-type :sampletypelookup.SampleTypeCode/FieldObs)
+    ;  (debug "RENDER ParameterForm" Name props) ;"fieldobsvarlookup-options" fieldobsvarlookup-options) ;props)
     (if editing
       (let [method-FieldObs (->> methodlookup-options
                               :ui/options
@@ -601,7 +601,10 @@
                                 (let [pids  (mapv #(comp/get-ident ParameterForm %) params)
                                       moved (get pids fromIndex)
                                       pids' (into [] (tu/vec-add toIndex moved (tu/vec-remove fromIndex pids)))]
-                                  (comp/transact! this `[(reorder-params ~{:param-ids pids'})])))))]
+                                  (comp/transact! this `[(reorder-params ~{:param-ids pids'})])))))
+        disable-add?      (and
+                            (= type :sampletypelookup.SampleTypeCode/Logger)
+                            (> (count params) 0))]
     ;(debug "RENDER ParamList" label type "params" params)
     {:menuItem label
      :render   (fn []
@@ -644,7 +647,7 @@
                                    (map-indexed
                                      (fn [i p-data]
                                        (let [p-data (fs/add-form-config ParameterForm p-data)]
-                                         (debug "param" i p-data)
+                                         ;(debug "param" i p-data)
                                          (ui-parameter-form
                                            (comp/computed
                                              p-data
@@ -655,7 +658,8 @@
                                      params)
                                    (. provided -placeholder)))))))
                        (button :.ui.button.primary
-                         {:onClick #(comp/transact! this
+                         {:disabled disable-add?
+                          :onClick #(comp/transact! this
                                       `[(new-param
                                           {:proj-ident ~proj-ident
                                            :type       ~type})])}
@@ -665,13 +669,14 @@
   {:ident [:org.riverdb.db.projecttype/gid :db/id]
    :query [:db/id :db/ident :projecttype/name :projecttype/ident]})
 
-(defsc ProjectForm [this {:keys [db/id ui/ready ui/editing root/tx-result ui/ptypes]
+(defsc ProjectForm [this {:keys                [db/id ui/ready ui/editing ui/activePane root/tx-result ui/ptypes]
                           :projectslookup/keys [ProjectID Name Parameters Active Public ProjectType] :as props}]
   {:ident             [:org.riverdb.db.projectslookup/gid :db/id]
    :query             [:riverdb.entity/ns
                        :db/id
                        :ui/ready
                        :ui/editing
+                       :ui/activePane
 
                        {:ui/ptypes (comp/get-query ProjectTypeQuery)}
                        fs/form-config-join
@@ -729,16 +734,30 @@
         obs-params    (filter-param-typecode :sampletypelookup.SampleTypeCode/FieldObs Parameters)
         lab-params    (filter-param-typecode :sampletypelookup.SampleTypeCode/Grab Parameters)
         logger-params (filter-param-typecode :sampletypelookup.SampleTypeCode/Logger Parameters)
+        defaultIdx    (:max-i (reduce
+                                (fn [{:keys [i max-count] :as res} params]
+                                  (-> res
+                                    (cond->
+                                      (> (count params) max-count)
+                                      (->
+                                        (assoc :max-i i)
+                                        (assoc :max-count (count params))))
+                                    (update :i inc)))
+                                {:i 0 :max-i 0 :max-count 0}
+                                [fm-params obs-params lab-params]))
+        activePane    (or activePane defaultIdx)
+
+        ptype         (:projecttype/ident ProjectType)
 
         ptypes-opts   (mapv
                         (fn [ptype]
                           {:value (:db/id ptype) :text (:projecttype/name ptype)})
                         ptypes)
-        _             (debug "ptypes" ptypes "ptypes-opts" ptypes-opts)
+        ;_             (debug "ptypes" ptypes "ptypes-opts" ptypes-opts)
 
         dirty-fields  (fs/dirty-fields props true)
         dirty?        (some? (seq dirty-fields))
-        _             (debug "DIRTY?" dirty? dirty-fields)
+        ;_             (debug "DIRTY?" dirty? dirty-fields)
         on-save       #(let [dirty?       (some? (seq dirty-fields))
                              dirty-fields (fs/dirty-fields props true)]
                          (debug "SAVE!" dirty? dirty-fields)
@@ -747,7 +766,7 @@
                                                :diff        dirty-fields
                                                :success-msg "Project saved"})]))]
 
-    (debug "RENDER ProjectForm" id ProjectType)
+    ;(debug "RENDER ProjectForm" id ProjectType)
     (if editing
       (ui-modal {:open editing :dimmer "inverted"}
         (ui-modal-header {:content (str "Edit Project: " Name)})
@@ -771,8 +790,10 @@
                                 :style     {:width "auto" :minWidth "10em"}
                                 :onChange  (fn [_ d]
                                              (when-let [v (-> d .-value)]
-                                               (debug "PROJECT TYPE" v)
-                                               (rm/set-enum! this :projectslookup/ProjectType ProjectType)))}))
+                                               (let [ident (riverdb.ui.util/ent-ns->ident "projecttype" v)]
+                                                 (debug "PROJECT TYPE" v ident)
+                                                 (fm/set-value! this :ui/activePane 0)
+                                                 (rm/set-enum! this :projectslookup/ProjectType ident))))}))
                 (rui-checkbox this :projectslookup/Active {})
                 (rui-checkbox this :projectslookup/Public {}))
               (div :.fields {}
@@ -782,33 +803,39 @@
             (rui-input this :projectslookup/QAPPVersion {:label "QAPP Version"})
             (rui-input this :projectslookup/qappURL {:label "QAPP Link"})
 
-            (debug "RENDER PARAM LISTS")
+            ;(debug "RENDER PARAM LISTS")
             (ui-tab
-              {:panes
-               [
-                (ui-param-list-fn this {:type       :sampletypelookup.SampleTypeCode/FieldMeasure
-                                        :label      "Field Measurements"
-                                        :params     fm-params
-                                        :proj-ident this-ident
-                                        :on-save    on-save})
+              {:activeIndex activePane
+               ;:defaultActiveIndex defaultIdx
+               :onTabChange        (fn [_ d]
+                                     (let [d (js->clj d :keywordize-keys true)]
+                                       ;(debug "TAB CHANGE" "idx" (:activeIndex d) "data" d)
+                                       (fm/set-value! this :ui/activePane (:activeIndex d))))
+               :panes
+                                   (if (= ptype "sitevisit")
+                                     [(ui-param-list-fn this {:type       :sampletypelookup.SampleTypeCode/FieldMeasure
+                                                              :label      "Field Measurements"
+                                                              :params     fm-params
+                                                              :proj-ident this-ident
+                                                              :on-save    on-save})
 
-                (ui-param-list-fn this {:type       :sampletypelookup.SampleTypeCode/FieldObs
-                                        :label      "Field Observations"
-                                        :params     obs-params
-                                        :proj-ident this-ident
-                                        :on-save    on-save})
+                                      (ui-param-list-fn this {:type       :sampletypelookup.SampleTypeCode/FieldObs
+                                                              :label      "Field Observations"
+                                                              :params     obs-params
+                                                              :proj-ident this-ident
+                                                              :on-save    on-save})
 
-                (ui-param-list-fn this {:type       :sampletypelookup.SampleTypeCode/Grab
-                                        :label      "Lab Results"
-                                        :params     lab-params
-                                        :proj-ident this-ident
-                                        :on-save    on-save})
+                                      (ui-param-list-fn this {:type       :sampletypelookup.SampleTypeCode/Grab
+                                                              :label      "Lab Results"
+                                                              :params     lab-params
+                                                              :proj-ident this-ident
+                                                              :on-save    on-save})]
 
-                (ui-param-list-fn this {:type       :sampletypelookup.SampleTypeCode/Logger
-                                        :label      "Logger"
-                                        :params     logger-params
-                                        :proj-ident this-ident
-                                        :on-save    on-save})]})
+                                     [(ui-param-list-fn this {:type       :sampletypelookup.SampleTypeCode/Logger
+                                                              :label      "Logger"
+                                                              :params     logger-params
+                                                              :proj-ident this-ident
+                                                              :on-save    on-save})])})
 
             (div :.ui.segment {:style {:padding 10}}
               (div :.field {}
@@ -857,7 +884,7 @@
                                  [:org.riverdb.db.fieldobsvarlookup/gid '_]}}))))
 
 
-(defsc Projects [this {:keys                 [ui/ready projects]
+(defsc Projects [this {:keys            [ui/ready projects]
                        :ui.riverdb/keys [current-agency] :as props}]
   {:ident             (fn [] [:component/id :projects])
    :query             [{:projects (comp/get-query ProjectForm)}

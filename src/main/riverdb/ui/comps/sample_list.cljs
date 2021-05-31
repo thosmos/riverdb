@@ -42,11 +42,11 @@
 
       (do
         (debug "SAMPLE LIST TYPE" (str sample-type) props)
-        (if sample-type
-          (div {:key (str sample-type)}
-            (div :.ui.segment {:key "fm-list"}
-              (ui-header {} (str (name sample-type)))))
-          (div :.ui.segment {:key "error"}
-            (div "no samples")))))))
+        #_(if sample-type
+            (div {:key (str sample-type)}
+              (div :.ui.segment {:key "fm-list"}
+                (ui-header {} (str (name sample-type)))))
+            (div :.ui.segment {:key "error"}
+              (div "no samples")))))))
 
 (def ui-sample-list (comp/factory SampleList {:keyfn #(str (:sample-type %))}))

@@ -132,13 +132,13 @@
                                ident-val (:riverdb.entity/ns props)
                                ident     [:riverdb.theta.options/ns ident-val]]
                            ;ref-props (get-in (fapp/current-state SPA) ident)]
-                           (debug "MOUNTED ThetaOptions" ident-val)
+                           ;(debug "MOUNTED ThetaOptions" ident-val)
                            (if (and
                                  (empty? (:ui/options props))
                                  (not (:ui/loading props))
                                  (get-in props [:opts :load]))
-                             (load-theta-options SPA ident props)
-                             (debug "SKIPPING LOAD ThetaOptions" ident-val))))}
+                             (load-theta-options SPA ident props))))}
+                             ;(debug "SKIPPING LOAD ThetaOptions" ident-val))))}
   (let [this-ident (comp/get-ident this)
         theta-k    (:riverdb.entity/ns props)
         ident-k    (ent-ns->ident-k theta-k)
