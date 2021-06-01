@@ -5,6 +5,9 @@
     [riverdb.rad.model.global :as global]
     [riverdb.rad.model.user :as user]
     [riverdb.rad.model.worktime :as worktime]
+    [riverdb.rad.model.device :as device]
+    [riverdb.rad.model.devicetype :as devicetype]
+    [riverdb.rad.model.station :as station]
     [com.fulcrologic.rad.attributes :as attr :refer [defattr]]
     [com.fulcrologic.rad.attributes-options :as ao]
     #?(:clj
@@ -26,9 +29,15 @@
                            global/attributes
                            user/attributes
                            worktime/attributes
+                           device/attributes
+                           devicetype/attributes
+                           station/attributes
                            [all-projects])))
 
 (def all-attribute-validator (attr/make-attribute-validator all-attributes))
 
 (def resolvers (vec (concat
-                      worktime/resolvers)))
+                      worktime/resolvers
+                      device/resolvers
+                      devicetype/resolvers
+                      station/resolvers)))

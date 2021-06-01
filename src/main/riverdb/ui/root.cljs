@@ -52,7 +52,9 @@
     [theta.util :as tutil]
     [riverdb.rad.ui.person :refer [PersonList PersonForm]]
     [riverdb.rad.ui.users :refer [UserList UserForm]]
-    [riverdb.rad.ui.worktime :refer [WorkTimeList WorkTimeForm]]))
+    [riverdb.rad.ui.worktime :refer [WorkTimeList WorkTimeForm]]
+    [riverdb.rad.ui.devices :refer [DeviceList DeviceForm]]
+    [riverdb.rad.ui.stations :refer [StationList StationForm]]))
 
 (defn field [{:keys [label valid? error-message] :as props}]
   (let [input-props (-> props (assoc :name label) (dissoc :label :valid? :error-message))]
@@ -263,7 +265,9 @@
 
 (dr/defrouter TopRouter [this props]
   {:router-targets        [Main Signup SignupSuccess ThetaRoot Projects TacReportPage
-                           DataVizPage SiteVisitsPage UploadPage PersonForm PersonList UserList UserForm WorkTimeList WorkTimeForm]
+                           DataVizPage SiteVisitsPage UploadPage PersonForm PersonList
+                           UserList UserForm WorkTimeList WorkTimeForm DeviceList DeviceForm
+                           StationList StationForm]
    :shouldComponentUpdate (fn [_ _ _] true)})
 (def ui-top-router (comp/factory TopRouter))
 
@@ -330,6 +334,8 @@
               (ui-dropdown-menu {}
                 #_(ui-dropdown-item {:onClick (fn [] (form/create! this SiteVisitEditor))} "New Site Visit")
                 (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this SiteVisitList {}))} "Site Visits")
+                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this DeviceList {:samplingdevice/Agency ag-ident}))} "Devices")
+
                 (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this WorkTimeList {:worktime/agency ag-ident}))} "Hours")
                 (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this PersonList {:person/Agency ag-ident}))} "People")
                 (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this UploadPage {}) )} "Import CSV")
@@ -343,6 +349,7 @@
               (ui-dropdown {:className "item" :text "Admin"}
                 (ui-dropdown-menu {}
                   (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this Projects {}))} "Projects")
+                  (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this StationList {:stationlookup/Agency ag-ident}))} "Stations")
                   (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this UserList {:user/agency ag-ident}))} "User Logins")
                   (when rdb-admin?
                     (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this ThetaRoot {:user/agency ag-ident}))} "Tables"))))))

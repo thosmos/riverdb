@@ -363,10 +363,12 @@
   "parses a station-id string into a double, multiplies by 100, and returns a long"
   (long (* 100 (Double/parseDouble (re-find #"\d+\.\d+|\d+" station-str)))))
 
-(defn site->txd [project {:keys [site-id site-name subbasin years descript lat lon active]} & [{active-override :active}]]
+(defn site->txd [agency project {:keys [site-id site-name subbasin years descript lat lon active]} & [{active-override :active}]]
   (let [station_code (str project "_" site-id)
         txd          {:db/id                     station_code
                       :stationlookup/StationCode station_code
+                      :stationlookup/Agency      [:agencylookup/AgencyCode agency]
+                      :stationlookup/uuid        (d/squuid)
                       :riverdb.entity/ns         :entity.ns/stationlookup
                       :org.riverdb/import-key    (str project "-site-" (or site-id site-name))}
         active?      (not-empty (remove nil? [active-override active]))
@@ -408,7 +410,7 @@
   (d/transact (cx)
     (let [sites       (read-sites-csv site-cols-syrcl-logger "import-resources/SYRCL Temp Logger Sites.csv")
           site-txds   (for [site-m sites]
-                        (site->txd "SYRCL_THERMAS" site-m))
+                        (site->txd "SYRCL" "SYRCL_THERMAS" site-m))
           logger-txds (for [site-txd site-txds]
                         (let [{:stationlookup/keys [StationCode StationName]} site-txd]
                           (syrcl-logger StationCode StationName)))]

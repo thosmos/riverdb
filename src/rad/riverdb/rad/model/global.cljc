@@ -8,7 +8,7 @@
   (attr/new-attribute :riverdb.entity/ns :keyword
     {ao/identity?     false
      ao/schema       :production
-     ao/identities #{:person/uuid}
+     ao/identities #{:person/uuid :samplingdevicelookup/uuid :samplingdevice/uuid :agencylookup/uuid}
      ::auth/authority     :local}))
 
 (def attributes [EntityNS])

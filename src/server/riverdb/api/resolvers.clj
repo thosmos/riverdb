@@ -4,6 +4,7 @@
     [com.fulcrologic.fulcro.server.api-middleware :as fmw]
     [com.fulcrologic.guardrails.core :refer [>defn => | ?]]
     [com.fulcrologic.rad.type-support.date-time :as datetime]
+    [com.fulcrologic.rad.database-adapters.datomic :as datomic]
     [cljc.java-time.zone-id]
     [com.rpl.specter :as sp]
     [com.wsscode.pathom.connect :as pc :refer [defresolver defmutation]]
@@ -29,24 +30,24 @@
   from a map like:
   {:> #inst \"2019-11-03T00:00:00.000-00:00\"
    :< #inst \"2020-11-03T00:00:00.000-00:00\"}"
-  [find arg conditions]
+  [where arg conditions]
   ;(debug "ADD CONDITIONS" find arg conditions)
   (reduce-kv
-    (fn [find k v]
+    (fn [where k v]
       (cond
         ;(= k :reverse)
         ;(conj find [v k arg])
         (= k :>)
-        (conj find [(list '> arg v)])
+        (conj where [(list '> arg v)])
         (= k :<)
-        (conj find [(list '< arg v)])
+        (conj where [(list '< arg v)])
         (= k :contains)
         (let [argl (symbol (str arg "LC"))
               v    (clojure.string/lower-case v)]
-          (-> find
+          (-> where
             (conj [(list 'clojure.string/lower-case arg) argl])
             (conj [`(clojure.string/includes? ~argl ~v)])))))
-    find conditions))
+    where conditions))
 
 (defn add-filters [arg find-v filter-m]
   (try
@@ -375,7 +376,7 @@
     ;(log/debug "UUID PULL RESOLVER" uuid-key input)
     (try
       (let [query   (-> env ::p/parent-query)
-            ;_       (log/debug "Lookup Resolver Key" uuid-key "Input" input "QUERY" query)
+            ;_       (log/debug "Lookup Resolver Key" uuid-key "QUERY" query)
             id-val? (try
                       (get input uuid-key)
                       (catch IllegalArgumentException _ nil))
@@ -393,11 +394,12 @@
     (for [spec specs-sorted]
       (let [{:entity/keys [ns attrs]} spec
             aks    (mapv :attr/key attrs)
+            rks    (get-reverse-keys ns specs-sorted)
             nm     (name ns)
             uuid-k (keyword nm "uuid")]
         {::pc/sym       (symbol (str nm "UUID"))
          ::pc/input     #{uuid-k}
-         ::pc/output    (into [:db/id :riverdb.entity/ns] aks)
+         ::pc/output    (-> [:db/id :riverdb.entity/ns] (into aks) (into rks))
          ::pc/resolve   (uuid-resolve-factory uuid-k)
          ::pc/transform pc/transform-batch-resolver}))))
 
@@ -515,6 +517,24 @@
   {;;GIVEN nothing (e.g. this is usable as a root query)
    ::pc/output [{:all-people people-query}]}
   {:all-people (all-people-ids db query-params)})
+
+(defn find-uuids-factory [uuid-k]
+  (fn [env]
+    (debug "find" uuid-k)
+    (try
+      (if-let [db (some-> (get-in env [::datomic/databases :production]) deref)]
+        (let [query-params (:query-params env)
+              find         '[:find [?u ...]
+                             :in $ ?uuid-k
+                             :where]
+              find         (add-filters '?e find query-params)
+              find         (conj find '[?e ?uuid-k ?u])
+              ids          (d/q find db uuid-k)
+              ids          (mapv (fn [id] {uuid-k id}) ids)]
+          ids)
+        (log/error "No database atom for production schema!"))
+      (catch Exception ex
+        (log/error ex)))))
 
 
 (defresolver index-explorer [env _]

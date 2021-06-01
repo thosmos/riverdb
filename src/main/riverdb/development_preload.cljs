@@ -12,4 +12,5 @@
                                     "com.fulcrologic.fulcro.algorithms.tx-processing"
                                     "com.fulcrologic.fulcro.ui-state-machines"
                                     "com.fulcrologic.fulcro.routing.dynamic-routing"
-                                    "com.fulcrologic.fulcro.inspect.inspect-client"]})
+                                    "com.fulcrologic.fulcro.inspect.inspect-client"
+                                    "com.fulcrologic.rad.routing.html5-history"]})
