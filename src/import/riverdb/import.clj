@@ -53,7 +53,7 @@
             :H2O_PO4       [:constituentlookup/ConstituentCode "5-22-399-2-6"]
             :H2O_NO3       [:constituentlookup/ConstituentCode "5-20-69-0-6"]
             :Air_Temp      [:constituentlookup/ConstituentCode "10-42-100-0-31"]
-            :TotalColiform [:constituentlookup/ConstituentCode "5-56-23-20-7"] ;; "5-56-23-20-7" "5-57-23-2-7"
+            :TotalColiform [:constituentlookup/ConstituentCode "5-57-23-2-7"] ;; "5-56-23-20-7" "5-57-23-2-7"
             :EColi         [:constituentlookup/ConstituentCode "5-57-464-0-7"]}
    "WCCA"  {:Air_Temp   [:constituentlookup/ConstituentCode "10-42-100-0-31"]
             :TDS       [:constituentlookup/ConstituentCode "5-42-107-0-100"]
@@ -63,7 +63,7 @@
             :H2O_TempDO [:constituentlookup/ConstituentCode "5-42-100-0-31"]
             :pH         [:constituentlookup/ConstituentCode "5-42-78-0-0"]
             :Turb       [:constituentlookup/ConstituentCode "5-42-108-0-9"]}
-   "SYRCL" {:TotalColiform [:constituentlookup/ConstituentCode "5-56-23-20-7"]
+   "SYRCL" {:TotalColiform [:constituentlookup/ConstituentCode "5-57-23-2-7"]
             :EColi         [:constituentlookup/ConstituentCode "5-57-464-0-7"]
             :Enterococcus  [:constituentlookup/ConstituentCode "5-9000-9002-0-7"]}})
 
@@ -323,14 +323,14 @@
 (defn gen-site-with-name
   ([cx project site-name]
    (let [tx    @(d/transact cx [{:db/id                     site-name
-                                 :stationlookup/StationName site-name
-                                 :stationlookup/Project     [:projectslookup/ProjectID project]}])
+                                 :stationlookup/StationName site-name}
+                                {:projectslookup/ProjectID project
+                                 :projectslookup/Stations site-name}])
          db-id (get-in tx [:tempids site-name])]
      db-id)))
 
 (defn site->txd [project {:keys [site-id site-name descript lat lon is-rm-site?] :as site-map}]
   (let [txd {:db/id                     (str (or site-id site-name))
-             :stationlookup/Project     [:projectslookup/ProjectID project]
              :stationlookup/StationCode (str project "_" site-id)
              :org.riverdb/import-key    (str project "-site-" (or site-id site-name))}
         txd (cond-> txd
@@ -361,7 +361,7 @@
                        :where
                        [?pj :projectslookup/ProjectID ?proj]
                        [?e :stationlookup/StationID ?site-id]
-                       [?e :stationlookup/Project ?pj]]
+                       [?pj :projectslookup/Stations ?e]]
                   db project site-id)]
     result))
 
@@ -371,7 +371,7 @@
          :where
          [?pj :projectslookup/ProjectID ?proj]
          [?e :stationlookup/StationName ?site-name]
-         [?e :stationlookup/Project ?pj]]
+         [?pj :projectslookup/Stations ?e]]
     db project site-name))
 
 (defn gen-site-with-map
@@ -385,15 +385,15 @@
 
 
 (defn gen-sites [cx project sites]
-  (let [existing-sites {}
+  (let [existing-sites {}]
         ;;; generating all sites every time, but they use import-key so it should just update existing entities
-        #_(into {}
-            (d/q '[:find ?id ?e
-                   :in $ ?proj
-                   :where
-                   [?pj :projectslookup/ProjectID ?proj]
-                   [?e :stationlookup/Project ?pj]
-                   [?e :stationlookup/StationID ?id]] (d/db cx) project))]
+        ;#_(into {}
+        ;    (d/q '[:find ?id ?e
+        ;           :in $ ?proj
+        ;           :where
+        ;           [?pj :projectslookup/ProjectID ?proj]
+        ;           [?e :stationlookup/Project ?pj]
+        ;           [?e :stationlookup/StationID ?id]] (d/db cx) project))]
     (into {} (for [site sites]
                (let [site-id (:site-id site)
                      db-id   (if-let [db-id (get existing-sites site-id)]

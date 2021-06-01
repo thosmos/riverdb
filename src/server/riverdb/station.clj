@@ -9,7 +9,7 @@
   (try
     (let [_      (debug "GET-STATIONS" args) ;query)
 
-          {:keys [agency project active constituent]} args
+          {:keys [agency project active constituent projectType params]} args
 
           ;q      {:find  ['[(pull ?e q) ...]]
           ;        :in    '[$ q]
@@ -31,22 +31,53 @@
                      (update :args conj active))
 
                    ;; if there's an `agency` arg, add the conditions
-                   agency
+                   (and agency (not project))
                    (->
                      (update-in [:query :where]
-                       #(apply conj % '[[?pj :projectslookup/AgencyCode ?agency]
-                                        [?e :stationlookup/Project ?pj]]))
+                       #(apply conj % '[[?a :agencylookup/AgencyCode ?agency]
+                                        [?sp :projectslookup/AgencyRef ?a]
+                                        [?sp :projectslookup/Stations ?e]]))
                      (update-in [:query :in] conj '?agency)
                      (update :args conj agency))
 
-                   ;; if there's a `project` arg, add the conditions
+                   ;;; if there's a `project` arg, add the conditions
                    project
                    (->
                      (update-in [:query :where]
                        #(apply conj % '[[?pj :projectslookup/ProjectID ?project]
-                                        [?e :stationlookup/Project ?pj]]))
+                                        [?pj :projectslookup/Stations ?e]]))
                      (update-in [:query :in] conj '?project)
                      (update :args conj project))
+
+
+                   (and project (= projectType "logger"))
+                   (->
+                     (update-in [:query :where]
+                       #(apply conj % '[[?l :logger/stationRef ?e]
+                                        [_ :logsample/logger ?l]])))
+
+                   ;; return stations that actually have samples of the project's params
+                   (and project (= projectType "sitevisit") (not constituent) (not params))
+                   (->
+                     (update-in [:query :where]
+                       #(apply conj % '[[?pj :projectslookup/ProjectID ?project]
+                                        [?pj :projectslookup/Parameters ?pa]
+                                        [?pa :parameter/Constituent ?co]
+                                        [?sv :sitevisit/StationID ?e]
+                                        [?sv :sitevisit/Samples ?sa]
+                                        [?sa :sample/Constituent ?co]])))
+
+                   ;; return stations that have samples of the selected params
+                   (and project (= projectType "sitevisit") params (not constituent))
+                   (->
+                     (update-in [:query :in] conj '[?params ...])
+                     (update :args conj params)
+                     (update-in [:query :where]
+                       #(apply conj % '[[?pa :parameter/NameShort ?params]
+                                        [?pa :parameter/Constituent ?co]
+                                        [?sv :sitevisit/StationID ?e]
+                                        [?sv :sitevisit/Samples ?sa]
+                                        [?sa :sample/Constituent ?co]])))
 
                    constituent
                    (->
@@ -68,7 +99,7 @@
                    (->
                      (update-in [:query :where] conj '[?e :stationlookup/StationName])))
           ;q      (remap-query q)
-          ;_      (debug "Stations QUERY" q)
+          _      (debug "Stations QUERY" q)
           rez    (d/query q)
           ;_      (debug "FIRST RESULT" (first rez))
 

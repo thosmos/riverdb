@@ -7,6 +7,7 @@
     [cognitect.transit :as transit]
     [com.wsscode.pathom.connect :as pc :refer [defresolver defmutation]]
     [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
+    [com.fulcrologic.fulcro.networking.file-upload :as fup]
     [com.rpl.specter :as sp]
     [com.wsscode.pathom.core :as p]
     [datomic.api :as d]
@@ -16,7 +17,8 @@
     [taoensso.timbre :as log :refer [debug]]
     [thosmos.util :as tu :refer [walk-modify-k-vals limit-fn]]
     [riverdb.roles :as roles]
-    [riverdb.db :as rdb])
+    [riverdb.db :as rdb]
+    [riverdb.api.import :as import])
   (:import (java.math BigDecimal)))
 
 ;;;;  SERVER
@@ -67,7 +69,6 @@
 ;        ent-ns (keyword "entity.ns" table)]
 ;    ent-ns))
 
-
 (defn ref->gid
   "Sometimes references on the client are actual idents and sometimes they are
   nested maps, this function attempts to return an ident regardless."
@@ -84,7 +85,6 @@
     (and (map? x) (:db/id x))
     (parse-long (:db/id x))))
 
-
 (defn delta->datomic-txn
   "Takes in a normalized form delta, usually from client, and turns in
   into a Datomic transaction for the given schema (returns empty txn if there is nothing on the delta for that schema).
@@ -98,13 +98,18 @@
                         (debug "DIFF FN" k diff)
                         (let [id (if-let [long-id (parse-long id)] long-id (str id))
                               {:keys [before after]} diff
-                              [before after] (if (= k :fieldresult/Result)
-                                               [(double before) (double after)]
+                              [before after] (if
+                                               (or
+                                                 (= k :fieldresult/Result)
+                                                 (= k :labresult/Result))
+                                               [(when before (double before))
+                                                (when after (double after))]
                                                [before after])]
                           (cond
                             (= k :db/id)
                             []
 
+                            ;; check if it's an ident
                             (ref->gid after)
                             [[:db/add id k (ref->gid after)]]
 
@@ -151,7 +156,7 @@
 
 
 (defn save-entity* [env {:keys [ident diff delete agency] :as params}]
-  (debug "MUTATION!!!" "save-entity" (str (when delete "DELETE ")) "IDENT" ident "DIFF" diff)
+  (debug "MUTATION!!!" "save-entity" (str (when delete "DELETE ")) "IDENT" ident)
   (let [session-valid? (get-in env [:ring/request :session :session/valid?])
         user           (when session-valid?
                          (get-in env [:ring/request :session :account/auth :user]))
@@ -160,22 +165,22 @@
         agency?        (when user
                          (get-in user [:user/agency :db/id]))
         match?         (= agency? agency)
-        _              (debug "match?" match?)
+        ;_              (debug "match?" match?)
         gid            (ref->gid ident)
-        _              (debug "gid" gid)
+        ;_              (debug "gid" gid)
         tempid?        (tempid/tempid? gid)
-        _              (debug "tempid?" tempid?)
+        ;_              (debug "tempid?" tempid?)
         exists?        (when (and gid (not tempid?)) (rdb/pull-tx gid))
-        _              (debug "exists?" exists?)
+        ;_              (debug "exists?" exists?)
         tx-user?       (when exists?
                          (get-in exists? [:riverdb/tx-user :db/id]))
-        _              (debug "tx-user?" tx-user?)
+        ;_              (debug "tx-user?" tx-user?)
         creator?       (= tx-user? (:db/id user))
-        _              (debug "creator?" creator?)
+        ;_              (debug "creator?" creator?)
         ;_              (debug "SAVE USER" user "CREATOR?" creator? "ROLE" role? "AGENCY" agency? "MATCH?" match?)
         tempids        (sp/select (sp/walker tempid/tempid?) diff)
-        tmp-map        (into {} (map (fn [t] [t (-> t :id str (subs 0 20))]) tempids))
-        _              (debug "PRE TEMPIDS" tempids tmp-map)]
+        tmp-map        (into {} (map (fn [t] [t (-> t :id str (subs 0 20))]) tempids))]
+        ;_              (debug "PRE TEMPIDS" tempids tmp-map)]
     (cond
       (not role?)
       (do
@@ -196,9 +201,9 @@
                            txds (conj txds {:db/id           "datomic.tx"
                                             :riverdb/tx-user (parse-long (:db/id user))
                                             :riverdb/tx-info "save-entity"})
-                           _    (debug "SAVE-ENTITY TXDS" txds)
+                           ;_    (debug "SAVE-ENTITY TXDS" txds)
                            tx   (d/transact (cx) txds)]
-                       (debug "TX" @tx)
+                       ;(debug "TX" @tx)
                        @tx)
                      (catch Exception ex (do
                                            (println "ERROR: " ex)
@@ -208,19 +213,45 @@
           (let [db-tmps (:tempids result)
                 tempids (into {}
                           (for [[t s] tmp-map]
-                            [t (str (get db-tmps s))]))
-                _       (debug "POST TEMPIDS" tempids)]
-            (debug "SAVE-ENTITY RESULT" result)
+                            [t (str (get db-tmps s))]))]
+                ;_       (debug "POST TEMPIDS" tempids)]
+            ;(debug "SAVE-ENTITY RESULT" result)
             {:tempids tempids}))))))
 
 (pc/defmutation save-entity [env {:keys [ident diff delete agency] :as params}]
   {::pc/sym    `save-entity
    ::pc/params [:ident :diff :delete]
    ::pc/output [:error :tempids]}
-  (let [_      (debug "SAVE ENTITY" "params" params "ident" ident "diff" diff)
+  (let [;_      (debug "SAVE ENTITY" "params" params "ident" ident "diff" diff)
         result (save-entity* env params)]
-    (debug "RESULT save-entity" result)
+    ;(debug "RESULT save-entity" result)
     result))
 
-(def mutations [save-entity])
+(pc/defmutation upload-files [env {:keys [config] ::fup/keys [files] :as params}]
+  {::pc/sym `upload-files
+   ::pc/params [:config]
+   ::pc/output [:errors :tempids :msgs]}
+  (let [{:keys [agency project]} config
+        session-valid? (get-in env [:ring/request :session :session/valid?])
+        user           (when session-valid?
+                         (get-in env [:ring/request :session :account/auth :user]))
+        role?          (when user
+                         (get-in user [:user/role :db/ident]))
+        agency?        (when user
+                         (get-in user [:user/agency :agencylookup/AgencyCode]))
+        match?         (= agency? agency)]
+    (debug "UPLOAD" "role?" role? "agency?" agency? "match?" match?)
+    (cond
+      (or (not agency) (not role?) (not match?))
+      (do
+        (debug "ERROR upload-files" "Unauthorized")
+        {:errors ["Unauthorized"]})
+      (= role? :role.type/data-entry)
+      (do
+        (debug "ERROR: Data Entry role is not authorized")
+        {:errors ["Unauthorized: Data Entry role is not authorized"]})
+      :else
+      (import/process-uploads {:config config :files files}))))
+
+(def mutations [save-entity upload-files])
 

@@ -2,6 +2,7 @@
   (:require
     [clojure.string :as str]
     [com.fulcrologic.fulcro.application :as app]
+    [com.fulcrologic.fulcro.data-fetch :as f]
     [com.fulcrologic.fulcro.dom :as dom :refer [div ul li p h3 button]]
     [com.fulcrologic.fulcro.dom.html-entities :as ent]
     [com.fulcrologic.fulcro.dom.events :as evt]
@@ -45,15 +46,15 @@
     [riverdb.ui.tac-report-page :refer [TacReportPage]]
     [riverdb.ui.theta :refer [ThetaRoot]]
     [riverdb.ui.upload :refer [UploadPage]]
-    [riverdb.ui.user]
     ;[riverdb.ui :refer [PersonForm PersonList]]
+    [riverdb.ui.user]
     [theta.log :as log :refer [debug]]
     [theta.util :as tutil]
-    [com.fulcrologic.fulcro.components :as om]
-    [com.fulcrologic.fulcro.data-fetch :as f]
     [riverdb.rad.ui.person :refer [PersonList PersonForm]]
     [riverdb.rad.ui.users :refer [UserList UserForm]]
-    [riverdb.rad.ui.worktime :refer [WorkTimeList WorkTimeForm]]))
+    [riverdb.rad.ui.worktime :refer [WorkTimeList WorkTimeForm]]
+    [riverdb.rad.ui.devices :refer [DeviceList DeviceForm]]
+    [riverdb.rad.ui.stations :refer [StationList StationForm]]))
 
 (defn field [{:keys [label valid? error-message] :as props}]
   (let [input-props (-> props (assoc :name label) (dissoc :label :valid? :error-message))]
@@ -160,7 +161,7 @@
            :type    "submit"
            :classes [(when loading? "loading")]} "Login")))))
 
-(def ui-login-form (om/factory LoginForm))
+(def ui-login-form (comp/factory LoginForm))
 
 (defsc Login [this {:account/keys [email]
                     :ui/keys      [error] :as props}]
@@ -264,7 +265,9 @@
 
 (dr/defrouter TopRouter [this props]
   {:router-targets        [Main Signup SignupSuccess ThetaRoot Projects TacReportPage
-                           DataVizPage SiteVisitsPage UploadPage PersonForm PersonList UserList UserForm WorkTimeList WorkTimeForm]
+                           DataVizPage SiteVisitsPage UploadPage PersonForm PersonList
+                           UserList UserForm WorkTimeList WorkTimeForm DeviceList DeviceForm
+                           StationList StationForm]
    :shouldComponentUpdate (fn [_ _ _] true)})
 (def ui-top-router (comp/factory TopRouter))
 
@@ -282,7 +285,7 @@
 
 
 (defsc AgencyMenu [this {:ui.riverdb/keys [current-agency] :as props}]
-  {:query         [{[:ui.riverdb/current-agency '_] (om/get-query looks/agencylookup-sum)}
+  {:query         [{[:ui.riverdb/current-agency '_] (comp/get-query looks/agencylookup-sum)}
                    {[:component/id :session] (comp/get-query Session)}
                    [::uism/asm-id ::session/session]]
    :initial-state {:ui.riverdb/current-agency {}}}
@@ -301,7 +304,7 @@
                            {:root/activity (comp/get-query Activity)}
                            {:root/agency-menu (comp/get-query AgencyMenu)}
                            {[:root/tx-result '_] (comp/get-query TxResult)}
-                           {[:ui.riverdb/current-agency '_] (om/get-query looks/agencylookup-sum)}]
+                           {[:ui.riverdb/current-agency '_] (comp/get-query looks/agencylookup-sum)}]
    :initial-state         {:root/router          {}
                            :root/ready           false
                            :root/login           {}
@@ -320,7 +323,7 @@
         ag-ident      [:agencylookup/uuid agency-uuid]
         admin?        (->> auth-user :user/role :db/ident (= :role.type/admin))
         rdb-admin?    (->> auth-user :user/role :db/ident (= :role.type/riverdb-admin))]
-    (debug "RENDER TopChrome" "admin?" admin? "user" auth-user)
+    ;(debug "RENDER TopChrome" "admin?" admin? "user" auth-user)
     (div {:style {:display "grid" :gridTemplateRows "45px 1fr" :gridRowGap "0.2em" :height "100%"}}
       (div :.ui.secondary.pointing.menu {:style {:height "40px"}}
         (dom/a :.item {:classes [(when (= :main current-tab) "active")]
@@ -331,9 +334,11 @@
               (ui-dropdown-menu {}
                 #_(ui-dropdown-item {:onClick (fn [] (form/create! this SiteVisitEditor))} "New Site Visit")
                 (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this SiteVisitList {}))} "Site Visits")
+                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this DeviceList {:samplingdevice/Agency ag-ident}))} "Devices")
+
                 (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this WorkTimeList {:worktime/agency ag-ident}))} "Hours")
                 (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this PersonList {:person/Agency ag-ident}))} "People")
-                #_(ui-dropdown-item {:onClick (fn [] (rroute/route-to! this UploadPage {}) )} "Import CSV")
+                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this UploadPage {}) )} "Import CSV")
                 #_(ui-dropdown-item {:onClick (fn [] (form/create! this PersonForm {:initial-state {}}))} "Add Person")))
             (ui-dropdown {:className "item" :text "Reports"}
               (ui-dropdown-menu {}
@@ -344,6 +349,7 @@
               (ui-dropdown {:className "item" :text "Admin"}
                 (ui-dropdown-menu {}
                   (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this Projects {}))} "Projects")
+                  (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this StationList {:stationlookup/Agency ag-ident}))} "Stations")
                   (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this UserList {:user/agency ag-ident}))} "User Logins")
                   (when rdb-admin?
                     (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this ThetaRoot {:user/agency ag-ident}))} "Tables"))))))

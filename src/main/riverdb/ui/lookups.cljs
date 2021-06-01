@@ -1126,13 +1126,9 @@
    :db/ident
    :riverdb.entity/ns
    :sampletypelookup/Active
-   :sampletypelookup/SampleTypeCode
-   :sampletypelookup/CollectionType
-   :sampletypelookup/EventType1
-   :sampletypelookup/EventType2
-   :sampletypelookup/EventType3
-   :sampletypelookup/EventType4
-   :sampletypelookup/SampleTypeDescr]})
+   :sampletypelookup/Name
+   :sampletypelookup/SampleTypeCode]})
+
 
 
 (defsc
@@ -1383,7 +1379,6 @@
    :stationlookup/NHDWaterbody
    :stationlookup/Name
    :stationlookup/NationalHydrographyDataReach
-   :stationlookup/Project
    :stationlookup/RiverFork
    :stationlookup/SWRCBNum221
    :stationlookup/SWRCBRegion
@@ -1415,7 +1410,6 @@
    :stationlookup/StationID
    :stationlookup/StationName
    :stationlookup/Agency
-   :stationlookup/Project
    :stationlookup/TargetLong
    :stationlookup/TargetLat
    :stationlookup/RiverFork]})

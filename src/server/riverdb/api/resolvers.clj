@@ -4,6 +4,7 @@
     [com.fulcrologic.fulcro.server.api-middleware :as fmw]
     [com.fulcrologic.guardrails.core :refer [>defn => | ?]]
     [com.fulcrologic.rad.type-support.date-time :as datetime]
+    [com.fulcrologic.rad.database-adapters.datomic :as datomic]
     [cljc.java-time.zone-id]
     [com.rpl.specter :as sp]
     [com.wsscode.pathom.connect :as pc :refer [defresolver defmutation]]
@@ -29,27 +30,31 @@
   from a map like:
   {:> #inst \"2019-11-03T00:00:00.000-00:00\"
    :< #inst \"2020-11-03T00:00:00.000-00:00\"}"
-  [find arg conditions]
+  [where arg conditions]
+  ;(debug "ADD CONDITIONS" find arg conditions)
   (reduce-kv
-    (fn [find k v]
+    (fn [where k v]
       (cond
+        ;(= k :reverse)
+        ;(conj find [v k arg])
         (= k :>)
-        (conj find [(list '> arg v)])
+        (conj where [(list '> arg v)])
         (= k :<)
-        (conj find [(list '< arg v)])
+        (conj where [(list '< arg v)])
         (= k :contains)
         (let [argl (symbol (str arg "LC"))
               v    (clojure.string/lower-case v)]
-          (-> find
+          (-> where
             (conj [(list 'clojure.string/lower-case arg) argl])
             (conj [`(clojure.string/includes? ~argl ~v)])))))
-    find conditions))
+    where conditions))
 
 (defn add-filters [arg find-v filter-m]
   (try
     (reduce-kv
       (fn [find k v]
-        (let [ent-k        (keyword "entity.ns" (namespace k))
+        (let [ent-ns       (namespace k)
+              ent-k        (keyword "entity.ns" ent-ns)
               ent-nm       (name k)
               attr-spec    (get-in specs-map [ent-k :entity/attrs k])
               attr-type    (:attr/type attr-spec)
@@ -62,15 +67,22 @@
               val-nil?     (nil? v)
               val-vec?     (vector? v)
 
+              reverse-ref? (and type-ref? val-map? (= :reverse (ffirst v)))
+
               arg?         (cond
+                             reverse-ref?
+                             (symbol (str "?" ent-ns))
                              (and type-ref? val-map?)
                              (symbol (str "?" (str (namespace (ffirst v)) "_" (name (ffirst v)))))
                              (and type-inst? val-map?)
                              (symbol (str "?" ent-nm))
                              type-string?
                              (symbol (str "?" ent-nm)))
+              ;_ (debug "ADDING FOR" k v "type-ref?" type-ref?)
               find         (cond
-                             (and type-ref? val-map?)
+                             ;reverse-ref?
+                             ;(add-conditions find arg? v)
+                             (and type-ref? val-map? (not reverse-ref?))
                              (add-filters arg? find v) ;; if it's a nested field, then recurse
                              (and type-inst? val-map?)
                              (add-conditions find arg? v) ;; if it's got where conditions, add the bindings
@@ -81,6 +93,8 @@
               v            (cond
                              type-ref?
                              (cond
+                               reverse-ref?
+                               (Long/parseLong (:reverse v))
                                val-string?
                                (Long/parseLong v)
                                val-map?
@@ -98,6 +112,8 @@
                              :else
                              v)]
           (cond
+            reverse-ref?
+            (conj find [v k arg])
             val-nil?
             find
             :else
@@ -117,14 +133,16 @@
   (clojure.walk/prewalk-demo query))
 
 (defn lookup-resolve [env input]
-  (debug "LOOKUP RESOLVER" input)
+  (debug "LOOKUP RESOLVER" input (-> env :ast :key))
   (try
     (let [params        (-> env :ast :params)
           query         (:query env)
 
           ids?          (:ids params)
           ids           (when ids?
-                          (mapv #(Long/parseLong %) ids?))
+                          (if (= (type (first ids?)) java.lang.String)
+                            (mapv #(Long/parseLong %) ids?)
+                            ids?))
 
           ent-key?      (-> env :ast :key)
           ent-name?     (name ent-key?)
@@ -139,7 +157,7 @@
                           (keyword ent-name)
                           ent-key?)
 
-          ent-type      (tu/ns-kw "entity.ns" (last (st/split ent-name #"\.")))
+          ent-type      (tu/ns-kw "entity.ns" (clojure.string/replace ent-name "org.riverdb.db." ""))
           spec          (get specs-map ent-type)
           ;; if we have a spec for a different lookup key, use it
           lookup?       (get spec :entity/lookup)
@@ -151,7 +169,7 @@
                           :else
                           ent-type)
 
-          _             (log/debug "List Resolver -> params" params "ent-key" ent-key "ent-type" ent-type "lookup-key" lookup-key)
+          ;_             (log/debug "List Resolver -> params" params "ent-key" ent-key "ent-type" ent-type "lookup-key" lookup-key)
           ;meta?         (some #{:org.riverdb.meta/query-count} query)
 
           ;; if it's a meta query, we don't need any query fields
@@ -196,7 +214,7 @@
           ;  (update :where conj
           ;    '[(< ?date ?toDate)]))
 
-          _             (debug "ADDING FILTERS ...")
+          ;_             (debug "ADDING FILTERS ...")
           ;; add the filter conditions first.
           ;; TODO we can probably skip this if we have IDs, but leaving for now
           filter        (:filter params)
@@ -204,7 +222,7 @@
                           (add-filters '?e find filter)
                           find)
 
-          _             (log/debug "POST FILTERS" find)
+          ;_             (log/debug "POST FILTERS" find)
 
           ;; add the type condition because filters are *probably* more restrictive than the type?
           find          (cond
@@ -217,12 +235,12 @@
                           :else
                           (conj find '[?e :riverdb.entity/ns ?typ]))
 
-          _             (log/debug "FINAL FIND" find)
+          ;_             (log/debug "FINAL FIND" find)
 
           results       (d/q find
                           (db) query lookup-key)
-          results-count (count results)
-          _             (log/debug "\nLIST RESULTS for" lookup-key "\nCOUNT" results-count "\nFIND" find "\nQUERY" query "\nFIRST RESULTS" (first results))]
+          results-count (count results)]
+          ;_             (log/debug "\nLIST RESULTS for" lookup-key "\nCOUNT" results-count "\nFIND" find "\nQUERY" query "\nFIRST RESULTS" (first results))]
 
       ;; if it's a metadata query, branch before doing all the limits and sorts
       (if meta?
@@ -262,7 +280,7 @@
                                 ; return exact list that was requested
                                 (seq ids)
                                 (fn [results]
-                                  (log/debug "Returning Exact Results for IDS" ids)
+                                  ;(log/debug "Returning Exact Results for IDS" ids)
                                   (let [id-map (into {} (for [res results]
                                                           [(:db/id res) res]))
                                         _      (log/debug "ID-MAP keys" (keys id-map))]
@@ -275,10 +293,10 @@
 
 
               results         (walk-modify-k-vals results :db/id str)]
-          (log/debug "FINAL RESULTS" (first results))
+          ;(log/debug "FINAL RESULTS" (first results))
           {ent-key results})))
 
-    (catch Exception ex (log/error "RESOLVER ERROR" ex))))
+    (catch Exception ex (log/error ex "RESOLVER ERROR") ex)))
 
 
 
@@ -355,15 +373,17 @@
 
 (defn uuid-resolve-factory [uuid-key]
   (fn [env input]
-    (log/debug "UUID PULL RESOLVER" uuid-key input)
+    ;(log/debug "UUID PULL RESOLVER" uuid-key input)
     (try
       (let [query   (-> env ::p/parent-query)
-            ;_       (log/debug "Lookup Resolver Key" uuid-key "Input" input "QUERY" query)
+            ;_       (log/debug "Lookup Resolver Key" uuid-key "QUERY" query)
             id-val? (try
                       (get input uuid-key)
                       (catch IllegalArgumentException _ nil))
             result  (when id-val?
-                      (d/pull (db) query [uuid-key id-val?]))]
+                      (d/pull (db) query [uuid-key id-val?]))
+            result  (when result
+                      (walk-modify-k-vals result :db/id str))]
         ;(log/debug "RESULT" result)
         result)
       (catch Exception ex (log/error ex)))))
@@ -374,11 +394,12 @@
     (for [spec specs-sorted]
       (let [{:entity/keys [ns attrs]} spec
             aks    (mapv :attr/key attrs)
+            rks    (get-reverse-keys ns specs-sorted)
             nm     (name ns)
             uuid-k (keyword nm "uuid")]
         {::pc/sym       (symbol (str nm "UUID"))
          ::pc/input     #{uuid-k}
-         ::pc/output    (into [:db/id :riverdb.entity/ns] aks)
+         ::pc/output    (-> [:db/id :riverdb.entity/ns] (into aks) (into rks))
          ::pc/resolve   (uuid-resolve-factory uuid-k)
          ::pc/transform pc/transform-batch-resolver}))))
 
@@ -412,7 +433,9 @@
                       :where
                       [(> ?e 1000)]
                       [?e :db/ident ?id]]
-                 (db) ident)]
+                 (db) ident)
+        result (when result
+                 (walk-modify-k-vals result :db/id str))]
     ;(debug "DB-IDENT QUERY" ident result)
     result))
 
@@ -459,10 +482,13 @@
   "Returns a sequence of ..."
   [db]
   [any? => (s/coll-of map? :kind vector?)]
-  (d/q '[:find [(pull ?e qu) ...]
-         :in $ qu
-         :where [?e :agencylookup/Active true]]
-    db agency-query))
+  (let [result (d/q '[:find [(pull ?e qu) ...]
+                      :in $ qu
+                      :where [?e :agencylookup/Active true]]
+                 db agency-query)
+        result (when result
+                 (walk-modify-k-vals result :db/id str))]
+    result))
 
 (defresolver agencylookup-resolver [{:keys [db] :as env} input]
   {;;GIVEN nothing key, gets all agency records
@@ -480,14 +506,35 @@
                :in $ qu
                :where]
         find (add-filters '?e find query-params)
-        find (conj find '[?e :person/uuid])]
-    (log/debug "ALL PEOPLE PARAMS" query-params find)
-    (d/q find db people-query)))
+        find (conj find '[?e :person/uuid])
+        _ (log/debug "ALL PEOPLE PARAMS" query-params find)
+        result (d/q find db people-query)
+        result (when result
+                 (walk-modify-k-vals result :db/id str))]
+    result))
 
 (defresolver all-people-resolver [{:keys [db query-params] :as env} input]
   {;;GIVEN nothing (e.g. this is usable as a root query)
    ::pc/output [{:all-people people-query}]}
   {:all-people (all-people-ids db query-params)})
+
+(defn find-uuids-factory [uuid-k]
+  (fn [env]
+    (debug "find" uuid-k)
+    (try
+      (if-let [db (some-> (get-in env [::datomic/databases :production]) deref)]
+        (let [query-params (:query-params env)
+              find         '[:find [?u ...]
+                             :in $ ?uuid-k
+                             :where]
+              find         (add-filters '?e find query-params)
+              find         (conj find '[?e ?uuid-k ?u])
+              ids          (d/q find db uuid-k)
+              ids          (mapv (fn [id] {uuid-k id}) ids)]
+          ids)
+        (log/error "No database atom for production schema!"))
+      (catch Exception ex
+        (log/error ex)))))
 
 
 (defresolver index-explorer [env _]

@@ -68,7 +68,7 @@
                                          ;_ (log/debug "project" ProjectID "years" years)
                                          sites (d/q '[:find [(pull ?st [:db/id :stationlookup/StationName :stationlookup/StationID]) ...]
                                                       :in $ ?pj
-                                                      :where [?st :stationlookup/Project ?pj]]
+                                                      :where [?pj :projectslookup/Stations ?st]]
                                                  db id)]
                                      ;_ (log/debug "project" ProjectID "sites" sites)]
 
@@ -175,7 +175,7 @@
 
 ;; one graph query to pull all the data we need at once!
 (defn get-sitevisits [db {:keys [agency fromDate toDate year
-                                 project station stationCode query qaCheck] :as opts}]
+                                 project station stationCode query qaCheck sampleType] :as opts}]
   (log/debug "GET SITEVISITS" agency fromDate toDate project station)
   (let [fromDate (if (some? fromDate)
                    fromDate
@@ -213,6 +213,15 @@
                                      (conj '[?sv :sitevisit/StationID ?st])))
                    (update :in conj '?stationCode)
                    (update :args conj stationCode))
+
+                 sampleType
+                 (->
+                   (update :where #(-> %
+                                     (conj '[?sv :sitevisit/Samples ?sas])
+                                     (conj '[?sas :sample/SampleTypeCode ?stype])
+                                     (conj '[?stype :sampletypelookup/SampleTypeCode ?sampleType])))
+                   (update :in conj '?sampleType)
+                   (update :args conj sampleType))
 
                  agency
                  (->
@@ -523,14 +532,14 @@
                   device    (when device (str (get-in device [:type :name]) " - " (:id device)))
                   type      (let [t (:code type)]
                               (if (= "Grab" t)
-                                "Lab"
+                                "Grab"
                                 t))
                   matrix    (if (= type "FieldObs")
                               "FieldObs"
                               matrix)
                   analyte-k (keyword (str matrix "_" analyte))
                   summary   (case type
-                              "Lab"
+                              "Grab"
                               (let [vals (when (seq results)
                                            (->> results
                                              (sort-by :replicate)
@@ -704,7 +713,7 @@
   (into {}
     (for [[k {:keys [type vals] :as v}] fieldresult]
       (do
-        ;(println "CALC " fieldresult)
+        ;(println "CALC " v)
         (try
           (let [
                 ;; calculate sample quantity exceedance
@@ -730,8 +739,11 @@
               (= type "FieldObs")
               [k v]
 
-              (= type "Lab")
-              [k v]
+              (= type "Grab")
+              (let [mean         (if (> val-count 1)
+                                   (mean vals)
+                                   (first vals))]
+                [k (assoc v :mean mean)])
 
               (not vals?)
               (let [v (merge v {:incomplete? true
@@ -752,6 +764,7 @@
                     mean         (if (> val-count 1)
                                    (mean vals)
                                    (first vals))
+                    ;_ (debug "MEAN"  mean)
 
                     ;prec-percent (if (> range 0.0) (percent-rds mean stddev) 0.0)
                     ;prec-unit    range
@@ -851,7 +864,7 @@
 
 (defn create-sitevisit-summaries3
   "create summary info per sitevisit"
-  [sitevisits]
+  [sitevisits {:keys [sampleType] :as opts}]
   (for [sv sitevisits]
     (try
       (let [
@@ -867,14 +880,18 @@
 
             ;; pull out samples list
             sas  (get-in sv [:samples])
+            ;; filter
+            sas  (if sampleType
+                   (filter #(= (get-in % [:type :code]) sampleType) sas)
+                   sas)
 
-            _    (debug "reduce Samples to param sums")
+            ;_    (debug "reduce Samples to param sums")
             sums (reduce-samples-to-map sas)
-            _    (debug "calc param sums")
+            ;_    (debug "calc param sums")
             sums (calc-param-summaries sums)
             ;; remove the list of samples and add the new param map
             sv   (-> sv
-                   ;(dissoc :samples)
+                   (dissoc :samples)
                    (assoc :fieldresults sums))
             ;_   (debug "count valid params")
             ;; count valid params
@@ -1190,7 +1207,7 @@
           param-config (into {} (remove #(:elide? (val %)) param-config))
           svs          (get-sitevisits db {:project project :year year})
           ;_            (debug "sitevisits" (count svs))
-          svs          (create-sitevisit-summaries3 svs)
+          svs          (create-sitevisit-summaries3 svs {})
           ;_            (debug "sitevisits filtered" (count svs))
           svs          (filter-empty-fieldresults svs)
           ;_            (debug "sitevisits summaries" (count svs))

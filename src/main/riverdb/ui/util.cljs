@@ -184,12 +184,11 @@
     (map? thing)
     (let [dbid   (:db/id thing)
           ent-ns (:riverdb.entity/ns thing)]
-      (if (and dbid ent-ns)
-        [(ent-ns->ident-k ent-ns) dbid]
-        thing))
+      (when (and dbid ent-ns)
+        [(ent-ns->ident-k ent-ns) dbid]))
 
     :else
-    thing))
+    nil))
 
 (defn thing->id [thing]
   (let [thing' (thing->ident thing)]
@@ -495,6 +494,32 @@
 
 (defn filter-param-typecode [type params]
   (filterv #(= type (get-in % [:parameter/SampleType :db/ident])) params))
+
+
+;(comment
+;  var log10 = Math.log(10);
+;  function getSignificantDigitCount(n) {
+;                                          n = Math.abs(String(n).replace(".", "")); //remove decimal and make positive
+;                                          if (n == 0) return 0;
+;                                          while (n != 0 && n % 10 == 0) n /= 10; //kill the 0s at the end of n
+;
+;                                          return Math.floor(Math.log(n) / log10) + 1}); //get number of digits
+
+(defn sigfigs
+  "from stackoverflow
+  https://stackoverflow.com/questions/22884720/what-is-the-fastest-way-to-count-the-number-of-significant-digits-of-a-number"
+  [n]
+  (let [n (js/Math.abs (clojure.string/replace (str n) "." ""))]
+    (if (= n 0)
+      0
+      (let [n (loop [n n]
+                (if (and
+                      (not= n 0)
+                      (= (mod n 10) 0))
+                  (recur (/ n 10))
+                  n))]
+        (+ 1 (js/Math.floor (/ (js/Math.log n) js/Math.LN10)))))))
+
 
 
 (comment

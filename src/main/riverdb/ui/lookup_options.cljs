@@ -132,13 +132,13 @@
                                ident-val (:riverdb.entity/ns props)
                                ident     [:riverdb.theta.options/ns ident-val]]
                            ;ref-props (get-in (fapp/current-state SPA) ident)]
-                           (debug "MOUNTED ThetaOptions" ident-val)
+                           ;(debug "MOUNTED ThetaOptions" ident-val)
                            (if (and
                                  (empty? (:ui/options props))
                                  (not (:ui/loading props))
                                  (get-in props [:opts :load]))
-                             (load-theta-options SPA ident props)
-                             (debug "SKIPPING LOAD ThetaOptions" ident-val))))}
+                             (load-theta-options SPA ident props))))}
+                             ;(debug "SKIPPING LOAD ThetaOptions" ident-val))))}
   (let [this-ident (comp/get-ident this)
         theta-k    (:riverdb.entity/ns props)
         ident-k    (ent-ns->ident-k theta-k)
@@ -147,13 +147,14 @@
         ref-id     (get-ref-val value)
         ;ref-props  (get-in (fapp/current-state SPA) this-ident)
         {:ui/keys [options loading]} props
-        {:keys [multiple clearable allowAdditions additionPosition style]} opts
+        {:keys [multiple clearable allowAdditions additionPosition style disabled]} opts
         show?      (not loading)
         options    (into [{:text "" :value ""}] (if (and filter-key filter-val)
                                                   (filterv #(= (:filt %) filter-val) options)
                                                   options))]
     ;(debug "RENDER ThetaOptions" theta-k "text-key:" text-key "value:" ref-id "filter-key:" filter-key "filter-val:" filter-val) ;"loading:" loading "query-params:" query-params "filter-key:" filter-key "filter-val:" filter-val)
     (ui-dropdown {:loading          (not show?)
+                  :disabled         (or disabled false)
                   :search           true
                   :selection        true
                   :multiple         (or multiple false)

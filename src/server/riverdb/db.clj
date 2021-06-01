@@ -6,6 +6,46 @@
     [java-time :as jt]
     [domain-spec.core]))
 
+(defn eids
+  ([attr]
+   (d/q '[:find [?e ...]
+          :in $ ?attr
+          :where
+          [?e ?attr]]
+     (db) attr))
+  ([attr val]
+   (d/q '[:find [?e ...]
+          :in $ ?attr ?val
+          :where
+          [?e ?attr ?val]]
+     (db) attr val)))
+
+(defn attr->eid-val [attr]
+  (d/q '[:find ?e ?v
+         :in $ ?a
+         :where
+         [?e ?a ?v]]
+    (db) attr))
+
+
+(defn eids->retract-attr
+  ([eids attr]
+   (d/transact (cx)
+     (vec
+       (for [eid eids]
+         [:db/retract eid attr]))))
+  ([eids attr val]
+   (d/transact (cx)
+     (vec
+       (for [eid eids]
+         [:db/retract eid attr val])))))
+
+(defn eid-attr->val [eid attr]
+  (d/q '[:find ?v .
+         :in $ ?e ?a
+         :where
+         [?e ?a ?v]]
+    (db) eid attr))
 
 (defn pull-attr
   ([attr]
@@ -52,7 +92,7 @@
 (defn pull-entities
   ([attr]
    (pull-entities attr {}))
-  ([attr {:keys [value query] :as opts}]
+  ([attr {:keys [value query wheres] :as opts}]
    (let [find (if value
                 '[:find [(pull ?e qu) ...]
                   :in $ ?attr qu ?value
@@ -62,6 +102,9 @@
                   :in $ ?attr qu
                   :where
                   [?e ?attr]])
+         find (if wheres
+                (apply conj find wheres)
+                find)
          qu (if query
               query
               '[*])]
@@ -81,6 +124,8 @@
          :where
          [?e _ _ ?t]]
     (db) eid))
+
+
 
 (defn find-lab-parameters []
   (d/q '[:find ?param ?param2 ?matrix ?method ?unit ?code
@@ -120,7 +165,7 @@
          :in $ ?pj
          :where
          [?e :projectslookup/ProjectID ?pj]
-         [?st :stationlookup/Project ?e]]
+         [?e :projectslookup/Stations ?st]]
     (db) project))
 
 (defn get-constituent
@@ -178,6 +223,7 @@
                                        :analytelookup/AnalyteName
                                        :analytelookup/AnalyteShort]}
       {:constituentlookup/MatrixCode [:matrixlookup/MatrixCode
+                                      :matrixlookup/MatrixName
                                       :matrixlookup/MatrixShort]}
       {:constituentlookup/UnitCode [:unitlookup/UnitCode
                                     :unitlookup/Unit]}

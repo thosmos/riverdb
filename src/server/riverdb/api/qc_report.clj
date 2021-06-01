@@ -76,7 +76,7 @@
                                          ;_ (log/debug "project" ProjectID "years" years)
                                          sites (d/q '[:find [(pull ?st [:db/id :stationlookup/StationName :stationlookup/StationID]) ...]
                                                       :in $ ?pj
-                                                      :where [?st :stationlookup/Project ?pj]]
+                                                      :where [?pj :projectslookup/Stations ?st]]
                                                  db id)]
                                      ;_ (log/debug "project" ProjectID "sites" sites)]
 
@@ -208,9 +208,9 @@
                    sampleType
                    (->
                      (update :where #(-> %
-                                       (conj '[?stype :sampletypelookup/SampleTypeCode ?sampleType])
+                                       (conj '[?sv :sitevisit/Samples ?sas])
                                        (conj '[?sas :sample/SampleTypeCode ?stype])
-                                       (conj '[?sv :sitevisit/Samples ?sas])))
+                                       (conj '[?stype :sampletypelookup/SampleTypeCode ?sampleType])))
                      (update :in conj '?sampleType)
                      (update :args conj sampleType))
 
@@ -432,7 +432,7 @@
             :H2O_PO4       [:constituentlookup/ConstituentCode "5-22-399-2-6"]
             :H2O_NO3       [:constituentlookup/ConstituentCode "5-20-69-0-6"]
             :Air_Temp      [:constituentlookup/ConstituentCode "10-42-100-0-31"]
-            :TotalColiform [:constituentlookup/ConstituentCode "5-56-23-20-7"] ;; "5-56-23-20-7" "5-57-23-2-7"
+            :TotalColiform [:constituentlookup/ConstituentCode "5-57-23-2-7"] ;; "5-56-23-20-7" "5-57-23-2-7"
             :EColi         [:constituentlookup/ConstituentCode "5-57-464-0-7"]}
    "WCCA"  {:Air_Temp   [:constituentlookup/ConstituentCode "10-42-100-0-31"]
             :Cond       [:constituentlookup/ConstituentCode "5-42-107-0-100"]
@@ -442,7 +442,7 @@
             :H2O_TempDO [:constituentlookup/ConstituentCode "5-42-100-0-31"]
             :pH         [:constituentlookup/ConstituentCode "5-42-78-0-0"]
             :Turb       [:constituentlookup/ConstituentCode "5-42-108-0-9"]}
-   "SYRCL" {:TotalColiform [:constituentlookup/ConstituentCode "5-56-23-20-7"]
+   "SYRCL" {:TotalColiform [:constituentlookup/ConstituentCode "5-57-23-2-7"]
             :EColi         [:constituentlookup/ConstituentCode "5-57-464-0-7"]
             :Enterococcus  [:constituentlookup/ConstituentCode "5-9000-9002-0-7"]}})
 
@@ -477,7 +477,9 @@
                    (catch Exception ex (log/error ex "setScale failed" scale vals)))
         prec     (max-precision bigvals)
         ;mn       (.setScale (bigmean prec bigvals) scale RoundingMode/HALF_EVEN)
-        mn       (with-precision prec (* (bigdec (mean vals)) 1))
+        mn       (.setScale
+                   (with-precision prec :rounding RoundingMode/HALF_EVEN (* (bigdec (mean vals)) 1))
+                   scale RoundingMode/HALF_EVEN)
         _min     (apply min bigvals)
         _max     (apply max bigvals)
         _        (when (and (> (count vals) 2) (> mn _max))
@@ -735,7 +737,7 @@
 
 (defn sitevisit-summaries
   "create summary info per sitevisit"
-  [{:keys [sitevisits agency project type] :as opts}]
+  [{:keys [sitevisits sampleType] :as opts}]
   (debug "CREATE SV SUMMARIES" (keys opts))
   (vec (for [sv sitevisits]
          (try
@@ -752,8 +754,8 @@
                  ;; pull out samples list
                  sas  (get-in sv [:samples])
 
-                 sas  (if type
-                        (filter #(= (get-in % [:type :code]) type) sas)
+                 sas  (if sampleType
+                        (filter #(= (get-in % [:type :code]) sampleType) sas)
                         sas)
 
                  ;_    (debug "reduce Samples to param sums")
@@ -1046,11 +1048,11 @@
         agency     (rpull [:agencylookup/AgencyCode agency-code])
         project    (rpull [:projectslookup/ProjectID project-id])
         sitevisits (if year
-                     (get-sitevisits db {:agency agency-code :project project-id :year year})
-                     (get-sitevisits db {:agency agency-code}))
+                     (get-sitevisits db {:agency agency-code :project project-id :year year :sampleType "FieldMeasure"})
+                     (get-sitevisits db {:agency agency-code :sampleType "FieldMeasure"}))
         ;_          (debug "first SV" (first sitevisits))
         ;sitevisits (filter-sitevisits sitevisits)
-        sitevisits (sitevisit-summaries {:sitevisits sitevisits :agency agency :project project :type "FieldMeasure"})
+        sitevisits (sitevisit-summaries {:sitevisits sitevisits :sampleType "FieldMeasure"})
         ;_          (println "report reducer" (first sitevisits))
         ;param-keys (reduce #(apply conj %1 (map first (get-in %2 [:fieldresults]))) #{} sitevisits)
         report     (report-reducer db sitevisits)
@@ -1066,12 +1068,12 @@
         ;             (select-keys report
         ;               [:count-sitevisits :count-params-valid :count-params-exceedance]))
         report     (report-stats report)
-        _          (log/info "TAC REPORT COMPLETE")]
+        _          (log/info "QC REPORT COMPLETE")]
     report))
 
-(defn filter-empty-fieldresults [svs]
+(defn filter-empty-samples [svs]
   (remove #(and
-             (empty? (:fieldresults %))
+             (empty? (:samples %))
              (= (:failcode %) "None")) svs))
 
 

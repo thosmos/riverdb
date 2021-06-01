@@ -25,9 +25,10 @@
    (let [eid (d/q '[:find ?e .
                     :in $ ?email
                     :where [?e :user/email ?email]]
-               (db) email)]
-     (when eid
-       (d/pull (db) query eid)))))
+               (db) email)
+         user (when eid
+                (d/pull (db) query eid))]
+     user)))
 
 (defn set-name [current-user name]
   (if-let [email (:user/email current-user)]
