@@ -490,7 +490,7 @@
                                                  :intvalue  {:type 'Int}
                                                  :textvalue {:type 'String}}}
                    :station            {:fields {:id           {:type 'ID}
-                                                 :station_id   {:type 'Int}
+                                                 :station_id   {:type 'String}
                                                  :station_code {:type 'String}
                                                  :river_fork   {:type 'String}
                                                  :trib_group   {:type 'String}}}
@@ -546,7 +546,7 @@
                                                  :avg   {:type 'Float}}}
 
                    :safetoswim         {:fields {:id              {:type 'ID}
-                                                 :StationID       {:type 'Int}
+                                                 :StationID       {:type 'String}
                                                  :Agency          {:type    :agency_detail
                                                                    :resolve :resolve-agency-ref}
                                                  :Description     {:type 'String}
