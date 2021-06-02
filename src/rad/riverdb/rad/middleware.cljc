@@ -63,12 +63,44 @@
     (log/debug "rewrite GIDs" result)
     result))
 
+
+(comment
+  {[:stationlookup/uuid #uuid "5e3e50f1-5ec5-4e4c-8894-e75692f5cb97"]
+   {:projectslookup/_Stations
+    {:before
+     [[:projectslookup/uuid #uuid "5e3e50f0-cc69-4738-92ff-9733307acb56"]
+      [:projectslookup/uuid #uuid "5e3e50f0-3b3b-465a-a06a-a961bb0688a4"]],
+     :after
+     [[:projectslookup/uuid #uuid "5e3e50f0-cc69-4738-92ff-9733307acb56"]
+      [:projectslookup/uuid #uuid "5e3e50f0-3b3b-465a-a06a-a961bb0688a4"]
+      [:projectslookup/uuid #uuid "5e3e50f0-de49-422a-a98b-4950335c4a0a"]]}}})
+
+(def reverse-keys {:stationlookup/uuid [:projectslookup/_Stations]})
+(def reverse-keyers (set (keys reverse-keys)))
+
+(defn reverse-many-refs [env delta]
+  (reduce-kv
+    (fn [delta k v]
+      (let [keyer? (contains? reverse-keyers k)]
+        delta))
+    delta delta)
+
+  #_(when-let [keyers (some reverse-keyers (map first (keys delta)))]
+      (reduce
+        (fn [delta keyer]
+          (let [rkeys (get reverse-keys keyer)]
+            delta))
+        delta keyers)))
+
+
 (def save
   (->
     (datomic/wrap-datomic-save)
     (r.s.middleware/wrap-rewrite-delta
       (fn [pathom-env delta]
-        (log/debug "SAVE DELTA" delta)))
+        (log/debug "SAVE DELTA" delta)
+        (reverse-many-refs pathom-env delta)))
+
         ;(rewrite-gids pathom-env delta)))
 
 

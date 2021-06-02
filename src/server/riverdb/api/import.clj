@@ -315,6 +315,9 @@
                                                                          (str/replace lab-val qual? "")
                                                                          lab-val)
 
+                                                            lab-val    (when (not= lab-val "")
+                                                                         lab-val)
+
                                                             lab-val    (when val?
                                                                          (parse-bigdec lab-val))
 
@@ -403,18 +406,26 @@
    :logger/projectRef      #:db{:id 17592186302687},
    :logger/parameterRef    #:db{:id 17592186302688},
    :logger/deviceTypeRef   #:db{:id 17592186302685},
-   :logger/stationRef      station-code})
+   :logger/stationRef      [:stationlookup/StationCode station-code]
+   :logger/uuid            (d/squuid)
+   :riverdb.entity/ns      :entity.ns/logger})
 
 (comment
   ;; import SYRCL thermalogger sites and loggers
-  (d/transact (cx)
-    (let [sites       (read-sites-csv site-cols-syrcl-logger "import-resources/SYRCL Temp Logger Sites.csv")
-          site-txds   (for [site-m sites]
-                        (site->txd "SYRCL" "SYRCL_THERMAS" site-m))
-          logger-txds (for [site-txd site-txds]
-                        (let [{:stationlookup/keys [StationCode StationName]} site-txd]
-                          (syrcl-logger StationCode StationName)))]
-      (vec (concat site-txds logger-txds)))))
+  (let [sites       (read-sites-csv site-cols-syrcl-logger "import-resources/SYRCL Temp Logger Sites.csv")
+        site-txds   (for [site-m sites]
+                      (site->txd "SYRCL" "SYRCL_THERMAS" site-m))
+        proj-txds   (for [{:stationlookup/keys [StationCode]} site-txds]
+                      [:db/add
+                       [:projectslookup/ProjectID "SYRCL_THERMAS"]
+                       :projectslookup/Stations
+                       [:stationlookup/StationCode StationCode]])
+        logger-txds (for [site-txd site-txds]
+                      (let [{:stationlookup/keys [StationCode StationName]} site-txd]
+                        (syrcl-logger StationCode StationName)))]
+    (vec
+      (for [txds [site-txds proj-txds logger-txds]]
+        (:tempids @(d/transact (cx) txds))))))
 
 
 (defn proj-site->station-id [stations site-id]
@@ -438,25 +449,25 @@
         StationCode
         (recur (rest sts))))))
 
-(defn gen-site-with-map
-  ([cx project site-map]
-   (let [txd     (site->txd project site-map)
-         temp-id (:db/id txd)
-         tx      @(d/transact cx [txd])
-         ;tx      (d/with (d/db cx) [txd])
-         db-id   (get-in tx [:tempids temp-id])]
-     db-id)))
-
-
-(defn gen-sites [cx project sites]
-  (let [existing-sites {}]
-        ;;; generating all sites every time, but they use import-key so it should just update existing entities
-    (into {} (for [site sites]
-               (let [site-id (:site-id site)
-                     db-id   (if-let [db-id (get existing-sites site-id)]
-                               db-id
-                               (gen-site-with-map cx project site))]
-                 [site-id db-id])))))
+;(defn gen-site-with-map
+;  ([cx agency project site-map]
+;   (let [txd     (site->txd agency project site-map)
+;         temp-id (:db/id txd)
+;         tx      @(d/transact cx [txd])
+;         ;tx      (d/with (d/db cx) [txd])
+;         db-id   (get-in tx [:tempids temp-id])]
+;     db-id)))
+;
+;
+;(defn gen-sites [cx agency project sites]
+;  (let [existing-sites {}]
+;        ;;; generating all sites every time, but they use import-key so it should just update existing entities
+;    (into {} (for [site sites]
+;               (let [site-id (:site-id site)
+;                     db-id   (if-let [db-id (get existing-sites site-id)]
+;                               db-id
+;                               (gen-site-with-map cx agency project site))]
+;                 [site-id db-id])))))
 
 
 
@@ -476,8 +487,7 @@
 (defn import-lab-result [import-token-sa constituent {:keys [value qual]}]
   (let [res {:org.riverdb/import-key     (str import-token-sa "-1")
              :labresult/uuid             (d/squuid)
-             :labresult/LabReplicate     1
-             :labresult/ConstituentRowID constituent}
+             :labresult/LabReplicate     1}
         res (cond-> res
               value
               (->
@@ -627,19 +637,19 @@
 (defn import-csv-txds [db agency-code project-code filename & [{:keys [create-devices? create-params?] :as opts}]]
   (debug "import-csv-txds")
   (let [data     (read-csv filename (get col-configs agency-code) (get param-configs agency-code))
-        project  (rpull [:projectslookup/ProjectID project-code])
+        project  (rpull [:projectslookup/ProjectID project-code] [:db/id :projectslookup/ParentProjectID])
         {:db/keys [id] :projectslookup/keys [ParentProjectID]} project
         ;; get stations from parent or this project
         station-q [:stationlookup/StationID
                    :stationlookup/StationIDLong
                    :stationlookup/StationCode
                    :stationlookup/StationName]
-        stations (d/q '[:find [(pull ?e qu) ...]
-                        :in $ qu ?pj
-                        :where
-                        [?pj :projectslookup/Stations ?e]]
-                   (db) station-q (or (:db/id ParentProjectID) id))]
-
+        proj-id   (or (:db/id ParentProjectID) id)
+        stations  (d/q '[:find [(pull ?e qu) ...]
+                         :in $ qu ?pj
+                         :where
+                         [?pj :projectslookup/Stations ?e]]
+                    db station-q proj-id)]
     (vec
       ;; remove any that have no station
       (filter #(:sitevisit/StationID (first %))

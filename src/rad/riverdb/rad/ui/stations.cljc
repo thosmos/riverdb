@@ -7,6 +7,7 @@
     [riverdb.rad.model.station :as station]
     [riverdb.rad.model.devicetype :as devicetype]
     [riverdb.rad.model.global :as global]
+    [riverdb.rad.ui.project :refer [proj-picker]]
     [riverdb.rad.ui.agency :refer [agency-picker]]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
@@ -58,7 +59,8 @@
                         [:stationlookup/Description]
                         [:stationlookup/StationComments]
                         [:stationlookup/ForkTribGroup :stationlookup/RiverFork]
-                        [:stationlookup/LocalWatershed :stationlookup/NHDWaterbody]]
+                        [:stationlookup/LocalWatershed :stationlookup/NHDWaterbody]
+                        [:projectslookup/_Stations]]
 
    fo/field-labels     {:stationlookup/StationID   "ID"
                         :stationlookup/StationName "Name"
@@ -68,11 +70,15 @@
                         :stationlookup/LocalWatershed "Local Watershed"
                         :stationlookup/NHDWaterbody "NHD Waterbody"
                         :stationlookup/TargetLat "Lat"
-                        :stationlookup/TargetLong "Long"}
+                        :stationlookup/TargetLong "Long"
+                        :projectslookup/_Stations "Stations"}
    fo/field-styles     {:stationlookup/Agency :pick-one
-                        :stationlookup/Active :default}
+                        :stationlookup/Active :default
+                        :projectslookup/_Stations :pick-many}
    fo/read-only-fields #{:stationlookup/Agency}
-   fo/field-options    {:stationlookup/Agency agency-picker}})
+   fo/field-options    {:stationlookup/Agency agency-picker
+                        :projectslookup/_Stations proj-picker}
+   })
 
 
 (defsc StationListItem [this {:stationlookup/keys [uuid StationID StationIDLong StationName Agency Active] :as props}]
