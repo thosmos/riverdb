@@ -419,8 +419,7 @@
 (defn import-lab-result [constituent import-token-sa {:keys [value over under dry]}]
   (let [res {:org.riverdb/import-key     (str import-token-sa "-1")
              :labresult/uuid             (d/squuid)
-             :labresult/LabReplicate     1
-             :labresult/ConstituentRowID constituent}
+             :labresult/LabReplicate     1}
         res (cond-> res
               value
               (->

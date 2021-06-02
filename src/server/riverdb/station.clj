@@ -60,12 +60,11 @@
                    (and project (= projectType "sitevisit") (not constituent) (not params))
                    (->
                      (update-in [:query :where]
-                       #(apply conj % '[[?pj :projectslookup/ProjectID ?project]
-                                        [?pj :projectslookup/Parameters ?pa]
-                                        [?pa :parameter/Constituent ?co]
-                                        [?sv :sitevisit/StationID ?e]
+                       #(apply conj % '[[?sv :sitevisit/StationID ?e]
                                         [?sv :sitevisit/Samples ?sa]
-                                        [?sa :sample/Constituent ?co]])))
+                                        [?sa :sample/Constituent ?co]
+                                        [?pj :projectslookup/Parameters ?pa]
+                                        [?pa :parameter/Constituent ?co]])))
 
                    ;; return stations that have samples of the selected params
                    (and project (= projectType "sitevisit") params (not constituent))
@@ -83,24 +82,23 @@
                    (->
                      (update-in [:query :where]
                        #(apply conj % '[[?sv :sitevisit/StationID ?e]
-                                        ;[?sv :sitevisit/SiteVisitDate ?svdt]
-                                        ;[(> ?svdt #inst "2019")]
                                         [?sv :sitevisit/Samples ?sa]
                                         [?sa :sample/Constituent ?cnst]
                                         [?cnst :constituentlookup/ConstituentCode ?cnstcode]]))
-                                        ;[?sa :sample/LabResults ?frs]
-                                        ;[?frs :labresult/ConstituentRowID ?cnst]
 
                      (update-in [:query :in] conj '?cnstcode)
-                     (update :args conj constituent))
+                     (update :args conj constituent)))
 
-                   ;; last one, in case there are no conditions, get all stations
-                   #(empty? (get-in q [:query :where]))
-                   (->
-                     (update-in [:query :where] conj '[?e :stationlookup/StationName])))
-          ;q      (remap-query q)
-          _      (debug "Stations QUERY" q)
+          ;; if there are no conditions, get all stations
+          q       (if #(empty? (get-in q [:query :where]))
+                    (update-in q [:query :where] conj '[?e :stationlookup/StationID])
+                    q)
+
+          _      (debug "Stations QUERY" (pr-str q))
+
           rez    (d/query q)
+
+          _      (debug (count rez) "results")
           ;_      (debug "FIRST RESULT" (first rez))
 
           limit  (get args :limit)

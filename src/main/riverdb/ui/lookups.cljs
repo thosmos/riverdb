@@ -606,7 +606,6 @@
    :labresult/AnalysisDate
    :labresult/Basis
    :labresult/ComplianceCode
-   :labresult/ConstituentRowID
    :labresult/DigestExtractCode
    :labresult/DigestExtractDate
    :labresult/ExpectedValue
