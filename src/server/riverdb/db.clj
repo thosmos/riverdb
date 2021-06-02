@@ -130,7 +130,8 @@
 (defn find-lab-parameters []
   (d/q '[:find ?param ?param2 ?matrix ?method ?unit ?code
          :where
-         [?fr :labresult/ConstituentRowID ?e]
+         [?sa :sample/SampleTypeCode :sampletypelookup.SampleTypeCode/Grab]
+         [?sa :sample/Constituent ?e]
          [?e :constituentlookup/ConstituentCode ?code]
          [?e :constituentlookup/AnalyteCode ?ana]
          [?e :constituentlookup/MatrixCode ?mat]
@@ -268,6 +269,10 @@
                     [:db/id :sampletypelookup/SampleTypeCode]}
                    :sample/QCCheck
                    :sample/SampleReplicate
+                   {:sample/Constituent
+                    [:constituentlookup/ConstituentCode
+                     {:constituentlookup/AnalyteCode [:analytelookup/AnalyteCode
+                                                      :analytelookup/AnalyteName]}]}
                    {[:fieldresult/_SampleRowID :as :sample/FieldResults]
                     [:db/id
                      :fieldresult/Result
@@ -278,26 +283,11 @@
                      {:fieldresult/SamplingDeviceID
                       [:db/id
                        :samplingdevice/CommonID
-                       {:samplingdevice/DeviceType [:samplingdevicelookup/SampleDevice]}]}
-                     {:fieldresult/ConstituentRowID
-                      [:constituentlookup/ConstituentCode
-                       {:constituentlookup/AnalyteCode [:analytelookup/AnalyteCode
-                                                        :analytelookup/AnalyteName]}]}]}
+                       {:samplingdevice/DeviceType [:samplingdevicelookup/SampleDevice]}]}]}
 
-                   {[:fieldobsresult/_SampleRowID :as :sample/FieldObservations]
-                    [*
-                     {:fieldobsresult/ConstituentRowID
-                      [:constituentlookup/ConstituentCode
-                       {:constituentlookup/AnalyteCode [:analytelookup/AnalyteCode
-                                                        :analytelookup/AnalyteName]}]}]}
+                   {[:fieldobsresult/_SampleRowID :as :sample/FieldObservations] [*]}
                    {[:labresult/_SampleRowID :as :sample/LabResults]
-                    [*
-                     {:labresult/DigestExtractCode [*]}
-                     {:labresult/ResQualCode [*]}
-                     {:labresult/ConstituentRowID
-                      [:constituentlookup/ConstituentCode
-                       {:constituentlookup/AnalyteCode [:analytelookup/AnalyteCode
-                                                        :analytelookup/AnalyteName]}]}]}]}]
+                    [* {:labresult/DigestExtractCode [*]} {:labresult/ResQualCode [*]}]}]}]
     db-id))
 
 

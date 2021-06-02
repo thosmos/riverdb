@@ -325,14 +325,12 @@
                                     ;  ;; enterococcus
                                     ;  [?cnst :constituentlookup/ConstituentCode "5-9000-9002-0-7"])
                                     [?cnst :constituentlookup/ConstituentCode ?const-code]
-                                    [?frs :labresult/ConstituentRowID ?cnst]
-                                    [?frs :labresult/Result ?rslt]
-                                    ;[?frs :labresult/ResQualCode ?rq]
-                                    ;[?rq :resquallookup/ResQualCode ?rqual]
-                                    [?sa :sample/LabResults ?frs]
+                                    [?sa :sample/Constituent ?cnst]
                                     [?sv :sitevisit/Samples ?sa]
                                     [?sv :sitevisit/StationID ?stationid]
-                                    [?sv :sitevisit/SiteVisitDate ?svdt]]
+                                    [?sv :sitevisit/SiteVisitDate ?svdt]
+                                    [?sa :sample/LabResults ?frs]
+                                    [?frs :labresult/Result ?rslt]]
                                (db) const-ecoli eids)
 
               ;; make a map on station-id for easy lookup
