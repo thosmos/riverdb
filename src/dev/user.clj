@@ -1,7 +1,7 @@
 (ns user
   (:require
     [clojure.edn :as edn]
-    [clojure.tools.namespace.repl :as tools-ns :refer [set-refresh-dirs]]
+;    [clojure.tools.namespace.repl :as tools-ns :refer [set-refresh-dirs]]
     [datascript.core :as ds]
     [datomic.api :as d]
     [domain-spec.core :as dspec]
@@ -19,7 +19,7 @@
 (set! *data-readers* (assoc *data-readers* 'fulcro/tempid #'riverdb.util/readTempid))
 
 ;; ==================== SERVER ====================
-(set-refresh-dirs "src/main" "src/server" "src/rad")
+;(set-refresh-dirs "src/main" "src/server" "src/rad")
 
 (defn start
   "Start the web server"
@@ -37,13 +37,14 @@
   "Stop, reload code, and restart the server. If there is a compile error, use:
 
   ```
-  (tools-ns/refresh)
+;  (tools-ns/refresh)
   ```
 
   to recompile, and then use `start` once things are good."
   []
   (stop)
-  (tools-ns/refresh :after 'user/start))
+ ; (tools-ns/refresh :after 'user/start))
+  (start))
 
 (defn specs []
   (edn/read-string

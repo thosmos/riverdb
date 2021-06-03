@@ -12,11 +12,13 @@
          :clj-tests  {:extra-paths ["src/test"]
                       :main-opts   ["-m" "kaocha.runner"]
                       :extra-deps  {lambdaisland/kaocha {:mvn/version "0.0-529"}}}
-         :dev        {:extra-paths ["src/dev"]
+         :dev-tools  {:extra-paths ["src/dev"]
                       :extra-deps  {expound/expound              {:mvn/version "0.8.9"}
                                     org.clojure/tools.namespace  {:mvn/version "1.0.0"}
                                     org.clojure/tools.deps.alpha {:mvn/version "0.8.666"}
                                     vlaaad/reveal                {:mvn/version "0.1.0-ea1"}}}
+         :dev        {:extra-paths ["src/dev"]
+                      :extra-deps  {expound/expound              {:mvn/version "0.8.9"}}}
          :local-dev  {:override-deps
                       {thosmos/util           {:local/root "/Users/thomas/Develop/clojure/thosmos.util"
                                                :exclusions [com.datomic/datomic-free]}
@@ -34,8 +36,8 @@
          :cljs-dev   {:extra-paths ["src/test" "src/workspaces"]
                       :extra-deps  {fulcrologic/fulcro-spec      {:mvn/version "3.1.11" :exclusions [com.fulcrologic/fulcro]}
                                     binaryage/devtools           {:mvn/version "1.0.2"}
-                                    com.github.awkay/workspaces  {:mvn/version "1.0.3"}
-                                    org.clojure/tools.deps.alpha {:mvn/version "0.8.666"}}}
+                                    com.github.awkay/workspaces  {:mvn/version "1.0.3"}}}
+                                    ;org.clojure/tools.deps.alpha {:mvn/version "0.8.666"}}}
          :fulcro-dev {:override-deps {com.fulcrologic/fulcro {:local/root "/Users/thomas/Develop/cljs/fulcro/fulcro"
                                                               :exclusions [com.taoensso/sente]}}}
          :rad        {:extra-paths ["src/rad"]
