@@ -13,6 +13,7 @@
     [com.fulcrologic.fulcro.ui-state-machines :as uism]
     [com.fulcrologic.rad.application :as rad-app]
     [com.fulcrologic.rad.authorization :as auth]
+    [com.fulcrologic.rad.form :as form]
     [com.fulcrologic.rad.rendering.semantic-ui.semantic-ui-controls :as sui]
     [com.fulcrologic.rad.routing :as routing]
     [com.fulcrologic.rad.routing.html5-history :as hist5 :refer [html5-history]]
@@ -22,6 +23,7 @@
     [riverdb.model.session :as session]
     [riverdb.rad.ui.controls.autocomplete]
     [riverdb.rad.ui.controls.inputlist]
+    [riverdb.rad.ui.controls.reverse-many-picker]
     [riverdb.ui.globals :as globals]
     ;[riverdb.model :as model]
     [riverdb.ui.root :as root]
@@ -38,14 +40,12 @@
 (defn setup-RAD [app]
   (history/install-route-history! app (html5-history))
   (let [all-controls (-> sui/all-controls
-                       (assoc-in [:com.fulcrologic.rad.form/type->style->control
-                                  :string
-                                  :autocomplete]
+                       (assoc-in [::form/type->style->control :string :autocomplete]
                          riverdb.rad.ui.controls.autocomplete/render-autocomplete-field)
-                       (assoc-in [:com.fulcrologic.rad.form/type->style->control
-                                  :string
-                                  :inputlist]
-                         riverdb.rad.ui.controls.inputlist/render-inputlist-field))]
+                       (assoc-in [::form/type->style->control :string :inputlist]
+                         riverdb.rad.ui.controls.inputlist/render-inputlist-field)
+                       (assoc-in [::form/type->style->control :ref :pick-many-reverse]
+                         riverdb.rad.ui.controls.reverse-many-picker/to-many-picker))]
 
     (rad-app/install-ui-controls! app all-controls)))
 

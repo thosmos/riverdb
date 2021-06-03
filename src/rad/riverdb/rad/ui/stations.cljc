@@ -7,6 +7,7 @@
     [riverdb.rad.model.station :as station]
     [riverdb.rad.model.devicetype :as devicetype]
     [riverdb.rad.model.global :as global]
+    [riverdb.rad.ui.project :refer [proj-picker]]
     [riverdb.rad.ui.agency :refer [agency-picker]]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
@@ -46,10 +47,7 @@
                         station/NHDWaterbody station/Elevation station/DOcorrection]
    fo/default-values   {:stationlookup/Active true
                         :riverdb.entity/ns    :entity.ns/stationlookup}
-   ;::form/enumeration-order :person/Name
-   ;::form/cancel-route      ["people"]
    fo/route-prefix     "station"
-   ;:route-segment     ["person"]
    fo/title            "Edit Station"
    fo/layout           [[:stationlookup/Agency]
                         [:stationlookup/Active]
@@ -58,37 +56,43 @@
                         [:stationlookup/Description]
                         [:stationlookup/StationComments]
                         [:stationlookup/ForkTribGroup :stationlookup/RiverFork]
-                        [:stationlookup/LocalWatershed :stationlookup/NHDWaterbody]]
+                        [:stationlookup/LocalWatershed :stationlookup/NHDWaterbody]
+                        [:projectslookup/_Stations]]
 
-   fo/field-labels     {:stationlookup/StationID   "ID"
-                        :stationlookup/StationName "Name"
+
+   fo/field-labels     {:stationlookup/StationID       "ID"
+                        :stationlookup/StationName     "Name"
                         :stationlookup/StationComments "Comments"
-                        :stationlookup/ForkTribGroup "ForkTrib Group"
-                        :stationlookup/RiverFork "River Fork"
-                        :stationlookup/LocalWatershed "Local Watershed"
-                        :stationlookup/NHDWaterbody "NHD Waterbody"
-                        :stationlookup/TargetLat "Lat"
-                        :stationlookup/TargetLong "Long"}
-   fo/field-styles     {:stationlookup/Agency :pick-one
-                        :stationlookup/Active :default}
+                        :stationlookup/ForkTribGroup   "ForkTrib Group"
+                        :stationlookup/RiverFork       "River Fork"
+                        :stationlookup/LocalWatershed  "Local Watershed"
+                        :stationlookup/NHDWaterbody    "NHD Waterbody"
+                        :stationlookup/TargetLat       "Lat"
+                        :stationlookup/TargetLong      "Long"
+                        :projectslookup/_Stations      "Stations"}
+   fo/field-styles     {:stationlookup/Agency     :pick-one
+                        :stationlookup/Active     :default
+                        :projectslookup/_Stations :pick-many}
    fo/read-only-fields #{:stationlookup/Agency}
-   fo/field-options    {:stationlookup/Agency agency-picker}})
+   fo/field-options    {:stationlookup/Agency agency-picker
+                        :projectslookup/_Stations proj-picker}
+   fo/triggers         {:derive-fields            (fn [props]
+                                                    (log/debug "TRIGGERS PROPS" props)
+                                                    props)}})
 
 
 (defsc StationListItem [this {:stationlookup/keys [uuid StationID StationIDLong StationName Agency Active] :as props}]
   {:query [:stationlookup/uuid :stationlookup/StationID :stationlookup/StationIDLong :stationlookup/StationName :stationlookup/Active
            {:projectslookup/_Stations [:projectslookup/uuid :projectslookup/ProjectID]}
+           {:stationlookup/Projects [:projectslookup/uuid :projectslookup/ProjectID]}
            {:stationlookup/Agency [:agencylookup/uuid :agencylookup/AgencyCode]}]
    :ident :stationlookup/uuid}
   (let [proj-ids (not-empty (map :projectslookup/ProjectID (:projectslookup/_Stations props)))]
-    ;(log/debug "RENDER StationListItem", proj-ids, props)
     (dom/tr {:onClick (fn [] (form/edit! this StationForm uuid))}
       (dom/td
         (dom/div StationID))
       (dom/td
         (dom/div StationName))
-      ;(dom/td
-      ;  (dom/div (:samplingdevicelookup/SampleDevice DeviceType)))
       (dom/td
         (dom/div (if Active
                    (ui-icon {:name "check square outline"})
@@ -106,9 +110,9 @@
 
 (report/defsc-report StationList [this props]
   {ro/columns             [station/StationID station/StationName station/Active station/Agency station/Projects]
-   ro/column-headings     {:stationlookup/StationID "ID"
+   ro/column-headings     {:stationlookup/StationID   "ID"
                            :stationlookup/StationName "Name"
-                           :projectslookup/_Stations "Projects"}
+                           :projectslookup/_Stations  "Projects"}
    ro/BodyItem            StationListItem
    ro/row-pk              station/uid
    ro/route               "stations"
@@ -117,39 +121,28 @@
    ro/paginate?           false
    ;ro/page-size           20
    ro/run-on-mount?       true
-   ro/controls            {:stationlookup/Agency     (merge
-                                                       {:label     "Agency"
-                                                        :type      :picker
-                                                        :disabled? true}
-                                                       agency-picker)
-                           ;:stationlookup/DeviceType (merge
-                           ;                            {:label    "Device Type"
-                           ;                             :type     :picker
-                           ;                             :onChange (fn [this a]
-                           ;                                         (log/debug "device type change" a)
-                           ;                                         (com.fulcrologic.rad.control/run! this))}
-                           ;                            devicetype-picker)
+   ro/controls            {:stationlookup/Agency      (merge
+                                                        {:label     "Agency"
+                                                         :type      :picker
+                                                         :disabled? true}
+                                                        agency-picker)
+                           :stationlookup/StationName {:label    "Name"
+                                                       :type     :string
+                                                       :style    :search
+                                                       :onChange (fn [this a]
+                                                                   (log/debug "search change" a)
+                                                                   (com.fulcrologic.rad.control/run! this))}
 
-                           :stationlookup/StationName       {:label    "Name"
-                                                             :type     :string
-                                                             :style    :search
-                                                             :onChange (fn [this a]
-                                                                         (log/debug "search change" a)
-                                                                         (com.fulcrologic.rad.control/run! this))}
-
-                           ::add-station             {:label  "Add Station"
-                                                      :type   :button
-                                                      :action (fn [this]
-                                                                (let [props    (comp/props this)
-                                                                      agency   (:ui.riverdb/current-agency props)
-                                                                      ag-ident [:agencylookup/uuid (:agencylookup/uuid agency)]]
-                                                                  (log/debug "Add station w/ agency" ag-ident)
-                                                                  (form/create! this StationForm {:initial-state {:stationlookup/Agency ag-ident}})))}}
+                           ::add-station              {:label  "Add Station"
+                                                       :type   :button
+                                                       :action (fn [this]
+                                                                 (let [props    (comp/props this)
+                                                                       agency   (:ui.riverdb/current-agency props)
+                                                                       ag-ident [:agencylookup/uuid (:agencylookup/uuid agency)]]
+                                                                   (log/debug "Add station w/ agency" ag-ident)
+                                                                   (form/create! this StationForm {:initial-state {:stationlookup/Agency ag-ident}})))}}
    ro/control-layout      {:action-buttons [::add-station]
                            :inputs         [[:stationlookup/StationName :stationlookup/Agency]]}
-   ;ro/links               {:stationlookup/StationName
-   ;                        (fn [report-instance {:stationlookup/keys [uuid] :as props}]
-   ;                          (form/edit! report-instance DeviceForm uuid))}
    ro/initial-sort-params {:sort-by :stationlookup/StationID}
    ro/query-inclusions    [{[:ui.riverdb/current-agency '_] (comp/get-query AgencyQueryGID)}
                            [::po/options-cache '_]]})

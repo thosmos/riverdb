@@ -6,9 +6,12 @@
     [com.fulcrologic.rad.database-adapters.datomic :as datomic]
     [theta.log :as log]))
 
-(defstate automatic-resolvers
-  :start
-  (vec
-    (concat
-      (res/generate-resolvers all-attributes)
-      (datomic/generate-resolvers all-attributes :production))))
+;(defstate automatic-resolvers
+;  :start
+;  (let [all-attributes (remove #(= (:riverdb.rad.attributes/reverse-ref? %) true) all-attributes)
+;        reversers (remove #(= (:riverdb.rad.attributes/reverse-ref? %) true) all-attributes)]
+;    (log/debug "Auto Attr Resolvers" "reversers" reversers)
+;    (vec
+;      (concat
+;        (res/generate-resolvers all-attributes)
+;        (datomic/generate-resolvers all-attributes :production)))))

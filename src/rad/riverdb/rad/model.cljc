@@ -8,6 +8,8 @@
     [riverdb.rad.model.device :as device]
     [riverdb.rad.model.devicetype :as devicetype]
     [riverdb.rad.model.station :as station]
+    [riverdb.rad.model.project :as project]
+
     [com.fulcrologic.rad.attributes :as attr :refer [defattr]]
     [com.fulcrologic.rad.attributes-options :as ao]
     #?(:clj
@@ -32,6 +34,7 @@
                            device/attributes
                            devicetype/attributes
                            station/attributes
+                           project/attributes
                            [all-projects])))
 
 (def all-attribute-validator (attr/make-attribute-validator all-attributes))
@@ -40,4 +43,5 @@
                       worktime/resolvers
                       device/resolvers
                       devicetype/resolvers
-                      station/resolvers)))
+                      station/resolvers
+                      project/resolvers)))
