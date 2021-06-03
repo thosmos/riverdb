@@ -28,5 +28,5 @@
                                  (fn [{:projectslookup/keys [uuid ProjectID Name]}]
                                    {:text ProjectID :value [:projectslookup/uuid uuid]})
                                  (sort-by :agencylookup/AgencyCode options))]
-                           ;(log/debug "projectslookup PICKER OPTS" opts)
+                           (log/debug "projectslookup PICKER OPTS" opts)
                            opts))})

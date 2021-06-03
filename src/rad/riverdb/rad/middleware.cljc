@@ -65,6 +65,7 @@
 
 
 (comment
+  ;; FROM
   {[:stationlookup/uuid #uuid "5e3e50f1-5ec5-4e4c-8894-e75692f5cb97"]
    {:projectslookup/_Stations
     {:before
@@ -73,24 +74,57 @@
      :after
      [[:projectslookup/uuid #uuid "5e3e50f0-cc69-4738-92ff-9733307acb56"]
       [:projectslookup/uuid #uuid "5e3e50f0-3b3b-465a-a06a-a961bb0688a4"]
-      [:projectslookup/uuid #uuid "5e3e50f0-de49-422a-a98b-4950335c4a0a"]]}}})
+      [:projectslookup/uuid #uuid "5e3e50f0-de49-422a-a98b-4950335c4a0a"]]}}}
+  ;;TO
+  {[:stationlookup/uuid #uuid "5e3e50f1-5ec5-4e4c-8894-e75692f5cb97"]
+   {}
+   [:projectslookup/uuid #uuid "5e3e50f0-de49-422a-a98b-4950335c4a0a"]
+   {:projectslookup/Stations
+    {:before
+     [],
+     :after
+     [[:stationlookup/uuid #uuid "5e3e50f1-5ec5-4e4c-8894-e75692f5cb97"]]}}})
+
 
 (def reverse-keys {:stationlookup/uuid [:projectslookup/_Stations]})
 (def reverse-keyers (set (keys reverse-keys)))
 
 (defn reverse-many-refs [env delta]
-  (reduce-kv
-    (fn [delta k v]
-      (let [keyer? (contains? reverse-keyers k)]
-        delta))
-    delta delta)
-
-  #_(when-let [keyers (some reverse-keyers (map first (keys delta)))]
-      (reduce
-        (fn [delta keyer]
-          (let [rkeys (get reverse-keys keyer)]
-            delta))
-        delta keyers)))
+  (let [delta' (reduce-kv
+                 (fn [delta [keyer _ :as ident] fwd-diff]
+                   (if (contains? reverse-keyers keyer)
+                     (reduce
+                       (fn [delta rev-key]
+                         (let [;; get the reverse key's sub diff
+                               sub-diff (get fwd-diff rev-key)
+                               ;; remove the rev key sub-diff
+                               fwd-diff (dissoc fwd-diff rev-key)
+                               ;; if this was the entity's only diff, remove the ident from the delta (optional?)
+                               delta    (if (empty? fwd-diff)
+                                          (dissoc delta ident)
+                                          (assoc delta ident fwd-diff))
+                               ;; calc the adds and retracts using set logic
+                               before   (into #{} (:before sub-diff))
+                               after    (into #{} (:after sub-diff))
+                               retracts (clojure.set/difference before after)
+                               adds     (clojure.set/difference after before)
+                               ;; calc the forward version of the key
+                               fwd-key  (keyword (namespace rev-key) (clojure.string/replace (name rev-key) "_" ""))
+                               ;; for each add, create a delta entry with a minimal diff
+                               delta    (reduce
+                                          (fn [delta add]
+                                            (assoc-in delta [add fwd-key] {:before [] :after [ident]}))
+                                          delta adds)
+                               delta    (reduce
+                                          (fn [delta retract]
+                                            (assoc-in delta [retract fwd-key] {:before [ident] :after []}))
+                                          delta retracts)]
+                           delta))
+                       delta (get reverse-keys keyer))
+                     delta))
+                 delta delta)]
+    (log/debug "REVERSE MANY REFS" "\n\nBEFORE\n" delta "\n\nAFTER\n" delta')
+    delta'))
 
 
 (def save

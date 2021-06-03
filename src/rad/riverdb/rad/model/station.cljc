@@ -99,12 +99,24 @@
    ao/required?  false})
 
 (defattr Projects :projectslookup/_Stations :ref
-  {ao/identities #{:stationlookup/uuid}
-   ao/schema :production
-   ao/target :projectslookup/uuid
-   ao/cardinality :many
-   ao/read-only? true})
+  {ao/identities  #{:stationlookup/uuid}
+   ;; no schema for this, instead we intercept the delta and
+   ;; rewrite to a project diff in riverdb.rad.middleware
+   ;; ao/schema     :production
+   ao/target      :projectslookup/uuid
+   ao/cardinality :many})
 
+;(defn station-projects-resolver [{:keys [query-params] :as env} input]
+;  (log/debug "STATION PROJECTS RESOLVER" input query-params)
+;  [])
+
+;(defattr StationProjects :stationlookup/Projects :ref
+;  {ao/identities  #{:stationlookup/uuid}
+;   ao/target      :projectslookup/uuid
+;   ao/cardinality :many
+;   ao/pc-input    #{:stationlookup/uuid}
+;   ao/pc-output   [{:stationlookup/Projects [:projectslookup/uuid :projectslookup/ProjectID]}]
+;   ao/pc-resolve  station-projects-resolver})
 
 (pc/defresolver stationlookup-resolver [env input]
   {::pc/output [{:stationlookup/all [:stationlookup/uuid]}]}

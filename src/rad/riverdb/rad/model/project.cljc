@@ -38,9 +38,16 @@
    ao/cardinality :many
    ao/required?   false})
 
+(defattr Stations :projectslookup/Stations :ref
+  {ao/identities  #{:projectslookup/uuid}
+   ao/schema      :production
+   ao/target      :stationlookup/uuid
+   ao/cardinality :many
+   ao/required?   false})
+
 (pc/defresolver all-projects-resolver [env input]
   {::pc/output [{:projectslookup/all [:projectslookup/uuid]}]}
   #?(:clj {:projectslookup/all ((find-uuids-factory :projectslookup/uuid) env)}))
 
 (def resolvers [all-projects-resolver])
-(def attributes [uid ProjectID Name Agency Parameters])
+(def attributes [uid ProjectID Name Agency Parameters Stations])
