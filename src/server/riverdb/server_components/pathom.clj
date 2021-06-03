@@ -16,7 +16,7 @@
     [riverdb.rad.model :as model :refer [all-attributes]]
     [riverdb.rad.middleware :as middleware]
     [riverdb.server-components.config :refer [config]]
-    [riverdb.server-components.auto-resolvers :refer [automatic-resolvers]]
+    ;[riverdb.server-components.auto-resolvers :refer [automatic-resolvers]]
     [riverdb.server-components.datomic :refer [datomic-connections]]
     [riverdb.state :refer [db cx]]))
 

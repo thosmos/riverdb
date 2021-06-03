@@ -58,6 +58,5 @@
   {::pc/output [{:worktime/tasks [:text :value]}]}
   #?(:clj {:worktime/tasks (queries/get-all-worktime-tasks env query-params)}))
 
-
 (def resolvers [worktimes-resolver work-tasks-resolver])
 (def attributes [uid Person Hours Task Sitevisit Date Agency #_all-worktimes])

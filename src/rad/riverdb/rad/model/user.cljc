@@ -84,8 +84,5 @@
 ;   ao/required? true
 ;   ao/schema     :production})
 
-
-
-
 (def attributes [uid Name Agency Role Type Projects Email Password Verified? RoleID RoleLabel])
 
