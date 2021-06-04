@@ -951,9 +951,11 @@
         ;_          (debug "PROCESS LOGGER ROW" txd)]
         (update config :txds conj txd)))))
 
-(defn get-logger [{:keys [project stations] :as config}]
-  (let [station (first stations)
-        _       (debug "GET LOGGER for" station)
+(defn get-logger [{:keys [project stations station-id] :as config}]
+  (let [station (first (filter #(= station-id (:stationlookup/StationID %)) stations))
+        _       (when-not station
+                  (throw (Exception. (str "Failed to find station for station-id: " station-id))))
+        _       (debug "GET LOGGER for" station-id)
         logger  (d/q '[:find (pull ?e [*]) .
                        :in $ ?proj ?stat
                        :where
@@ -962,28 +964,48 @@
                   (db)
                   [:projectslookup/ProjectID project]
                   (:db/id station))]
-    (debug "GOT LOGGER" logger)
+    (when-not logger
+      (throw (Exception. (str "Failed to find logger for station-id: " station-id))))
+    (debug "GOT LOGGER" (:logger/name logger))
     (assoc config :logger logger)))
 
 (defn check-dupes [{:keys [logger date-column] :as config} rows]
-  (let [logger-id (:db/id logger)
-        insts     (map #(parse-date (get % date-column)) rows)
-        dupes     (not-empty
-                    (d/q '[:find [?inst ...]
-                           :in $ ?logger [?inst ...]
-                           :where
-                           [?e :logsample/inst ?inst]
-                           [?e :logsample/logger ?logger]]
-                      (db) logger-id insts))]
-    (if dupes
-      (assoc config :dupes (set dupes))
-      config)))
+  (log/debug "CHECKING DUPES")
+  (time
+    (let [logger-id (:db/id logger)
+          insts     (sort (map #(parse-date (get % date-column)) rows))
+          from      (first insts)
+          to        (last insts)
+          dupes     (not-empty
+                      (d/q '[:find [?inst ...]
+                             :in $ ?logger ?from ?to
+                             :where
+                             [(<= ?from ?inst)]
+                             [(<= ?inst ?to)]
+                             [?e :logsample/logger ?logger]
+                             [?e :logsample/inst ?inst]]
+                        (db) logger-id from to))
+          dupes     (when dupes (sort dupes))
+          _ (when dupes
+              (log/debug (format "FOUND %d DUPES" (count dupes))))
+          dupe-first (first dupes)
+          dupe-last  (last dupes)]
+      (cond-> config
+        dupes
+        (->
+          (merge
+            {:dupes-first dupe-first
+             :dupes-last  dupe-last
+             :dupes       (set dupes)}))))))
+
 
 (defn process-logger-file [config rows]
-  (reduce
-    (fn [config row]
-      (process-logger-row config row))
-    config rows))
+  (log/debug "PROCESSING LOGGER FILE")
+  (time
+    (reduce
+      (fn [config row]
+        (process-logger-row config row))
+      config rows)))
 
 
 
@@ -992,42 +1014,53 @@
                     {:keys [data] :as csv}]
   (try
     (let [filename (:filename file)
-          env      (update env :config
-                     (fn [config]
-                       (let [{:keys [date-column
-                                     station-source
-                                     station-ids
-                                     project-type]} config
-                             proj-type (:projecttype/ident project-type)]
-                         (debug "PROCESS FILE" filename "FIRST DATE" (parse-date (get (first data) date-column)))
-                         (-> config
-                           (assoc :txds [])
-                           (cond->
-                             ;; set file-based station id
-                             (= station-source "file")
-                             (assoc :station-id (get station-ids file-i))
-                             ;; get the logger
-                             (= proj-type "logger")
-                             (->
-                               (get-logger)
-                               (check-dupes data)
-                               (process-logger-file data))
-                             (= project-type "sitevisit")
-                             (process-sitevisit-file file data))))))
-          dupes    (get-in env [:config :dupes])
+          config   (:config env)
+          {:keys [date-column
+                  station-source
+                  station-ids
+                  project-type]} config
+          proj-type (:projecttype/ident project-type)
+          _ (debug "PROCESSING FILE" filename)
+          ;_ (debug "FIRST DATE" (parse-date (get (first data) date-column)))
+
+          config (time
+                   (-> config
+                     (assoc :txds [])
+                     (cond->
+                       ;; set file-based station id
+                       (= station-source "file")
+                       (assoc :station-id (get station-ids file-i))
+                       ;; get the logger
+                       (= proj-type "logger")
+                       (->
+                         (get-logger)
+                         (check-dupes data)
+                         (process-logger-file data))
+                       (= project-type "sitevisit")
+                       (process-sitevisit-file file data))))
+
+          _ (log/debug "FINISHED PROCESSING FILE")
+
+          dupes    (:dupes config)
           env      (if dupes
                      (update-in env [:res :msgs] conj (format "Skipped %d duplicates for %s" (count dupes) filename))
                      env)
-          env      (update env :res
-                     (fn [res]
-                       (let [txds (get-in env [:config :txds])]
-                         (if (seq txds)
-                           (let [tx      @(d/transact (cx) txds)
-                                 tempids (:tempids tx)
-                                 res     (update res :tempids merge tempids)
-                                 cnt     (count tempids)]
-                             (update res :msgs conj (format "Ran %d transactions for %s" cnt filename)))
-                           (update res :msgs conj "No transactions for " filename)))))]
+
+          _ (log/debug "BEGINNING DB TRANSACTIONS")
+
+          env (time
+                (update env :res
+                  (fn [res]
+                    (let [txds (:txds config)]
+                      (if (seq txds)
+                        (let [tx      @(d/transact (cx) txds)
+                              tempids (:tempids tx)
+                              ;res     (update res :tempids merge tempids)
+                              cnt     (count tempids)]
+                          (update res :msgs conj (format "Ran %d transactions for %s" cnt filename)))
+                        (update res :msgs conj "No transactions for " filename))))))
+
+          _ (log/debug "FINISHED DB TRANSACTIONS")]
       ;; return env
       env)
     (catch Exception ex
@@ -1101,7 +1134,6 @@
 
 
           config       (-> config
-                         (assoc :txds [])
                          (assoc :project-type ptype)
                          (assoc :stations stations))
 
@@ -1112,7 +1144,7 @@
                                    :msgs    []
                                    :errors  errors}})]
 
-      (debug "PROCESS UPLOADS" "# files:" (count files))
+      (debug (format "PROCESSING %d FILES" (count files)))
       (let [env (if (empty? errors)
                   (reduce
                     (fn [{:keys [file-i] :as env} {:keys [filename content-type ^File tempfile size]}]
