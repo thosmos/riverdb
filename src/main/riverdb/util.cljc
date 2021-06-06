@@ -46,6 +46,13 @@
   (let [keyfn (apply juxt ks)]
     (reduce (fn [m x] (assoc-in m (keyfn x) x)) {} coll)))
 
+(defn assoc-conj-by [k coll]
+  (reduce
+    (fn [m x]
+      (let [mk (k m)]
+        (update m mk (fnil conj []) x)))
+    {} coll))
+
 (defn with-index
   "return the sequence with an index for every element.
   For example: (with-index [:a :b :c]) returns ([0 :a] [1 :b] [2 :c]).

@@ -47,6 +47,7 @@
     [riverdb.api.mutations :as rm :refer [TxResult ui-tx-result]]
     [riverdb.ui.agency :refer [Agency]]
     [riverdb.ui.components :refer [ui-drag-drop-context ui-droppable ui-draggable ui-autosizer]]
+    [riverdb.ui.globals :as globals]
     [riverdb.ui.forms :refer [SampleTypeCodeForm]]
     [riverdb.lookup :refer [specs-map]]
     [riverdb.ui.lookup-options :refer [ui-theta-options preload-options]]
@@ -75,17 +76,18 @@
 
 (defsc ImportColumn [this {:keys [i column config] :as props} {:keys [set-config params-opts]}]
   {:query [:i :column :config]}
-  (let [{:keys [type param]} (get config i)]
+  (let [{:keys [type param field]} (get config i)]
     (dom/tr
       (dom/td (inc i))
       (dom/td (dom/b (str column)))
       (dom/td (ui-dropdown {:options  [{:key -1 :text "" :value 0}
-                                       {:key -2 :text "Result" :value "result"}
                                        {:key 1 :text "Date" :value "date"}
-                                       {:key 2 :text "Station ID" :value "station"}
+                                       {:key 5 :text "Device ID" :value "device"}
+                                       {:key 6 :text "Field" :value "field"}
                                        ;{:key 3 :text "Unit" :value "unit"}
-                                       {:key 4 :text "Device Type" :value "devType"}
-                                       {:key 5 :text "Device ID" :value "devID"}]
+                                       ;{:key 4 :text "Device Type" :value "devType"}
+                                       {:key -2 :text "Result" :value "result"}
+                                       {:key 2 :text "Station ID" :value "station"}]
                             :value    (or type 0)
                             :style    {:width "auto" :minWidth "10em"}
                             :onChange (fn [_ d]
@@ -95,17 +97,33 @@
                                               (if (= v 0)
                                                 (dissoc config i)
                                                 (assoc-in config [i :type] v))))))}))
-      (dom/td (ui-dropdown {:options  (into [{:key -1 :text "" :value 0}] params-opts)
-                            :value    (or param 0)
-                            :style    {:width "auto" :minWidth "10em"}
-                            :onChange (fn [_ d]
-                                        (when-let [v (-> d .-value)]
-                                          (when set-config
-                                            (set-config
-                                              (if (= v 0)
-                                                (update config i dissoc :param)
-                                                (assoc-in config [i :param] v))))))}))
-      #_(dom/td "")
+      (cond
+        (or (= type "result") (= type "device"))
+        (dom/td
+          (ui-dropdown {:options  (into [{:key -1 :text "" :value 0}] params-opts)
+                        :value    (or param 0)
+                        :style    {:width "auto" :minWidth "10em"}
+                        :onChange (fn [_ d]
+                                    (when-let [v (-> d .-value)]
+                                      (when set-config
+                                        (set-config
+                                          (if (= v 0)
+                                            (update config i dissoc :param)
+                                            (assoc-in config [i :param] v))))))}))
+        (= type "field")
+        (dom/td
+          (ui-dropdown {:options  (into [{:key -1 :text "" :value 0}] globals/sv-fields-opts)
+                        :value    (or field 0)
+                        :style    {:width "auto" :minWidth "10em"}
+                        :onChange (fn [_ d]
+                                    (when-let [v (-> d .-value)]
+                                      (when set-config
+                                        (set-config
+                                          (if (= v 0)
+                                            (update config i dissoc :field)
+                                            (assoc-in config [i :field] v))))))}))
+        :else
+        (dom/td ""))
       #_(dom/td (ui-dropdown {:options [{:key -1 :text "" :value -1}
                                         {:key 1 :text "°C" :value 1}
                                         {:key 2 :text "MPN/100mL" :value 2}]
@@ -128,17 +146,24 @@
 
 (defn update-config [config up-config params-map csv-cols]
   (let [param-keys (set (keys params-map))
+        field-keys (set (map name (keys globals/sv-fields)))
         {:keys [station-source station-column]} up-config]
     (loop [i 0 cols csv-cols config config]
       (let [col      (first cols)
             cfg      (get config i)
             typ      (:type cfg)
             param    (:param cfg)
-            rep?     (when (string? col) (re-find #"_\d" col))
+            field    (:field cfg)
+            field?   (contains? field-keys col)
+            devID?   (when (string? col) (clojure.string/ends-with? col "_DevID"))
+            col_dev  (when devID?
+                       (subs col 0 (clojure.string/last-index-of col "_DevID")))
+            device?  (contains? param-keys col_dev)
+            rep?     (when (string? col) (re-find #"_\d$" col))
             col_rep  (if rep?
-                       (clojure.string/replace-first col rep? "")
+                       (subs col 0 (clojure.string/last-index-of col rep?))
                        col)
-            matches? (contains? param-keys col_rep)
+            result?  (contains? param-keys col_rep)
             date?    (= (clojure.string/lower-case col) "date")
             station? (and
                        (= station-source "column")
@@ -146,16 +171,24 @@
             config   (cond-> config
                        station?
                        (assoc-in [i :type] "station")
+
                        (and
                          (not station?)
                          (= (get-in config [i :type]) "station"))
                        (update i dissoc :type)
-                       (and (not typ) (or date? matches?))
+
+                       (and (not typ) (or date? result? field? devID?))
                        (assoc-in [i :type] (cond
                                              date? "date"
-                                             matches? "result"))
-                       (and (not param) matches?)
-                       (assoc-in [i :param] col_rep))]
+                                             result? "result"
+                                             field? "field"
+                                             devID? "device"))
+
+                       (and (not field) field?)
+                       (assoc-in [i :field] col)
+
+                       (and (not param) (or device? result?))
+                       (assoc-in [i :param] (or col_dev col_rep)))]
         (if-let [cols (not-empty (rest cols))]
           (recur (inc i) cols config)
           config)))))
@@ -328,6 +361,7 @@
                         :style            {:width "auto" :minWidth "10em"}
                         :onChange         (fn [_ d]
                                             (when-let [val (. d -value)]
+                                              (fm/set-value! this :ui/config {})
                                               (fm/set-string! this :ui/project-code :value val)))}))
 
         (dom/div :.field
