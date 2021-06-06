@@ -1247,41 +1247,39 @@
 
 (defn check-logger-dupes [{:keys [logger date-column] :as config} rows]
   (log/debug "CHECKING DUPES")
-  (time
-    (let [logger-id  (:db/id logger)
-          insts      (sort (map #(parse-date (get % date-column)) rows))
-          from       (first insts)
-          to         (last insts)
-          dupes      (not-empty
-                       (d/q '[:find [?inst ...]
-                              :in $ ?logger ?from ?to
-                              :where
-                              [(<= ?from ?inst)]
-                              [(<= ?inst ?to)]
-                              [?e :logsample/logger ?logger]
-                              [?e :logsample/inst ?inst]]
-                         (db) logger-id from to))
-          dupes      (when dupes (sort dupes))
-          _          (when dupes
-                       (log/debug (format "FOUND %d DUPES" (count dupes))))
-          dupe-first (first dupes)
-          dupe-last  (last dupes)]
-      (cond-> config
-        dupes
-        (->
-          (merge
-            {:dupes-first dupe-first
-             :dupes-last  dupe-last
-             :dupes       (set dupes)}))))))
+  (let [logger-id  (:db/id logger)
+        insts      (sort (map #(parse-date (get % date-column)) rows))
+        from       (first insts)
+        to         (last insts)
+        dupes      (not-empty
+                     (d/q '[:find [?inst ...]
+                            :in $ ?logger ?from ?to
+                            :where
+                            [(<= ?from ?inst)]
+                            [(<= ?inst ?to)]
+                            [?e :logsample/logger ?logger]
+                            [?e :logsample/inst ?inst]]
+                       (db) logger-id from to))
+        dupes      (when dupes (sort dupes))
+        _          (when dupes
+                     (log/debug (format "FOUND %d DUPES" (count dupes))))
+        dupe-first (first dupes)
+        dupe-last  (last dupes)]
+    (cond-> config
+      dupes
+      (->
+        (merge
+          {:dupes-first dupe-first
+           :dupes-last  dupe-last
+           :dupes       (set dupes)})))))
 
 
 (defn process-logger-file [config rows]
   (log/debug "PROCESSING LOGGER FILE")
-  (time
-    (reduce
-      (fn [config row]
-        (process-logger-row config row))
-      config rows)))
+  (reduce
+    (fn [config row]
+      (process-logger-row config row))
+    config rows))
 
 
 
@@ -1339,7 +1337,7 @@
       ;; return env
       env)
     (catch Exception ex
-      ;(log/error "PROCESS CSV ERROR" ex)
+      (log/error "PROCESS CSV ERROR" ex)
       (update-in env [:res :errors] conj (str "PROCESS CSV ERROR: " ex " for " (:filename file))))))
 
 (defn process-uploads [{:keys [config files] :as env}]
@@ -1373,20 +1371,13 @@
                                (not (= station-column col)))
                              (assoc :station-column col)
 
-                             ;(and
-                             ;  (= proj-ident "logger")
-                             ;  (= type "result"))
-                             ;(->
-                             ;  (assoc :result-col col)
-                             ;  (assoc :param param))
-
                              (and
                                (= type "result")
                                (contains? param-ks param))
                              (assoc-in [:params col] (get params-map param))
 
-                             #_(= type "result")
-                             #_(update :result-cols (fnil conj []) col)))
+                             (= type "result")
+                             (update :result-cols (fnil conj []) col)))
                          config col-config)
 
           no-stn-col?  (or
