@@ -1,21 +1,21 @@
 (ns riverdb.api.import
   (:require
-            [clojure.core.rrb-vector :as fv]
-            [clojure-csv.core :as csv :refer [write-csv parse-csv]]
-            [clojure.edn :as edn]
-            [clojure.java.io :as io]
-            [clojure.spec.alpha :as s]
-            [clojure.tools.logging :as log :refer [debug info warn error]]
-            [clojure.string :as str]
-            [datomic.api :as d]
-            [java-time :as jt]
-            [riverdb.db :as rdb :refer [rpull pull-entities]]
-            [riverdb.state :as state :refer [db cx]]
-            [riverdb.util :refer [nest-by]]
-            [theta.util :refer [parse-bool parse-long parse-double parse-date parse-bigdec]]
-            [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
-            [thosmos.util :as tu]
-            [tick.alpha.api :as t])
+    [clojure.core.rrb-vector :as fv]
+    [clojure-csv.core :as csv :refer [write-csv parse-csv]]
+    [clojure.edn :as edn]
+    [clojure.java.io :as io]
+    [clojure.spec.alpha :as s]
+    [clojure.tools.logging :as log :refer [debug info warn error]]
+    [clojure.string :as str]
+    [datomic.api :as d]
+    [java-time :as jt]
+    [riverdb.db :as rdb :refer [rpull pull-entities]]
+    [riverdb.state :as state :refer [db cx]]
+    [riverdb.util :refer [nest-by assoc-conj-by]]
+    [theta.util :refer [parse-bool parse-long parse-double parse-date parse-bigdec]]
+    [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
+    [thosmos.util :as tu]
+    [tick.alpha.api :as t])
   (:import (java.util Date)
            (java.io Reader File)
            (org.apache.commons.io FileUtils FileExistsException)
@@ -129,6 +129,8 @@
 
 
 
+
+
 (def cols-SSI_BR
   {
    "Site"         :site-name
@@ -209,8 +211,7 @@
 (defn convert-bool [map-key coll]
   (for [c coll]
     (if-let [field (get c map-key)]
-      (let [val (parse-bool field)]
-        (assoc c map-key val))
+      (assoc c map-key (parse-bool field))
       c)))
 
 (defn read-sites-csv [site-cols filename]
@@ -350,7 +351,7 @@
    (let [tx    @(d/transact cx [{:db/id                     site-name
                                  :stationlookup/StationName site-name}
                                 {:projectslookup/ProjectID project
-                                 :projectslookup/Stations site-name}])
+                                 :projectslookup/Stations  site-name}])
          db-id (get-in tx [:tempids site-name])]
      db-id)))
 
@@ -429,25 +430,30 @@
 
 
 (defn proj-site->station-id [stations site-id]
-  (let [site-id-long (parse-long site-id)]
-    (loop [sts stations]
-      (let [{:stationlookup/keys [StationCode StationID StationIDLong]} (first sts)]
-        (if
-          (or
-            (= StationID site-id)
-            (= StationIDLong site-id-long))
-          StationCode
-          (recur (rest sts)))))))
+  ;(debug "proj-site->station-id" site-id)
+  (when (seq stations)
+    (let [site-id-long (parse-long site-id)]
+      (loop [sts stations]
+        (let [{:stationlookup/keys [StationCode StationID StationIDLong]} (first sts)]
+          ;(debug "station-id loop" site-id site-id-long "=?" StationID StationCode)
+          (if
+            (or
+              (= StationID site-id)
+              (= StationIDLong site-id-long))
+            StationCode
+            (recur (rest sts))))))))
 
 (defn proj-site-name->station-id [stations site-name]
-  (loop [sts stations]
-    (let [{:stationlookup/keys [StationCode StationID StationName]} (first sts)]
-      (if
-        (or
-          (= site-name StationName)
-          (= site-name StationID))
-        StationCode
-        (recur (rest sts))))))
+  ;(debug "proj-site-name->station-id" site-name)
+  (when (seq stations)
+    (loop [sts stations]
+      (let [{:stationlookup/keys [StationCode StationID StationName]} (first sts)]
+        (if
+          (or
+            (= site-name StationName)
+            (= site-name StationID))
+          StationCode
+          (recur (rest sts)))))))
 
 ;(defn gen-site-with-map
 ;  ([cx agency project site-map]
@@ -478,16 +484,18 @@
       (let [import-key (str import-token "-" (inc i))]
         ;(debug import-key (double (get vals i)))
         {:org.riverdb/import-key     import-key
+         :riverdb.entity/ns          :entity.ns/fieldresult
          :fieldresult/uuid           (d/squuid)
          :fieldresult/Result         (double (get vals i))
          :fieldresult/FieldReplicate (inc i)}))))
 ;:fieldresult/ConstituentRowID   constituent}))))
 ;:fieldresult/SamplingDeviceCode devType}))))
 
-(defn import-lab-result [import-token-sa constituent {:keys [value qual]}]
-  (let [res {:org.riverdb/import-key     (str import-token-sa "-1")
-             :labresult/uuid             (d/squuid)
-             :labresult/LabReplicate     1}
+(defn import-lab-result [import-token-sa {:keys [value qual]}]
+  (let [res {:org.riverdb/import-key (str import-token-sa "-1")
+             :riverdb.entity/ns      :entity.ns/labresult
+             :labresult/uuid         (d/squuid)
+             :labresult/LabReplicate 1}
         res (cond-> res
               value
               (->
@@ -585,14 +593,17 @@
 
 
 
-(defn import-samples [{:keys [agency project const-table devtype-table import-token-sv results create-devices? create-params?]}]
+(defn import-samples [{:keys [agency project import-token-sv results create-devices?]}]
+  ;(debug "IMPORT SAMPLE")
   (vec
-    (for [[k {:keys [param-name sample-count type device] :as result}] results]
-      (let [event-type    (cond
+    (for [[k {:keys [type device parameter] :as result}] results]
+      (let [param-name    (:parameter/NameShort parameter)
+            event-type    (cond
                             (= type :obs)
                             "FieldDescription"
                             :else
                             "WaterChem")
+            type          (or type :field)
             sample-type   (cond
                             (= type :obs)
                             "FieldObs"
@@ -600,44 +611,40 @@
                             "Grab"
                             :else
                             "FieldMeasure")
-            constituent   (get const-table k)
+            constituent   (get-in parameter [:parameter/Constituent :db/id])
             import-key-sa (str import-token-sv "-" (name type) "-" (name k))
-            devType       (get devtype-table k)
+            devType       (get-in parameter [:parameter/DeviceType :db/id])
             sa-result     {:org.riverdb/import-key import-key-sa
+                           :riverdb.entity/ns      :entity.ns/sample
                            :sample/uuid            (d/squuid)
                            :sample/EventType       [:eventtypelookup/EventType event-type]
                            :sample/SampleTypeCode  [:sampletypelookup/SampleTypeCode sample-type]
                            :sample/QCCheck         true
                            :sample/Constituent     constituent
                            :sample/SampleReplicate 0}
-            parameter     (get-or-create-parameter {:param-name   param-name
-                                                    :sample-count sample-count
-                                                    :project      project
-                                                    :constituent  constituent
-                                                    :devType      devType
-                                                    :sampleType   sample-type
-                                                    :create       create-params?})
-            device-id     (when device (get-or-create-device-id agency devType device create-devices?))]
-
-        (cond-> sa-result
-          (= type :field)
-          (->
-            (assoc :sample/FieldResults (import-field-results import-key-sa (:vals result)))
-            (assoc :sample/DeviceType devType)
-            (cond->
-              device-id
-              (assoc :sample/DeviceID device-id)
-              parameter
-              (assoc :sample/Parameter parameter)))
-          (= type :lab)
-          (assoc :sample/LabResults [(import-lab-result import-key-sa constituent result)]))))))
+            device-id     (when device (get-or-create-device-id agency devType device create-devices?))
+            sample        (cond-> sa-result
+                            (= type :field)
+                            (->
+                              (assoc :sample/FieldResults (import-field-results import-key-sa (:vals result)))
+                              (cond->
+                                devType
+                                (assoc :sample/DeviceType devType)
+                                device-id
+                                (assoc :sample/DeviceID device-id)
+                                parameter
+                                (assoc :sample/Parameter (:db/id parameter))))
+                            (= type :lab)
+                            (assoc :sample/LabResults [(import-lab-result import-key-sa result)]))]
+        ;(debug "SAMPLE DONE" param-name)
+        sample))))
 
 
 
 (defn import-csv-txds [db agency-code project-code filename & [{:keys [create-devices? create-params?] :as opts}]]
   (debug "import-csv-txds")
-  (let [data     (read-csv filename (get col-configs agency-code) (get param-configs agency-code))
-        project  (rpull [:projectslookup/ProjectID project-code] [:db/id :projectslookup/ParentProjectID])
+  (let [data      (read-csv filename (get col-configs agency-code) (get param-configs agency-code))
+        project   (rpull [:projectslookup/ProjectID project-code] [:db/id :projectslookup/ParentProjectID])
         {:db/keys [id] :projectslookup/keys [ParentProjectID]} project
         ;; get stations from parent or this project
         station-q [:stationlookup/StationID
@@ -747,32 +754,283 @@
                 result          [(assoc sv :sitevisit/Samples samples)]]
             result))))))
 
-(defn process-sitevisit-file [config file rows])
-
-(comment
-  (first (import-csv-txds (db) "SSI" "SSI_1" "import-resources/SSI-2019.csv"))
-  (first (import-csv-txds (db) "SSI" "SSI_BR" "import-resources/SSI_BR-2019.csv"))
-  (first (import-csv-txds (db) "WCCA" "WCCA_1" "import-resources/WCCA-2019.csv"))
-  (first (import-csv-txds (db) "SYRCL" "SYRCL_1" "import-resources/SYRCL_Bacteria.csv"))
-  (first (import-csv-txds (db) "WCCA" "WCCA_1" "import-resources/WCCA_2019_Corrected.csv"))
-  ;; server:
-  (first (import-csv-txds (db) "WCCA" "WCCA_1" "resources/WCCA-2019.csv")))
 
 
 
-(defn import-csv [cx agency project filename]
-  (println "importing " agency project filename)
-  (doseq [txd (import-csv-txds (d/db cx) agency project filename)]
-    (let [tx @(d/transact cx txd)]
-      (print ".")
-      (flush)))
-  (println "\ndone"))
+(defn parse-sitevisit-cols [sv config row]
+  sv)
 
-(comment
-  (import-csv-txds (db) "WCCA" "WCCA_1" "import-resources/WCCA-2019.csv")
-  (import-csv (cx) "WCCA" "WCCA_1" "import-resources/WCCA-2019.csv")
-  ;; server
-  (import-csv (cx) "WCCA" "WCCA_1" "resources/WCCA-2019.csv"))
+(defn parse-parameter-cols [sv {:keys [params col-config] :as config} row]
+  (let [quals (->
+                (remove #(contains? #{"" "<=" ">="} %)
+                  (d/q '[:find [?qual ...]
+                         :where
+                         [_ :resquallookup/ResQualCode ?qual]]
+                    (db)))
+                vec
+                ;; put <= and >= at the end to match after < = >
+                (conj "<=" ">="))]
+    ;_ (debug "QUALS" quals)]
+    (reduce
+      (fn [sv [col {:keys [type field] :as cfg}]]
+        (let [p        (get params col)
+              {:parameter/keys [NameShort SampleType]} p
+              samptype (:db/ident SampleType)
+
+
+              sv       (cond
+
+                         (and (= type "field"))
+                         (assoc sv field (get row col))
+
+                         (and (= type "result") p)
+                         (let [val (get row col)]
+                           (if (or (not val) (= val ""))
+                             sv
+                             (case samptype
+                               :sampletypelookup.SampleTypeCode/FieldMeasure
+                               (let [bd-val (try
+                                              (bigdec val)
+                                              (catch Exception _ val))]
+                                 (-> sv
+                                   (assoc-in [:results NameShort :parameter] p)
+                                   (update-in [:results NameShort :type] :field)
+                                   (update-in [:results NameShort :vals] (fnil conj []) bd-val)
+                                   (update-in [:results NameShort :sample-count] (fnil inc 0))))
+                               :sampletypelookup.SampleTypeCode/Grab
+                               (let [lab-val    val
+                                     lab-result {:parameter p
+                                                 :type      :lab}
+                                     qual?      (when lab-val
+                                                  (reduce
+                                                    (fn [res qual]
+                                                      (if (clojure.string/includes? lab-val qual)
+                                                        qual
+                                                        res))
+                                                    nil quals))
+
+                                     lab-val    (if qual?
+                                                  (str/replace lab-val qual? "")
+                                                  lab-val)
+
+                                     lab-val    (when (not= lab-val "")
+                                                  lab-val)
+
+                                     lab-val    (when lab-val
+                                                  (parse-bigdec lab-val))
+
+                                     lab-result (cond-> lab-result
+                                                  lab-val
+                                                  (assoc :value lab-val)
+                                                  qual?
+                                                  (assoc :qual [:resquallookup/ResQualCode qual?]))]
+                                 (assoc-in sv [:results NameShort] lab-result))
+                               (assoc-in sv [:results NameShort] (merge cfg {:error "unhandled param type"})))))
+
+                         (and (= type "device") p)
+                         (assoc-in sv [:results NameShort :device] val)
+
+                         (or (= type "date") (= type "station"))
+                         sv
+                         :else
+                         (assoc-in sv [:unhandled-cols col] cfg))]
+          sv))
+      sv (sort col-config))))
+
+
+
+(defn check-sv-dupes [config]
+  ;(debug "check-sv-dupes" (count (get-in config [:csv :data])) "rows")
+  (let [{:keys [project date-column station-source station-column station-id csv]} config
+        {:keys [data]} csv
+        st-dates (reduce
+                   (fn [st-dates row]
+                     (let [date       (parse-date (get row date-column))
+                           ;; get column-based station id
+                           station-id (if (= station-source "column")
+                                        (get row station-column)
+                                        station-id)]
+                       (conj st-dates [station-id date])))
+                   [] data)
+        dupes    (set (d/q '[:find ?stid ?date
+                             :in $ ?proj [[?stid ?date]]
+                             :where
+                             [?pj :projectslookup/ProjectID ?proj]
+                             [?pj :projectslookup/Stations ?st]
+                             (or
+                               [?st :stationlookup/StationID ?stid]
+                               [?st :stationlookup/StationName ?stid])
+                             [?e :sitevisit/SiteVisitDate ?date]
+                             [?e :sitevisit/ProjectID ?pj]
+                             [?e :sitevisit/StationID ?st]]
+                        (db) project st-dates))]
+    (if (seq dupes)
+      (let []
+        (debug (format "FOUND %d DUPES" (count dupes)))
+        (assoc config :dupes dupes))
+      config)))
+
+
+
+(defn csv->data [config filename]
+  ;(debug "csv->data")
+  (let [{:keys [csv date-column station-source
+                station-column station-id project dupes]} config
+        {:keys [data]} csv
+
+        svs (reduce
+              (fn [svs row]
+                (let [dateStr    (get row date-column)
+                      date       (parse-date dateStr)
+                      ;; set column-based station id
+                      station-id (if (= station-source "column")
+                                   (get row station-column)
+                                   station-id)
+
+                      sv         {:date       date
+                                  :dateStr    dateStr
+                                  :station-id station-id}
+
+                      ;dupes      (check-sv-dupes project station-id date)
+                      dupe?      (contains? dupes [station-id date])]
+                  ;_ (debug "DUPE" (clojure.string/join "-" [project station-id dateStr]) [station-id date])]
+
+                  (if dupe?
+                    svs
+                    (conj svs
+                      (-> sv
+                        (parse-sitevisit-cols config row)
+                        (parse-parameter-cols config row))))))
+              [] data)]
+    ;(debug "FIRST" (first svs) "SECOND" (second svs) "LAST" (last svs))
+    #_(->> svs
+        (convert-bool :QACheck))
+    svs))
+
+
+
+(defn data->txds [config data]
+  (log/debug "data->txds" (count data))
+  (let [{project-code :project
+         agency-code  :agency
+         project      :project-m
+         :keys        [create-devices?]} config
+
+        ;; get stations from this project
+        station-q [:stationlookup/StationID
+                   :stationlookup/StationIDLong
+                   :stationlookup/StationCode
+                   :stationlookup/StationName]
+        proj-id   (:db/id project)
+        stations  (d/q '[:find [(pull ?e qu) ...]
+                         :in $ qu ?pj
+                         :where
+                         [?pj :projectslookup/Stations ?e]]
+                    (db) station-q proj-id)]
+
+    (vec
+      ;; remove any that have no station
+      ; filter #(:sitevisit/StationID (first %))
+      (for [dat data]
+        (try
+          (let [{:keys [svid station-id site-name date dateStr Notes time results
+                        StreamWidth UnitStreamWidth WaterDepth UnitWaterDepth
+                        DataEntryDate DataEntryNotes DataEntryPerson QADate QACheck QAPerson]} dat
+                import-token-sv (str project-code "-" (or svid (str station-id "-" dateStr)))
+                ;_               (debug "importing sitevisit" import-token-sv)
+                SiteVisitDate   date
+                _               (when-not SiteVisitDate
+                                  (throw (Exception. (str "Missing date field for station-id " station-id))))
+
+                DataEntryDate   (parse-date DataEntryDate)
+                DataEntryPerson (parse-long DataEntryPerson)
+                QACheck         (parse-bool QACheck)
+                QADate          (parse-date QADate)
+                QAPerson        (parse-long QAPerson)
+
+                WaterDepth      (parse-bigdec WaterDepth)
+                StreamWidth     (parse-bigdec StreamWidth)
+                time            time
+                site-id-id      (when station-id (proj-site->station-id stations station-id))
+                site-id-name    (when site-name (proj-site-name->station-id stations site-name))
+                site-id         (or site-id-id site-id-name)
+
+                _               (when-not site-id
+                                  (throw (Exception. (str "Failed to find project station for station " site-id))))
+
+                ;_               (debug "BEGINNING TXD generation")
+                sv              {:org.riverdb/import-key      import-token-sv
+                                 :riverdb.entity/ns           :entity.ns/sitevisit,
+                                 :sitevisit/uuid              (d/squuid)
+                                 :sitevisit/ProjectID         [:projectslookup/ProjectID project-code]
+                                 :sitevisit/AgencyCode        [:agencylookup/AgencyCode agency-code]
+                                 :sitevisit/StationID         [:stationlookup/StationCode site-id]
+                                 :sitevisit/QACheck           true
+                                 :sitevisit/CreationTimestamp (Date.)
+                                 :sitevisit/StationFailCode   [:stationfaillookup/StationFailCode 0]
+                                 :sitevisit/VisitType         [:sitevisittype/id 1]}
+                ;_               (debug "SV" sv)
+                sv              (cond-> sv
+                                  time
+                                  (assoc :sitevisit/Time time)
+                                  SiteVisitDate
+                                  (assoc :sitevisit/SiteVisitDate SiteVisitDate)
+
+                                  Notes
+                                  (assoc :sitevisit/Notes Notes)
+
+                                  DataEntryNotes
+                                  (assoc :sitevisit/DataEntryNotes DataEntryNotes)
+                                  DataEntryDate
+                                  (assoc :sitevisit/DataEntryDate DataEntryDate)
+                                  DataEntryPerson
+                                  (assoc :sitevisit/DataEntryPerson DataEntryPerson)
+
+                                  QADate
+                                  (assoc :sitevisit/QADate QADate)
+                                  QACheck
+                                  (assoc :sitevisit/QACheck QACheck)
+                                  QAPerson
+                                  (assoc :sitevisit/QAPerson QAPerson)
+
+                                  StreamWidth
+                                  (assoc :sitevisit/StreamWidth StreamWidth)
+                                  UnitStreamWidth
+                                  (assoc :sitevisit/UnitStreamWidth UnitStreamWidth)
+                                  WaterDepth
+                                  (assoc :sitevisit/WaterDepth WaterDepth)
+                                  UnitWaterDepth
+                                  (assoc :sitevisit/UnitWaterDepth UnitWaterDepth)
+
+                                  (and StreamWidth UnitStreamWidth)
+                                  (assoc :sitevisit/WidthMeasured true)
+
+                                  (and WaterDepth UnitWaterDepth)
+                                  (assoc :sitevisit/DepthMeasured true))
+                ;_               (debug "SV pre-samples" sv)
+                samples         (import-samples
+                                  {:agency          agency-code
+                                   :project         project-code
+                                   :import-token-sv import-token-sv
+                                   :results         results
+                                   :create-devices? create-devices?})
+                sv              (assoc sv :sitevisit/Samples samples)]
+            sv)
+          (catch Exception ex
+            (log/error ex)
+            {:error "something happened"}))))))
+
+
+(defn process-sitevisit-file [config file]
+  ;(debug "process-sitevisit-file")
+  (let [filename (:filename file)
+        config   (check-sv-dupes config)
+        ;_        (debug "FIRST DUPES" (take 5 (:dupes config)))
+        data     (csv->data config filename)
+        ;_        (debug "FIRST DATA" (first data))
+        txds     (data->txds config data)]
+        ;_        (debug (count txds) "TXDS" txds)]
+    (assoc config :txds txds)))
 
 
 
@@ -793,7 +1051,11 @@
                       station-ids)
         stations    (when (seq station-ids)
                       (debug "GETTING STATIONS" (pr-str station-ids) project-code)
-                      (let [qu   [:db/id :stationlookup/StationID :stationlookup/StationCode]
+                      (let [qu   [:db/id
+                                  :stationlookup/StationID
+                                  :stationlookup/StationIDLong
+                                  :stationlookup/StationCode
+                                  :stationlookup/StationName]
                             find '[:find (pull ?e qu) .
                                    :in $ ?st ?pjc qu
                                    :where
@@ -805,50 +1067,87 @@
                           (d/q find (db) st project-code qu))))
         project     (rpull [:projectslookup/ProjectID project-code]
                       [:db/id
-                       :projectslookup/AgencyCode
-                       :projectslookup/AgencyRef
-                       :projectslookup/Name
+                       ;:projectslookup/AgencyRef
+                       ;:projectslookup/Name
                        :projectslookup/ProjectID
                        {:projectslookup/ProjectType ['*]}
-                       {:projectslookup/SampleTypes
-                        [:db/id
-                         :db/ident
-                         :sampletypelookup/Name
-                         :sampletypelookup/SampleTypeCode]}
+                       ;{:projectslookup/SampleTypes [:db/ident]}
                        :projectslookup/Stations
                        {:projectslookup/Parameters
                         [:db/id
-                         :parameter/Active
-                         :parameter/Name
                          :parameter/NameShort
-                         :parameter/Replicates
+                         ;:parameter/Replicates
                          {:parameter/Constituent
-                          [:constituentlookup/Active
-                           {:constituentlookup/AnalyteCode
-                            [:db/id
-                             :analytelookup/AnalyteCode
-                             :analytelookup/AnalyteName
-                             :analytelookup/AnalyteShort]}
-                           {:constituentlookup/MatrixCode
-                            [:db/id
-                             :matrixlookup/MatrixCode
-                             :matrixlookup/MatrixName
-                             :matrixlookup/MatrixShort]}
-                           :constituentlookup/Name
-                           {:constituentlookup/UnitCode
-                            [:db/id
-                             :unitlookup/UnitCode
-                             :unitlookup/Unit]}]}
+                          [:db/id
+                           :constituentlookup/ConstituentCode
+                           :constituentlookup/Name]}
+                         ;{:constituentlookup/AnalyteCode
+                         ; [:db/id
+                         ;  :analytelookup/AnalyteCode
+                         ;  :analytelookup/AnalyteName
+                         ;  :analytelookup/AnalyteShort]}
+                         ;{:constituentlookup/MatrixCode
+                         ; [:db/id
+                         ;  :matrixlookup/MatrixCode
+                         ;  :matrixlookup/MatrixName
+                         ;  :matrixlookup/MatrixShort]}
+                         ;{:constituentlookup/UnitCode
+                         ; [:db/id
+                         ;  :unitlookup/UnitCode
+                         ;  :unitlookup/Unit]}]}
                          {:parameter/DeviceType
                           [:db/id
                            :samplingdevicelookup/SampleDevice
                            :samplingdevicelookup/DeviceMax
                            :samplingdevicelookup/DeviceMin]}
-                         {:parameter/SampleType
+                         {:parameter/SampleType [:db/ident]}]}])
+        #_project     #_(rpull [:projectslookup/ProjectID project-code]
                           [:db/id
-                           :db/ident
-                           :sampletypelookup/Name
-                           :sampletypelookup/SampleTypeCode]}]}])]
+                           :projectslookup/AgencyCode
+                           :projectslookup/AgencyRef
+                           :projectslookup/Name
+                           :projectslookup/ProjectID
+                           {:projectslookup/ProjectType ['*]}
+                           {:projectslookup/SampleTypes
+                            [:db/id
+                             :db/ident
+                             :sampletypelookup/Name
+                             :sampletypelookup/SampleTypeCode]}
+                           :projectslookup/Stations
+                           {:projectslookup/Parameters
+                            [:db/id
+                             :parameter/Active
+                             :parameter/Name
+                             :parameter/NameShort
+                             :parameter/Replicates
+                             :parameter/ReplicatesEntry
+                             {:parameter/Constituent
+                              [:constituentlookup/Active
+                               {:constituentlookup/AnalyteCode
+                                [:db/id
+                                 :analytelookup/AnalyteCode
+                                 :analytelookup/AnalyteName
+                                 :analytelookup/AnalyteShort]}
+                               {:constituentlookup/MatrixCode
+                                [:db/id
+                                 :matrixlookup/MatrixCode
+                                 :matrixlookup/MatrixName
+                                 :matrixlookup/MatrixShort]}
+                               :constituentlookup/Name
+                               {:constituentlookup/UnitCode
+                                [:db/id
+                                 :unitlookup/UnitCode
+                                 :unitlookup/Unit]}]}
+                             {:parameter/DeviceType
+                              [:db/id
+                               :samplingdevicelookup/SampleDevice
+                               :samplingdevicelookup/DeviceMax
+                               :samplingdevicelookup/DeviceMin]}
+                             {:parameter/SampleType
+                              [:db/id
+                               :db/ident
+                               :sampletypelookup/Name
+                               :sampletypelookup/SampleTypeCode]}]}])]
     {:agency   agency
      :project  project
      :stations stations}))
@@ -860,34 +1159,11 @@
           header (if skip-line
                    (second csv)
                    (first csv))
-          ;hidx      (into {} (for [i (range (count header))]
-          ;                     [(get header i) i]))
           data   (vec
                    (if skip-line
                      (rest (rest csv))
                      (rest csv)))]
-
-      ;ncols-csv (count header)
-      ;ncols-cfg (count col-config)]
-      ;(debug "READ CSV" "\nheader:\n" header)
       {:header header :data data})))
-
-;k            :hmm
-;param-config {}
-;sample-count (get-in param-config [k :count])
-;param-name   (get-in param-config [k :name])
-;param-type   (get-in param-config [k :type] :field) ;; :field, :lab, :obs, :cont
-;device-col   (get-in param-config [k :device])])))
-
-;(defn move-file [src dest]
-;  (try
-;    (do
-;      (FileUtils/moveFile
-;        src
-;        dest)
-;      true)
-;    (catch FileExistsException _ false)
-;    (catch Exception ex (error ex) false)))
 
 (defn move-file [^File src ^File dest]
   (let [destDir (.getParentFile dest)] ;
@@ -969,25 +1245,25 @@
     (debug "GOT LOGGER" (:logger/name logger))
     (assoc config :logger logger)))
 
-(defn check-dupes [{:keys [logger date-column] :as config} rows]
+(defn check-logger-dupes [{:keys [logger date-column] :as config} rows]
   (log/debug "CHECKING DUPES")
   (time
-    (let [logger-id (:db/id logger)
-          insts     (sort (map #(parse-date (get % date-column)) rows))
-          from      (first insts)
-          to        (last insts)
-          dupes     (not-empty
-                      (d/q '[:find [?inst ...]
-                             :in $ ?logger ?from ?to
-                             :where
-                             [(<= ?from ?inst)]
-                             [(<= ?inst ?to)]
-                             [?e :logsample/logger ?logger]
-                             [?e :logsample/inst ?inst]]
-                        (db) logger-id from to))
-          dupes     (when dupes (sort dupes))
-          _ (when dupes
-              (log/debug (format "FOUND %d DUPES" (count dupes))))
+    (let [logger-id  (:db/id logger)
+          insts      (sort (map #(parse-date (get % date-column)) rows))
+          from       (first insts)
+          to         (last insts)
+          dupes      (not-empty
+                       (d/q '[:find [?inst ...]
+                              :in $ ?logger ?from ?to
+                              :where
+                              [(<= ?from ?inst)]
+                              [(<= ?inst ?to)]
+                              [?e :logsample/logger ?logger]
+                              [?e :logsample/inst ?inst]]
+                         (db) logger-id from to))
+          dupes      (when dupes (sort dupes))
+          _          (when dupes
+                       (log/debug (format "FOUND %d DUPES" (count dupes))))
           dupe-first (first dupes)
           dupe-last  (last dupes)]
       (cond-> config
@@ -1013,58 +1289,57 @@
                      :keys [file-i file]}
                     {:keys [data] :as csv}]
   (try
-    (let [filename (:filename file)
-          config   (:config env)
+    (let [filename  (:filename file)
+          config    (:config env)
           {:keys [date-column
                   station-source
                   station-ids
                   project-type]} config
           proj-type (:projecttype/ident project-type)
-          _ (debug "PROCESSING FILE" filename)
+          _         (debug "PROCESSING FILE" filename)
           ;_ (debug "FIRST DATE" (parse-date (get (first data) date-column)))
 
-          config (time
-                   (-> config
-                     (assoc :txds [])
-                     (cond->
-                       ;; set file-based station id
-                       (= station-source "file")
-                       (assoc :station-id (get station-ids file-i))
-                       ;; get the logger
-                       (= proj-type "logger")
-                       (->
-                         (get-logger)
-                         (check-dupes data)
-                         (process-logger-file data))
-                       (= project-type "sitevisit")
-                       (process-sitevisit-file file data))))
+          config    (-> config
+                      (assoc :txds [])
+                      (assoc :csv csv)
+                      (cond->
+                        ;; set file-based station id
+                        (= station-source "file")
+                        (assoc :station-id (get station-ids file-i))
+                        ;; get the logger
+                        (= proj-type "logger")
+                        (->
+                          (get-logger)
+                          (check-logger-dupes data)
+                          (process-logger-file data))
+                        (= proj-type "sitevisit")
+                        (process-sitevisit-file file)))
 
-          _ (log/debug "FINISHED PROCESSING FILE")
+          ;_         (log/debug "FINISHED PROCESSING FILE")
 
-          dupes    (:dupes config)
-          env      (if dupes
-                     (update-in env [:res :msgs] conj (format "Skipped %d duplicates for %s" (count dupes) filename))
-                     env)
+          dupes     (:dupes config)
+          env       (if (seq dupes)
+                      (update-in env [:res :msgs] conj (format "Skipped %d duplicates for %s" (count dupes) filename))
+                      env)
 
-          _ (log/debug "BEGINNING DB TRANSACTIONS")
+          ;_         (log/debug "BEGINNING DB TRANSACTIONS")
 
-          env (time
-                (update env :res
-                  (fn [res]
-                    (let [txds (:txds config)]
-                      (if (seq txds)
-                        (let [tx      @(d/transact (cx) txds)
-                              tempids (:tempids tx)
-                              ;res     (update res :tempids merge tempids)
-                              cnt     (count tempids)]
-                          (update res :msgs conj (format "Ran %d transactions for %s" cnt filename)))
-                        (update res :msgs conj "No transactions for " filename))))))
+          env       (update env :res
+                      (fn [res]
+                        (let [txds (:txds config)]
+                          (if (seq txds)
+                            (let [tx      @(d/transact (cx) txds)
+                                  tempids (:tempids tx)
+                                  ;res     (update res :tempids merge tempids)
+                                  cnt     (count txds)]
+                              (update res :msgs conj (format "Ran %d transactions for %s" cnt filename)))
+                            (update res :msgs conj "No transactions for " filename)))))]
 
-          _ (log/debug "FINISHED DB TRANSACTIONS")]
+      ;_         (log/debug "FINISHED DB TRANSACTIONS")]
       ;; return env
       env)
     (catch Exception ex
-      (log/error "PROCESS CSV ERROR" ex)
+      ;(log/error "PROCESS CSV ERROR" ex)
       (update-in env [:res :errors] conj (str "PROCESS CSV ERROR: " ex " for " (:filename file))))))
 
 (defn process-uploads [{:keys [config files] :as env}]
@@ -1075,17 +1350,18 @@
            project-m :project
            stations  :stations} (get-context config)
 
-          _            (debug "STATIONS" stations)
+          ;_            (debug "STATIONS" stations)
 
           ptype        (:projectslookup/ProjectType project-m)
-          proj-ident   (:projecttype/ident ptype)
           Parameters   (:projectslookup/Parameters project-m)
           params-map   (nest-by [:parameter/NameShort] Parameters)
           param-ks     (set (keys params-map))
+
           ;_            (debug "param-ks" param-ks "params-map" params-map)
+
           config       (reduce
-                         (fn [config [col {:keys [type param] :as col-cfg}]]
-                           (debug "(contains? param)" param (contains? param-ks param))
+                         (fn [config [col {:keys [type param rep] :as col-cfg}]]
+                           ;(debug "(contains? param)" param (contains? param-ks param))
                            (cond-> config
 
                              (= type "date")
@@ -1104,11 +1380,13 @@
                              ;  (assoc :result-col col)
                              ;  (assoc :param param))
 
-                             ;(contains? param-ks param)
-                             ;(assoc-in [:params col] (get params-map param))
+                             (and
+                               (= type "result")
+                               (contains? param-ks param))
+                             (assoc-in [:params col] (get params-map param))
 
-                             (= type "result")
-                             (update :result-cols (fnil conj []) col)))
+                             #_(= type "result")
+                             #_(update :result-cols (fnil conj []) col)))
                          config col-config)
 
           no-stn-col?  (or
@@ -1130,12 +1408,13 @@
                          no-date-col?
                          (conj "Config: Missing Date"))
 
-          _            (debug "CONFIG" config)
+          ;_            (debug "CONFIG" config)
 
 
           config       (-> config
                          (assoc :project-type ptype)
-                         (assoc :stations stations))
+                         (assoc :stations stations)
+                         (assoc :project-m project-m))
 
           env          (merge env
                          {:file-i 0

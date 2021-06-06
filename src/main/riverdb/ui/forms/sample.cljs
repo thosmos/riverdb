@@ -172,23 +172,7 @@
 
    :form-fields   #{:db/id
                     :riverdb.entity/ns
-                    :parameter/uuid
-                    :parameter/Name
-                    :parameter/Active
-                    :parameter/Constituent
-                    :parameter/DeviceType
-                    :parameter/SampleType
-                    :parameter/Color
-                    :parameter/High
-                    :parameter/Lines
-                    :parameter/Low
-                    :parameter/NameShort
-                    :parameter/Order
-                    :parameter/Replicates
-                    :parameter/ReplicatesEntry
-                    :parameter/ReplicatesElide
-                    :parameter/PrecisionCode
-                    :parameter/FieldObsType}})
+                    :parameter/uuid}})
 
 (defsc FieldObsVarForm [_ _]
   {:ident       [:org.riverdb.db.fieldobsvarlookup/gid :db/id]

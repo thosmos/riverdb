@@ -298,6 +298,9 @@
 
 (defmutation reset-form [{:keys [ident]}]
   (action [{:keys [state]}]
+    (debug "RESET FORM" ident "DIRTY" (get-in @state ident) "PRISTINE" (-> @state
+                                                                         (fs/pristine->entity* ident)
+                                                                         (get-in ident)))
     (swap! state fs/pristine->entity* ident)))
 
 (defmutation cancel-new-form! [{:keys [ident]}]

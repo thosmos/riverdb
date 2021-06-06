@@ -323,17 +323,30 @@
         qas (count (:tx-data @(add-person-ref cx :sitevisit/QAPerson :sitevisit/QAPersonRef)))]
     (log/debug "des" des "cps" cps "qas" qas)))
 
-
-(defn retract-all-sitevisits-between-dates [cx from to]
+(defn retract-all-sitevisits-between-dates [cx agency from to]
   (let [svs (d/q '[:find [?e ...]
-                   :in $ ?from ?to
+                   :in $ ?agency ?from ?to
+                   :where
+                   [(>= ?dt ?from)]
+                   [(<= ?dt ?to)]
+                   [?ag :agencylookup/AgencyCode ?agency]
+                   [?e :sitevisit/AgencyCode ?ag]
+                   [?e :sitevisit/SiteVisitDate ?dt]]
+              (db) agency from to)
+        txds (vec (for [e svs]
+                    [:db.fn/retractEntity e]))]
+    (d/transact cx txds)))
+
+(defn retract-all-sitevisits-between-dates-old [cx agency from to]
+  (let [svs (d/q '[:find [?e ...]
+                   :in $ ?agency ?from ?to
                    :where
                    [(> ?dt ?from)]
                    [(< ?dt ?to)]
                    [?ag :agencylookup/AgencyCode "SYRCL"]
                    [?e :sitevisit/AgencyCode ?ag]
                    [?e :sitevisit/SiteVisitDate ?dt]]
-              (db) from to)
+              (db) agency from to)
         sps (d/q '[:find [?e ...]
                    :in $ [?sid ...]
                    :where [?e :sample/SiteVisitID ?sid]]
@@ -356,6 +369,8 @@
         txds' (partition 100 txds)]
     (for [t txds']
       (d/transact cx (vec t)))))
+
+
 
 
 

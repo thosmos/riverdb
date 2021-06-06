@@ -837,10 +837,10 @@
                                                               :proj-ident this-ident
                                                               :on-save    on-save})])})
 
-            (div :.ui.segment {:style {:padding 10}}
-              (div :.field {}
-                (label {} "Sites")
-                (div {} "...")))
+            #_(div :.ui.segment {:style {:padding 10}}
+                (div :.field {}
+                  (label {} "Sites")
+                  (div {} "...")))
 
             (ui-cancel-save this props dirty?
               {:onSave on-save}))))
