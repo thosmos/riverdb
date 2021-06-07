@@ -99,13 +99,14 @@
       [:script {:src "/admin/workspaces/js/main.js"}]]]))
 
 (defn render-csv
-  [{:keys [params] :as req}]
+  [{:keys [params query-params] :as req}]
   (let [db (db)
-        agency (:agency params)]
-    (log/debug "RENDER CSV" req)
+        agency (:agency query-params)
+        project (:project query-params)]
+    (log/debug "RENDER CSV" query-params)
     (-> (resp/response
           (ring-io/piped-input-stream
-            #(tac/csv-all-years (io/make-writer % {}) db agency))))))
+            #(tac/csv-all-years (io/make-writer % {}) db agency project))))))
 ;(response/content-type "text/plain")
 ;(response/charset "ANSI")
 
