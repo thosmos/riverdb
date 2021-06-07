@@ -43,7 +43,8 @@
 
 (defattr Date :worktime/date :instant
   {ao/identities #{:worktime/uuid}
-   ao/schema     :production})
+   ao/schema     :production
+   ao/required?  true})
 
 (defattr Agency :worktime/agency :ref
   {ao/identities #{:worktime/uuid}

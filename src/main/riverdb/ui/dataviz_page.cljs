@@ -210,7 +210,7 @@
           (button :.pointer {:type    "submit"
                              :onClick #(do
                                          (log/debug "GET DATAVIZ ALL YEARS CSV" AgencyCode)
-                                         (set! (.. js/window -location -href) (str "/sitevisits.csv?agency=" AgencyCode)))}
+                                         (set! (.. js/window -location -href) (str "/sitevisits.csv?agency=" AgencyCode "&project=" ProjectID)))}
 
             "Download CSV for All Years")))
 

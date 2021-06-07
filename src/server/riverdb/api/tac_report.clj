@@ -768,13 +768,15 @@
 
                     ;prec-percent (if (> range 0.0) (percent-rds mean stddev) 0.0)
                     ;prec-unit    range
-                    prec-percent (if (> range 0.0)
-                                   (max (percent-dev mx mean) (percent-dev mn mean))
-                                   0.0)
-
-                    prec-unit    (if (> range 0.0)
-                                   (max (- mean mn) (- mx mean))
-                                   0.0)
+                    ;prec-percent (if (> range 0.0)
+                    ;               (max (percent-dev mx mean) (percent-dev mn mean))
+                    ;               0.0)
+                    prec-percent  0
+                    ;
+                    ;prec-unit    (if (> range 0.0)
+                    ;               (max (- mean mn) (- mx mean))
+                    ;               0.0)
+                    prec-unit    0
 
                     ;; calculate precision thresholds
                     req-percent  (get-in qapp [:params k :precision :percent])
@@ -785,35 +787,36 @@
                                    (or
                                      (get-in qapp [:params k :precision :threshold])
                                      (* (/ 100.0 req-percent) req-unit)))
-                    imprecision? (when (and qapp? (> val-count 1))
-                                   (if threshold
-                                     (if (> mean threshold)
-                                       (if
-                                         (> prec-percent req-percent)
-                                         (do
-                                           ;(println "PRECISION % " k threshold prec-percent req-percent)
-                                           true)
-                                         false)
-                                       (if
-                                         (> prec-unit req-unit)
-                                         (do
-                                           ;(println "PRECISION unit " k threshold prec-unit req-unit)
-                                           true)
-                                         false))
-                                     (cond
-                                       req-range
-                                       (> range req-range)
-                                       req-percent
-                                       (> prec-percent req-percent)
-                                       req-unit
-                                       (> prec-unit req-unit))))
+                    imprecision?  false
+                    ;imprecision? (when (and qapp? (> val-count 1))
+                    ;               (if threshold
+                    ;                 (if (> mean threshold)
+                    ;                   (if
+                    ;                     (> prec-percent req-percent)
+                    ;                     (do
+                    ;                       ;(println "PRECISION % " k threshold prec-percent req-percent)
+                    ;                       true)
+                    ;                     false)
+                    ;                   (if
+                    ;                     (> prec-unit req-unit)
+                    ;                     (do
+                    ;                       ;(println "PRECISION unit " k threshold prec-unit req-unit)
+                    ;                       true)
+                    ;                     false))
+                    ;                 (cond
+                    ;                   req-range
+                    ;                   (> range req-range)
+                    ;                   req-percent
+                    ;                   (> prec-percent req-percent)
+                    ;                   req-unit
+                    ;                   (> prec-unit req-unit))))
 
                     ;;; calculate quality exceedance
                     high         (get-in qapp [:params k :exceedance :high])
                     low          (get-in qapp [:params k :exceedance :low])
                     too-high?    (and qapp? (some? high) (> mean high))
                     too-low?     (and qapp? (some? low) (< mean low))
-                    invalid?     (and qapp? (or incomplete? imprecision?))
+                    invalid?     false #_(and qapp? (or incomplete? imprecision?))
                     exceedance?  (and qapp? (not invalid?) (or too-low? too-high?))
 
                     v            (merge v {:invalid?      invalid?
@@ -864,7 +867,7 @@
 
 (defn create-sitevisit-summaries3
   "create summary info per sitevisit"
-  [sitevisits {:keys [sampleType] :as opts}]
+  [sitevisits {:keys [sampleType project] :as opts}]
   (for [sv sitevisits]
     (try
       (let [
@@ -1242,7 +1245,7 @@
   (let [date-val   [(jt/format "YYYY-MM-dd" (time-from-instant (:date sv)))]
         head-vals  (for [p [:site :time :fork :trib]]
                      (str (get sv p)))
-        tail-vals  (for [p [:count-params-invalid :count-params-exceedance :db/id :svid :failcode :notes]]
+        tail-vals  (for [p [:count-params-exceedance :db/id :svid :failcode :notes]]
                      (str (get sv p)))
         param-vals (map str
                      (flatten
@@ -1255,9 +1258,8 @@
                                   (if (= sample-count 1)
                                     [mean device]
                                     [(get vals 0) (get vals 1) (get vals 2)
-                                     mean stddev prec
+                                     mean stddev
                                      range count device
-                                     (when invalid? "1")
                                      (when exceedance? "1")]))))))]
 
     (write-csv [(concat date-val head-vals param-vals tail-vals)] :force-quote true)))
@@ -1269,8 +1271,8 @@
    ;(println "sitevisits->csv" (map #(clojure.string/capitalize (name %)) (keys (first sitevisits))))
    (let [heads      ["Date" "Site" "Time" "Fork" "Trib"]
          body-1     ["1" "Device"]
-         body-3     ["1" "2" "3" "Mean" "StDev" "Prec" "Range" "Count" "Device" "Invalid" "Exceed"]
-         tails      ["Invalid_Total" "Exceed_Total" "ID" "SVID" "Failcode" "Notes"]
+         body-3     ["1" "2" "3" "Mean" "StDev" "Range" "Count" "Device" "Exceed"]
+         tails      ["Exceed_Total" "ID" "SVID" "Failcode" "Notes"]
          ps         (flatten
                       (for [[p-nm p] param-config]
                         (let [sample-count (:count p)
@@ -1290,13 +1292,17 @@
 
 
 (defn csv-all-years
-  ([db agency]
-   (csv-all-years *out* db agency))
-  ([^Writer writer db agency]
+  ([db agency project]
+   (csv-all-years *out* db agency project))
+  ([^Writer writer db agency project]
    (let [_            (log/info "CSV-ALL-YEARS" agency)
-         param-config (remove #(:elide? (val %)) param-config)
-         sitevisits   (get-sitevisits db {:agency agency})
-         sitevisits   (create-sitevisit-summaries3 sitevisits)
+         param-config (into []
+                        (->> param-config
+                          (remove #(:elide? (val %)))
+                          (sort-by #(get-in % [1 :order]))))
+         ;_ (debug param-config)
+         sitevisits   (get-sitevisits db {:agency agency :project project})
+         sitevisits   (create-sitevisit-summaries3 sitevisits {:project project})
          sitevisits   (filter-empty-fieldresults sitevisits)
          sitevisits   (util/sort-maps-by sitevisits [:date :site])]
      (sitevisits->csv writer sitevisits param-config))))

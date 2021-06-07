@@ -107,7 +107,9 @@
                  (fn [data [_ wt]]
                    (if (= ag-ident (:worktime/agency wt))
                      (let [hrs1 ^ty.TaggedValue (:worktime/hours wt)
-                           hrs2 (.-rep hrs1)]
+                           hrs2 (if hrs1
+                                  (.-rep hrs1)
+                                  0)]
                        (conj data [(:person/Name (get-in st (:worktime/person wt)))
                                    hrs2
                                    (:worktime/task wt)
