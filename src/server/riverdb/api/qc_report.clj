@@ -91,8 +91,6 @@
      pjis)))
 
 
-
-
 (defn get-sitevisit-years
   ([db project]
    (d/q '[:find [?year ...]
@@ -103,6 +101,7 @@
           [?e :sitevisit/SiteVisitDate ?date]
           [(riverdb.api.tac-report/year-from-instant ?date) ?year]]
      db project)))
+
 
 (def default-query
   [:db/id
@@ -156,9 +155,9 @@
        [:labresult/LabReplicate :as :replicate]
        {[:labresult/ResQualCode :as :qual]
         [[:resquallookup/ResQualCode :as :code]]}]}
-     {[:sample/FieldObsResults :as :results]
-      [[:fieldobsresult/IntResult :as :iresult]
-       [:fieldobsresult/TextResult :as :tresult]]}]}])
+     #_{[:sample/FieldObsResults :as :results]
+        [[:fieldobsresult/IntResult :as :iresult]
+         [:fieldobsresult/TextResult :as :tresult]]}]}])
 
 (defn remap-query
   [{args :args :as m}]
@@ -168,7 +167,7 @@
 ;; one graph query to pull all the data we need at once!
 (defn get-sitevisits [db {:keys [agency fromDate toDate year sampleType
                                  project station stationCode query qaCheck] :as opts}]
-  (log/debug "GET SITEVISITS" agency fromDate toDate project station)
+
   (let [fromDate (if (some? fromDate)
                    fromDate
                    (when year
@@ -177,6 +176,8 @@
                    toDate
                    (when year
                      (jt/plus fromDate (jt/years 1))))
+
+        _ (log/debug "GET SITEVISITS" agency project station year fromDate toDate)
 
         query    (or query default-query)
 
@@ -238,8 +239,7 @@
                    ;; If the `fromDate` filter was passed, do the following:
                    ;; 1. add a parameter placeholder into the query;
                    ;; 2. add an actual value to the arguments;
-                   ;; 3. add a proper condition against `?date` variable
-                   ;; (remember, it was bound above).
+                   ;; 3. add a condition against `?date` variable
                    fromDate
                    (->
                      (update :in conj '?fromDate)
@@ -528,6 +528,7 @@
                             "FieldObs"
                             matrix)
                   param-k (keyword (str matrix "_" analyte))
+
                   ;param-name (or
                   ;             (:name param)
                   ;             (let [nm (str matrix " " analyte " " unit)]
@@ -543,6 +544,66 @@
                   qual    (when (seq results)
                             (get-in (first results) [:qual :code]))
                   summary (cond-> {:param-key param-k
+                                   :param-nm  (:name param)
+                                   :type      type
+                                   :unit      unit
+                                   :matrix    matrix
+                                   :analyte   analyte
+                                   :id        (:db/id sample)}
+                            qual
+                            (assoc :qual qual)
+                            param
+                            (assoc :param param)
+                            vals
+                            (merge
+                              {:count (count vals)
+                               :vals  vals})
+                            device
+                            (assoc :device device)
+                            deviceType
+                            (assoc :deviceType deviceType)
+                            (= type "FieldObs")
+                            (#(let [{:keys [iresult tresult]} (first results)]
+                                (merge %
+                                  {:intresult  iresult
+                                   :textresult tresult}))))]
+
+              (conj init summary)))
+
+
+    [] samples))
+
+(defn summarize-samples-map
+  "summarize a vector of samples"
+  [params samples]
+  (reduce (fn [init {:keys [constituent results device deviceType type param] :as sample}]
+            (let [c       constituent
+                  analyte (or (get-in c [:analyte :short]) (get-in c [:analyte :name]))
+                  matrix  (or (get-in c [:matrix :short]) (get-in c [:matrix :name]))
+                  unit    (get-in c [:unit :name])
+                  device  (str (:name deviceType) " " (:id device))
+                  type    (:code type)
+                  matrix  (if (= type "FieldObs")
+                            "FieldObs"
+                            matrix)
+                  param-k (keyword (str matrix "_" analyte))
+
+                  ;param-name (or
+                  ;             (:name param)
+                  ;             (let [nm (str matrix " " analyte " " unit)]
+                  ;               (if deviceType
+                  ;                 (str nm " " (:name deviceType))
+                  ;                 nm)))
+                  vals    (when (seq results)
+                            (->> results
+                              (sort-by :replicate)
+                              (mapv :result)
+                              (remove nil?)
+                              vec))
+                  qual    (when (seq results)
+                            (get-in (first results) [:qual :code]))
+                  summary (cond-> {:param-key param-k
+                                   :param-nm  (:name param)
                                    :type      type
                                    :unit      unit
                                    :matrix    matrix
@@ -581,7 +642,6 @@
         (try
           (let [
                 ;; calculate sample quantity exceedance
-                param-name      (:name param)
                 param-reps      (:reps param)
                 high            (:high param)
                 low             (:low param)
@@ -737,44 +797,45 @@
 
 (defn sitevisit-summaries
   "create summary info per sitevisit"
-  [{:keys [sitevisits sampleType] :as opts}]
+  [{:keys [sitevisits sampleType project params] :as opts}]
   (debug "CREATE SV SUMMARIES" (keys opts))
-  (vec (for [sv sitevisits]
-         (try
-           (let [dt   (str (datetime/inst->local-date (:date sv)))
-                 ;_    (debug "processing SV " (get-in sv [:station :station_id]) dt)
+  (vec
+    (for [sv sitevisits]
+      (try
+        (let [;dt   (str (datetime/inst->local-date (:date sv)))
+              ;_    (debug "processing SV " (get-in sv [:station :station_id]) dt)
 
-                 ;; remap nested values to root
-                 sv   (-> sv
-                        (assoc :trib (get-in sv [:station :trib]))
-                        (assoc :fork (get-in sv [:station :river_fork]))
-                        (assoc :failcode (get-in sv [:failcode :reason]))
-                        (assoc :site (get-in sv [:station :station_id])))
+              ;; remap nested values to root
+              sv   (-> sv
+                     (assoc :trib (get-in sv [:station :trib]))
+                     (assoc :fork (get-in sv [:station :river_fork]))
+                     (assoc :failcode (get-in sv [:failcode :reason]))
+                     (assoc :site (get-in sv [:station :station_id])))
 
-                 ;; pull out samples list
-                 sas  (get-in sv [:samples])
+              ;; pull out samples list
+              sas  (get-in sv [:samples])
 
-                 sas  (if sampleType
-                        (filter #(= (get-in % [:type :code]) sampleType) sas)
-                        sas)
+              sas  (if sampleType
+                     (filter #(= (get-in % [:type :code]) sampleType) sas)
+                     sas)
 
-                 ;_    (debug "reduce Samples to param sums")
-                 sums (summarize-samples sas)
-                 sums (sample-calcs sums)
-                 ;; remove the list of samples and add the new param map
-                 sv   (-> sv
-                        (dissoc :samples)
-                        ;(assoc :fieldresults sums)
-                        (assoc :samples sums))
+              ;_    (debug "reduce Samples to param sums")
+              sums (summarize-samples sas)
+              sums (sample-calcs sums)
+              ;; remove the list of samples and add the new param map
+              sv   (-> sv
+                     (dissoc :samples)
+                     ;(assoc :fieldresults sums)
+                     (assoc :samples sums))
 
-                 ;_   (debug "count valid params")
-                 ;; count valid params
+              ;_   (debug "count valid params")
+              ;; count valid params
 
-                 sv   (sv-sample-stats sv)]
-             ;(debug "SV" sv)
+              sv   (sv-sample-stats sv)]
+          ;(debug "SV" sv)
 
-             sv)
-           (catch Exception ex (log/error ex))))))
+          sv)
+        (catch Exception ex (log/error ex))))))
 
 
 ;(defn read-csv [filename]
@@ -1052,7 +1113,7 @@
                      (get-sitevisits db {:agency agency-code :sampleType "FieldMeasure"}))
         ;_          (debug "first SV" (first sitevisits))
         ;sitevisits (filter-sitevisits sitevisits)
-        sitevisits (sitevisit-summaries {:sitevisits sitevisits :sampleType "FieldMeasure"})
+        sitevisits (sitevisit-summaries {:sitevisits sitevisits :sampleType "FieldMeasure" :project project})
         ;_          (println "report reducer" (first sitevisits))
         ;param-keys (reduce #(apply conj %1 (map first (get-in %2 [:fieldresults]))) #{} sitevisits)
         report     (report-reducer db sitevisits)
@@ -1076,6 +1137,51 @@
              (empty? (:samples %))
              (= (:failcode %) "None")) svs))
 
+(def type-order
+  {:sampletypelookup.SampleTypeCode/FieldMeasure 1
+   :sampletypelookup.SampleTypeCode/Grab 2
+   :sampletypelookup.SampleTypeCode/FieldObs 3})
+
+(defn compare-param [x y]
+  (compare
+    [(get type-order (get-in x [:parameter/SampleType :db/ident])) (:parameter/Order x)]
+    [(get type-order (get-in y [:parameter/SampleType :db/ident])) (:parameter/Order y)]))
+
+(defn get-datatable-report
+  [db {project-code :project :keys [agency year]}]
+  (try
+    (let [_            (log/debug "GET DATATABLE" year project-code)
+          year         (if (= year "") nil (Long/parseLong year))
+
+          sitevisits   (get-sitevisits db {:project project-code :year year})
+          ;_            (debug "sitevisits" (count svs))
+          ;svs          (create-sitevisit-summaries3 svs)
+          project      (rpull
+                         [:projectslookup/ProjectID project-code]
+                         '[* {:projectslookup/Parameters
+                              [* {:parameter/SampleType [*]}]}])
+          {:projectslookup/keys [Name Parameters]} project
+          params       (remove
+                         #(= (get-in % [:parameter/SampleType :db/ident])
+                            :sampletypelookup.SampleTypeCode/FieldObs)
+                         Parameters)
+          params       (sort compare-param params)
+          _ (debug "PARAMS" (mapv :parameter/NameShort params))
+          sitevisits   (sitevisit-summaries {:sitevisits sitevisits :params params})
+          ;_            (debug "sitevisits filtered" (count svs))
+          ;svs          (filter-empty-fieldresults svs)
+          ;_            (debug "sitevisits summaries" (count svs))
+          sitevisits   (sort-by :date sitevisits)
+          _            (debug "sitevisits first" (first sitevisits))
+          ;_            (debug "sitevisits last" (last svs))
+          result       {:results        sitevisits
+                        :params            params
+                        ;:precReqs qapp-requirements
+                        :reportYear       year
+                        :agency            agency
+                        :projectName           Name}]
+      result)
+    (catch Exception ex (log/error "DATATABLE ERROR" (.getMessage ex)))))
 
 ;(defn get-dataviz-data
 ;  [db agency project year]

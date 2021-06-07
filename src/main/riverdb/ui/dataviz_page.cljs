@@ -25,7 +25,6 @@
          p-nm)))
 
 
-
 (defn dataviz-headers [param-cfg]
   (let [heads [(th {:key 1} "Date")
                (th {:key 2} "Site")
