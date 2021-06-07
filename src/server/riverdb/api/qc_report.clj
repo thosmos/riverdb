@@ -573,65 +573,6 @@
 
     [] samples))
 
-(defn summarize-samples-map
-  "summarize a vector of samples"
-  [params samples]
-  (reduce (fn [init {:keys [constituent results device deviceType type param] :as sample}]
-            (let [c       constituent
-                  analyte (or (get-in c [:analyte :short]) (get-in c [:analyte :name]))
-                  matrix  (or (get-in c [:matrix :short]) (get-in c [:matrix :name]))
-                  unit    (get-in c [:unit :name])
-                  device  (str (:name deviceType) " " (:id device))
-                  type    (:code type)
-                  matrix  (if (= type "FieldObs")
-                            "FieldObs"
-                            matrix)
-                  param-k (keyword (str matrix "_" analyte))
-
-                  ;param-name (or
-                  ;             (:name param)
-                  ;             (let [nm (str matrix " " analyte " " unit)]
-                  ;               (if deviceType
-                  ;                 (str nm " " (:name deviceType))
-                  ;                 nm)))
-                  vals    (when (seq results)
-                            (->> results
-                              (sort-by :replicate)
-                              (mapv :result)
-                              (remove nil?)
-                              vec))
-                  qual    (when (seq results)
-                            (get-in (first results) [:qual :code]))
-                  summary (cond-> {:param-key param-k
-                                   :param-nm  (:name param)
-                                   :type      type
-                                   :unit      unit
-                                   :matrix    matrix
-                                   :analyte   analyte
-                                   :id        (:db/id sample)}
-                            qual
-                            (assoc :qual qual)
-                            param
-                            (assoc :param param)
-                            vals
-                            (merge
-                              {:count (count vals)
-                               :vals  vals})
-                            device
-                            (assoc :device device)
-                            deviceType
-                            (assoc :deviceType deviceType)
-                            (= type "FieldObs")
-                            (#(let [{:keys [iresult tresult]} (first results)]
-                                (merge %
-                                  {:intresult  iresult
-                                   :textresult tresult}))))]
-
-              (conj init summary)))
-
-
-    [] samples))
-
 (defn sample-calcs
   "calculate stuff for each sample summary"
   [sums]
@@ -797,7 +738,7 @@
 
 (defn sitevisit-summaries
   "create summary info per sitevisit"
-  [{:keys [sitevisits sampleType project params] :as opts}]
+  [{:keys [sitevisits sampleType project params params-map] :as opts}]
   (debug "CREATE SV SUMMARIES" (keys opts))
   (vec
     (for [sv sitevisits]
@@ -832,6 +773,57 @@
               ;; count valid params
 
               sv   (sv-sample-stats sv)]
+          ;(debug "SV" sv)
+
+          sv)
+        (catch Exception ex (log/error ex))))))
+
+
+(defn sitevisit-summaries2
+  "create summary info per sitevisit"
+  [{:keys [sitevisits sampleType project params params-map] :as opts}]
+  (debug "CREATE SV SUMMARIES" (keys opts))
+  (vec
+    (for [sv sitevisits]
+      (try
+        (let [;dt   (str (datetime/inst->local-date (:date sv)))
+              ;_    (debug "processing SV " (get-in sv [:station :station_id]) dt)
+
+              ;; remap nested values to root
+              sv   (-> sv
+                     (assoc :trib (get-in sv [:station :trib]))
+                     (assoc :fork (get-in sv [:station :river_fork]))
+                     (assoc :failcode (get-in sv [:failcode :reason]))
+                     (assoc :site (get-in sv [:station :station_id])))
+
+              ;; pull out samples list
+              sas  (get-in sv [:samples])
+
+              sas  (if sampleType
+                     (filter #(= (get-in % [:type :code]) sampleType) sas)
+                     sas)
+
+              ;_    (debug "reduce Samples to param sums")
+              sums (summarize-samples {:samples sas :params params :params-map params-map})
+              sums (sample-calcs sums)
+              ;; remove the list of samples and add the new param map
+              sv   (-> sv
+                     (dissoc :samples)
+                     ;(assoc :fieldresults sums)
+                     (assoc :samples sums))
+
+              ;_   (debug "count valid params")
+              ;; count valid params
+
+              sv   (sv-sample-stats sv)
+
+
+              sas (:samples sv)
+              sas-map (reduce
+                        (fn [sas sa]
+                          (let [p (:param sa)]))
+
+                        {} sas)]
           ;(debug "SV" sv)
 
           sv)
@@ -1113,7 +1105,7 @@
                      (get-sitevisits db {:agency agency-code :sampleType "FieldMeasure"}))
         ;_          (debug "first SV" (first sitevisits))
         ;sitevisits (filter-sitevisits sitevisits)
-        sitevisits (sitevisit-summaries {:sitevisits sitevisits :sampleType "FieldMeasure" :project project})
+        sitevisits (sitevisit-summaries {:sitevisits sitevisits :sampleType "FieldMeasure"})
         ;_          (println "report reducer" (first sitevisits))
         ;param-keys (reduce #(apply conj %1 (map first (get-in %2 [:fieldresults]))) #{} sitevisits)
         report     (report-reducer db sitevisits)
@@ -1166,8 +1158,9 @@
                             :sampletypelookup.SampleTypeCode/FieldObs)
                          Parameters)
           params       (sort compare-param params)
-          _ (debug "PARAMS" (mapv :parameter/NameShort params))
-          sitevisits   (sitevisit-summaries {:sitevisits sitevisits :params params})
+          params-map   (riverdb.util/assoc-conj-by :parameter/NameShort params)
+          _            (debug "PARAMS" (keys params-map))
+          sitevisits   (sitevisit-summaries2 {:sitevisits sitevisits :params params :params-map params-map})
           ;_            (debug "sitevisits filtered" (count svs))
           ;svs          (filter-empty-fieldresults svs)
           ;_            (debug "sitevisits summaries" (count svs))
