@@ -40,6 +40,13 @@
        (for [eid eids]
          [:db/retract eid attr val])))))
 
+(defn eids->retract-entity
+  ([eids]
+   (d/transact (cx)
+     (vec
+       (for [eid eids]
+         [:db.fn/retractEntity eid])))))
+
 (defn eid-attr->val [eid attr]
   (d/q '[:find ?v .
          :in $ ?e ?a
