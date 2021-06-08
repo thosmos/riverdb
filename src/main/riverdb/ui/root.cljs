@@ -38,6 +38,7 @@
     [riverdb.ui.dataviz-page :refer [DataVizPage]]
     [riverdb.ui.components :refer [ui-treeview]]
     [riverdb.ui.globals :refer [DBIdents Globals]]
+    [riverdb.ui.reports.datatable-page :refer [DataTablePage]]
     [riverdb.ui.routes]
     [riverdb.ui.lookup-options :refer [ui-theta-options preload-options]]
     [riverdb.ui.projects :refer [Projects ui-projects]]
@@ -267,7 +268,7 @@
   {:router-targets        [Main Signup SignupSuccess ThetaRoot Projects TacReportPage
                            DataVizPage SiteVisitsPage UploadPage PersonForm PersonList
                            UserList UserForm WorkTimeList WorkTimeForm DeviceList DeviceForm
-                           StationList StationForm]
+                           StationList StationForm DataTablePage]
    :shouldComponentUpdate (fn [_ _ _] true)})
 (def ui-top-router (comp/factory TopRouter))
 
@@ -344,7 +345,8 @@
               (ui-dropdown-menu {}
                 (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this TacReportPage {}))} "QC Report")
 
-                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this DataVizPage {}))} "Data Table")))
+                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this DataVizPage {}))} "Data Table")
+                (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this DataTablePage {}))} "Data Table 2")))
             (when admin?
               (ui-dropdown {:className "item" :text "Admin"}
                 (ui-dropdown-menu {}

@@ -48,3 +48,25 @@ padding: .2em 1em;
 .ui.table thead th {
 padding: 0.1em;
 }
+
+#dataviz .cell-bold-left {
+  border-left-style: solid;
+  border-left-width: 1px;
+}
+
+#dataviz .cell-bold-right {
+  border-right-style: solid;
+  border-right-width: 1px;
+}
+
+#dataviz tr.warning td.exceedance {
+  background-color: #f2dede;
+}
+
+#dataviz tr.warning td.imprecise {
+  background-color: #d9edf7;
+}
+
+#dataviz tr.warning td.incomplete {
+    background-color: #d9edf7;
+}
