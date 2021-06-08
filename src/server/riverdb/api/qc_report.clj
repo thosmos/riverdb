@@ -177,7 +177,7 @@
                    (when year
                      (jt/plus fromDate (jt/years 1))))
 
-        _ (log/debug "GET SITEVISITS" agency project station year fromDate toDate)
+        _        (log/debug "GET SITEVISITS" agency project station year fromDate toDate)
 
         query    (or query default-query)
 
@@ -617,8 +617,8 @@
 
               :else
               (let [scale          (or (:scale deviceType) (get-scale vals))
-                    _ (when (nil? scale)
-                        (debug "SCALE IS NIL" sum))
+                    _              (when (nil? scale)
+                                     (debug "SCALE IS NIL" sum))
 
                     ;; calculate
                     bigcalcs       (calc3 scale vals)
@@ -685,18 +685,18 @@
                     too-low?       (and (some? low) (< mean low))
                     exceedance?    (and (not incomplete?) (or too-low? too-high?))
 
-                    sum            (merge sum {:incomplete?    incomplete?
-                                               :is_incomplete  incomplete?
-                                               :is_valid       (not incomplete?)
-                                               :exceedance?    exceedance?
-                                               :is_exceedance  exceedance?
-                                               :imprecise?     imprecision?
-                                               :is_imprecise   imprecision?
-                                               :count          val-count
-                                               :mean           (str mean)
-                                               :vals           vals
-                                               :max            (str max)
-                                               :min            (str min)})
+                    sum            (merge sum {:incomplete?   incomplete?
+                                               :is_incomplete incomplete?
+                                               :is_valid      (not incomplete?)
+                                               :exceedance?   exceedance?
+                                               :is_exceedance exceedance?
+                                               :imprecise?    imprecision?
+                                               :is_imprecise  imprecision?
+                                               :count         val-count
+                                               :mean          (str mean)
+                                               :vals          vals
+                                               :max           (str max)
+                                               :min           (str min)})
 
                     sum            (cond-> sum
                                      exceedance?
@@ -735,10 +735,26 @@
         sv      (assoc sv :exceedance? (some? (:count-params-exceedance sv)))]
     sv))
 
+(def qapp-param-ks
+  #{:H2O_Temp :H2O_pH :H2O_DO :H2O_Cond :H2O_Turb :H2O_NO3 :H2O_PO4})
+
+(defn sample-stats [samples]
+  (reduce
+    (fn [stats sample]
+      (cond-> stats
+        ;; only increment :incomplete when it's a QAPP param
+        (and
+          (:incomplete? sample)
+          (contains? qapp-param-ks (:param-key sample)))
+        (update :incomplete? inc!)
+        (:exceedance? sample)
+        (update :exceedance? inc!)))
+    {} samples))
+
 
 (defn sitevisit-summaries
   "create summary info per sitevisit"
-  [{:keys [sitevisits sampleType project params params-map] :as opts}]
+  [{:keys [sitevisits sampleType] :as opts}]
   (debug "CREATE SV SUMMARIES" (keys opts))
   (vec
     (for [sv sitevisits]
@@ -778,11 +794,20 @@
           sv)
         (catch Exception ex (log/error ex))))))
 
+(defn samples->map [p-list samples]
+  (reduce
+    (fn [out sa]
+      (let [sa-p   (get-in sa [:param :name])
+            match? (contains? (set p-list) sa-p)]
+        (if match?
+          (assoc out sa-p sa)
+          out)))
+    {} samples))
 
 (defn sitevisit-summaries2
   "create summary info per sitevisit"
-  [{:keys [sitevisits sampleType project params params-map] :as opts}]
-  (debug "CREATE SV SUMMARIES" (keys opts))
+  [{:keys [sitevisits sampleType project params-list params-map] :as opts}]
+  ;(debug "CREATE SV SUMMARIES" (keys opts))
   (vec
     (for [sv sitevisits]
       (try
@@ -790,41 +815,32 @@
               ;_    (debug "processing SV " (get-in sv [:station :station_id]) dt)
 
               ;; remap nested values to root
-              sv   (-> sv
-                     (assoc :trib (get-in sv [:station :trib]))
-                     (assoc :fork (get-in sv [:station :river_fork]))
-                     (assoc :failcode (get-in sv [:failcode :reason]))
-                     (assoc :site (get-in sv [:station :station_id])))
+              sv      (-> sv
+                        (assoc :trib (get-in sv [:station :trib]))
+                        (assoc :fork (get-in sv [:station :river_fork]))
+                        (assoc :failcode (get-in sv [:failcode :reason]))
+                        (assoc :site (get-in sv [:station :station_id])))
 
               ;; pull out samples list
-              sas  (get-in sv [:samples])
+              sas     (get-in sv [:samples])
 
-              sas  (if sampleType
-                     (filter #(= (get-in % [:type :code]) sampleType) sas)
-                     sas)
+              ;_       (debug "FIRST SAMPLE OF " (count sas) (first sas))
+
+              sas     (if sampleType
+                        (filter #(= (get-in % [:type :code]) sampleType) sas)
+                        sas)
 
               ;_    (debug "reduce Samples to param sums")
-              sums (summarize-samples {:samples sas :params params :params-map params-map})
-              sums (sample-calcs sums)
-              ;; remove the list of samples and add the new param map
-              sv   (-> sv
-                     (dissoc :samples)
-                     ;(assoc :fieldresults sums)
-                     (assoc :samples sums))
+              sums    (summarize-samples sas)
+              sums    (sample-calcs sums)
+              stats   (sample-stats sums)
 
-              ;_   (debug "count valid params")
-              ;; count valid params
+              sas-map (samples->map params-list sums)
 
-              sv   (sv-sample-stats sv)
-
-
-              sas (:samples sv)
-              sas-map (reduce
-                        (fn [sas sa]
-                          (let [p (:param sa)]))
-
-                        {} sas)]
-          ;(debug "SV" sv)
+              sv      (-> sv
+                        (merge stats)
+                        (dissoc :samples)
+                        (assoc :samples sas-map))]
 
           sv)
         (catch Exception ex (log/error ex))))))
@@ -1131,8 +1147,8 @@
 
 (def type-order
   {:sampletypelookup.SampleTypeCode/FieldMeasure 1
-   :sampletypelookup.SampleTypeCode/Grab 2
-   :sampletypelookup.SampleTypeCode/FieldObs 3})
+   :sampletypelookup.SampleTypeCode/Grab         2
+   :sampletypelookup.SampleTypeCode/FieldObs     3})
 
 (defn compare-param [x y]
   (compare
@@ -1142,149 +1158,42 @@
 (defn get-datatable-report
   [db {project-code :project :keys [agency year]}]
   (try
-    (let [_            (log/debug "GET DATATABLE" year project-code)
-          year         (if (= year "") nil (Long/parseLong year))
+    (let [_           (log/debug "GET DATATABLE" year project-code)
+          year        (if (= year "") nil (Long/parseLong year))
 
-          sitevisits   (get-sitevisits db {:project project-code :year year})
+          sitevisits  (get-sitevisits db {:project project-code :year year})
           ;_            (debug "sitevisits" (count svs))
           ;svs          (create-sitevisit-summaries3 svs)
-          project      (rpull
-                         [:projectslookup/ProjectID project-code]
-                         '[* {:projectslookup/Parameters
-                              [* {:parameter/SampleType [*]}]}])
+          project     (rpull
+                        [:projectslookup/ProjectID project-code]
+                        '[* {:projectslookup/Parameters
+                             [* {:parameter/SampleType [:db/ident :sampletypelookup/SampleTypeCode]}]}])
           {:projectslookup/keys [Name Parameters]} project
-          params       (remove
-                         #(= (get-in % [:parameter/SampleType :db/ident])
-                            :sampletypelookup.SampleTypeCode/FieldObs)
-                         Parameters)
-          params       (sort compare-param params)
-          params-map   (riverdb.util/assoc-conj-by :parameter/NameShort params)
-          _            (debug "PARAMS" (keys params-map))
-          sitevisits   (sitevisit-summaries2 {:sitevisits sitevisits :params params :params-map params-map})
+          params      (remove
+                        #(or
+                           (not= true (:parameter/Active %))
+                           (= (get-in % [:parameter/SampleType :db/ident])
+                             :sampletypelookup.SampleTypeCode/FieldObs))
+                        Parameters)
+          params      (sort compare-param params)
+          params-list (mapv :parameter/NameShort params)
+          params-map  (riverdb.util/nest-by [:parameter/NameShort] params)
+          ;_           (debug "PARAMS" params-list)
+          sitevisits  (sitevisit-summaries2 {:sitevisits sitevisits :params-list params-list :params-map params-map})
           ;_            (debug "sitevisits filtered" (count svs))
           ;svs          (filter-empty-fieldresults svs)
           ;_            (debug "sitevisits summaries" (count svs))
-          sitevisits   (sort-by :date sitevisits)
-          _            (debug "sitevisits first" (first sitevisits))
+          sitevisits  (sort-by :date sitevisits)
+          ;_           (debug "sitevisits first" (first sitevisits))
           ;_            (debug "sitevisits last" (last svs))
-          result       {:results        sitevisits
-                        :params            params
-                        ;:precReqs qapp-requirements
-                        :reportYear       year
-                        :agency            agency
-                        :projectName           Name}]
+          result      {:results     sitevisits
+                       ;:params            params
+                       :params-list params-list
+                       :params-map  params-map
+                       ;:precReqs qapp-requirements
+                       :reportYear  year
+                       :agency      agency
+                       :projectName Name}]
       result)
     (catch Exception ex (log/error "DATATABLE ERROR" (.getMessage ex)))))
-
-;(defn get-dataviz-data
-;  [db agency project year]
-;  (try
-;    (let [;_            (log/info "GET-DATAVIZ!" year project)
-;          year         (if (= year "") nil (Long/parseLong year))
-;          ;_            (check ::report-year year)
-;          param-config (into {} (remove #(:elide? (val %)) param-config))
-;          svs          (get-sitevisits db {:project project :year year})
-;          ;_            (debug "sitevisits" (count svs))
-;          svs          (create-sitevisit-summaries3 svs)
-;          ;_            (debug "sitevisits filtered" (count svs))
-;          svs          (filter-empty-fieldresults svs)
-;          ;_            (debug "sitevisits summaries" (count svs))
-;          svs          (sort-by :date svs)
-;          ;_            (debug "sitevisits first" (first svs))
-;          ;_            (debug "sitevisits last" (last svs))
-;          result       {:results-rs        svs
-;                        :param-config      param-config
-;                        :qapp-requirements qapp-requirements
-;                        :report-year       year
-;                        :agency            agency
-;                        :project           (get-project-name db project)}]
-;      result)
-;    (catch Exception ex (log/error "DATAVIZ ERROR" (.getMessage ex)))))
-
-;(defn get-annual-report-csv [filename]
-;  ;{:pre [true (check ::report-year year)]}
-;  (let [_      (log/info "BEGINNING CSV TAC REPORT")
-;        svs    (csv-sitevisit-summaries filename)
-;        report (report-reducer nil svs)
-;        report (report-stats report)
-;        report (-> report
-;                 (assoc :report-year nil)
-;                 (assoc :qapp-requirements qapp-requirements)
-;                 (assoc :param-config param-config))
-;        _      (log/info "CSV TAC REPORT COMPLETE")]
-;    report))
-
-
-
-;(defn sitevisit->csv [sv param-config]
-;  (let [date-val   [(jt/format "YYYY-MM-dd" (time-from-instant (:date sv)))]
-;        head-vals  (for [p [:site :time :fork :trib]]
-;                     (str (get sv p)))
-;        tail-vals  (for [p [:count-params-invalid :count-params-exceedance :db/id :svid :failcode :notes]]
-;                     (str (get sv p)))
-;        param-vals (map str
-;                     (flatten
-;                       (doall (for [[p-name p] param-config]
-;                                (let [rs           (get-in sv [:fieldresults p-name])
-;                                      vals         (:vals rs)
-;                                      no-vals?     (not vals)
-;                                      sample-count (:count p)
-;                                      {:keys [mean stddev prec range count device invalid? exceedance? incomplete? too-low? too-high? imprecise?]} rs]
-;                                  (if (= sample-count 1)
-;                                    [mean device]
-;                                    [(get vals 0) (get vals 1) (get vals 2)
-;                                     mean stddev prec
-;                                     range count device
-;                                     (when invalid? "1")
-;                                     (when exceedance? "1")]))))))]
-;
-;    (write-csv [(concat date-val head-vals param-vals tail-vals)] :force-quote true)))
-
-;(defn sitevisits->csv
-;  ([svs p-cfg]
-;   (sitevisits->csv *out* svs p-cfg))
-;  ([^Writer writer sitevisits param-config]
-;   ;(println "sitevisits->csv" (map #(clojure.string/capitalize (name %)) (keys (first sitevisits))))
-;   (let [heads      ["Date" "Site" "Time" "Fork" "Trib"]
-;         body-1     ["1" "Device"]
-;         body-3     ["1" "2" "3" "Mean" "StDev" "Prec" "Range" "Count" "Device" "Invalid" "Exceed"]
-;         tails      ["Invalid_Total" "Exceed_Total" "ID" "SVID" "Failcode" "Notes"]
-;         ps         (flatten
-;                      (for [[p-nm p] param-config]
-;                        (let [sample-count (:count p)
-;                              fields       (if (= sample-count 1)
-;                                             body-1
-;                                             body-3)]
-;                          (for [field fields]
-;                            (let [name (str (:name p) "_" field)]
-;                              name)))))
-;         head-coll  [(concat heads ps tails)]
-;         csv-header (write-csv head-coll)]
-;
-;     (.write writer csv-header)
-;     (doseq [sv sitevisits]
-;       (.write writer (sitevisit->csv sv param-config)))
-;     (.flush writer))))
-
-
-;(defn csv-all-years
-;  ([db agency]
-;   (csv-all-years *out* db agency))
-;  ([^Writer writer db agency]
-;   (let [_            (log/info "CSV-ALL-YEARS" agency)
-;         param-config (remove #(:elide? (val %)) param-config)
-;         sitevisits   (get-sitevisits db {:agency agency})
-;         sitevisits   (create-sitevisit-summaries3 sitevisits)
-;         sitevisits   (filter-empty-fieldresults sitevisits)
-;         sitevisits   (util/sort-maps-by sitevisits [:date :site])]
-;     (sitevisits->csv writer sitevisits param-config))))
-
-
-;(defn get-sitevisit-summaries3 [db opts]
-;  ;(debug "get-sitevisit-summaries opts: " opts)
-;  (let [sitevisits (get-sitevisits3 db opts)
-;        sitevisits (create-sitevisit-summaries3 sitevisits)
-;        sitevisits (filter-empty-fieldresults sitevisits)
-;        sitevisits (util/sort-maps-by sitevisits [:date :site])]
-;    sitevisits))
 
