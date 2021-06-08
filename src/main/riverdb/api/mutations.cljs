@@ -252,13 +252,6 @@
   (action [_]
     (debug "NOP just to refresh the current component")))
 
-(defmutation process-dataviz-data
-  [p]
-  (action [{:keys [state]}]
-    (do
-      (debug "PROCESS DATAVIZ DATA")
-      (swap! state update-in [:dataviz-data :results-rs] sort-maps-by [:date :site]))))
-
 (defmutation update-report-year [p]
   (action [{:keys [state]}]
     (let [year (:year p)

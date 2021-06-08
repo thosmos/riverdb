@@ -467,6 +467,13 @@
     (log/info "QUERY :dataviz-data" params (count result))
     {:dataviz-data result}))
 
+(defresolver datatable-report [env _]
+  {::pc/output [:datatable-report]}
+  (let [params (-> env :ast :params)
+        result (qc/get-datatable-report (db) params)]
+    (log/info "QUERY :datatable-report" params (count result))
+    {:datatable-report result}))
+
 (defresolver tac-report-data [env _]
   {::pc/output [:tac-report-data]}
   (let [params (-> env :ast :params)]
@@ -548,4 +555,4 @@
   {::pc/output [:test-meta]}
   {:test-meta (with-meta {:some :data} {:some :meta})})
 
-(def resolvers [globals db-ident db-idents meta-entities meta-global-attrs agencylookup-resolver agency-project-years tac-report-data dataviz-data meta-resolvers index-explorer test-meta all-people-resolver uuid-resolvers])
+(def resolvers [globals db-ident db-idents meta-entities meta-global-attrs agencylookup-resolver agency-project-years tac-report-data dataviz-data meta-resolvers index-explorer test-meta all-people-resolver uuid-resolvers datatable-report])

@@ -367,7 +367,7 @@
   "parses a station-id string into a double, multiplies by 100, and returns a long"
   (long (* 100 (Double/parseDouble (re-find #"\d+\.\d+|\d+" station-str)))))
 
-(defn site->txd [agency project {:keys [site-id site-name subbasin years descript lat lon active]} & [{active-override :active}]]
+(defn site->txd [agency project {:keys [site-id site-name subbasin years descript lat lon active]} [& {active-override :active}]]
   (let [station_code (str project "_" site-id)
         txd          {:db/id                     station_code
                       :stationlookup/StationCode station_code
@@ -624,6 +624,8 @@
                            :sample/SampleReplicate 0}
             device-id     (when device (get-or-create-device-id agency devType device create-devices?))
             sample        (cond-> sa-result
+                            parameter
+                            (assoc :sample/Parameter (:db/id parameter))
                             (= type :field)
                             (->
                               (assoc :sample/FieldResults (import-field-results import-key-sa (:vals result)))
@@ -631,9 +633,7 @@
                                 devType
                                 (assoc :sample/DeviceType devType)
                                 device-id
-                                (assoc :sample/DeviceID device-id)
-                                parameter
-                                (assoc :sample/Parameter (:db/id parameter))))
+                                (assoc :sample/DeviceID device-id)))
                             (= type :lab)
                             (assoc :sample/LabResults [(import-lab-result import-key-sa result)]))]
         ;(debug "SAMPLE DONE" param-name)
@@ -641,7 +641,7 @@
 
 
 
-(defn import-csv-txds [db agency-code project-code filename & [{:keys [create-devices? create-params?] :as opts}]]
+(defn import-csv-txds [db agency-code project-code filename [& {:keys [create-devices? create-params?] :as opts}]]
   (debug "import-csv-txds")
   (let [data      (read-csv filename (get col-configs agency-code) (get param-configs agency-code))
         project   (rpull [:projectslookup/ProjectID project-code] [:db/id :projectslookup/ParentProjectID])
@@ -1020,6 +1020,17 @@
             (log/error ex)
             {:error "something happened"}))))))
 
+(defn remove-repeaters [data]
+  (let [[uniq data] (reduce
+                      (fn [[uniq data] {:keys [station-id date] :as row}]
+                        (let [token [station-id date]]
+                          (if (contains? uniq token)
+                            (do
+                              (debug "REPEAT" token)
+                              [uniq data])
+                            [(conj uniq token) (conj data row)])))
+                      [#{} []] data)]
+    data))
 
 (defn process-sitevisit-file [config file]
   ;(debug "process-sitevisit-file")
@@ -1027,9 +1038,10 @@
         config   (check-sv-dupes config)
         ;_        (debug "FIRST DUPES" (take 5 (:dupes config)))
         data     (csv->data config filename)
+        data     (remove-repeaters data)
         ;_        (debug "FIRST DATA" (first data))
         txds     (data->txds config data)]
-        ;_        (debug (count txds) "TXDS" txds)]
+    ;_        (debug (count txds) "TXDS" txds)]
     (assoc config :txds txds)))
 
 
