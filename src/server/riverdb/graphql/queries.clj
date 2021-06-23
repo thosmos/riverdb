@@ -254,11 +254,11 @@
           ;_         (debug "date:" v-date "dt-6wks:" dt-6weeks "value:" (:value v) (type (:value v)) "vs:" vs "avg:" avg)
           res       (cond-> v
                       avg
-                      (assoc :avg avg)
-                      (and avg (or
-                                 (> avg 100)
-                                 (> (:value v) 320)))
-                      (assoc :isHigh true))
+                      (assoc :avg avg))
+                      ;(or
+                      ;  (and avg (> avg 100))
+                      ;  (> (:value v) 300))
+                      ;(assoc :isHigh true))
           result    (conj result res)]
       (if (seq v-rest)
         (recur v-rest result)

@@ -542,8 +542,9 @@
 
                    :safe_data          {:fields {:date  {:type 'String}
                                                  :value {:type 'Float}
-                                                 :qual  {:type 'String}
+                                                 ;:qual  {:type 'String}
                                                  :avg   {:type 'Float}}}
+                                                 ;:isHigh {:type 'Boolean}}}
 
                    :safetoswim         {:fields {:id              {:type 'ID}
                                                  :StationID       {:type 'String}
