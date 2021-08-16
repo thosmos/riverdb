@@ -184,20 +184,27 @@
     (map? thing)
     (let [dbid   (:db/id thing)
           ent-ns (:riverdb.entity/ns thing)]
-      (when (and dbid ent-ns)
-        [(ent-ns->ident-k ent-ns) dbid]))
+      (if (and dbid ent-ns)
+        [(ent-ns->ident-k ent-ns) dbid]
+        (log/warn "thing->ident didn't recognize thing" thing)))
 
     :else
-    nil))
+    (log/warn "thing->ident didn't recognize thing" thing)))
 
 (defn thing->id [thing]
-  (let [thing' (thing->ident thing)]
-   (cond
-     (eql/ident? thing')
-     (second thing')
+  (if (and (map? thing) (:db/id thing))
+    (:db/id thing)
+    (let [thing' (thing->ident thing)]
+      (cond
+        (eql/ident? thing')
+        (second thing')
 
-     (and (map? thing') (:db/id thing'))
-     (:db/id thing'))))
+        (and (map? thing') (:db/id thing'))
+        (:db/id thing')
+
+        :else
+        (do
+          (log/warn "thing->id didn't recognize thing" thing))))))
 
 
 
