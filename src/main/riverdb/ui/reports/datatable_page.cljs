@@ -111,7 +111,7 @@
                                :classes [(when (= i 0) "cell-bold-left")
                                          (when exceedance? "exceedance")
                                          (when incomplete? "incomplete")
-                                         #_(when imprecise? "imprecise")]}
+                                         (when imprecise? "imprecise")]}
                             (or col ""))) cols)
 
 
