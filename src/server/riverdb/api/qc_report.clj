@@ -1117,8 +1117,12 @@
         agency     (rpull [:agencylookup/AgencyCode agency-code])
         project    (rpull [:projectslookup/ProjectID project-id])
         sitevisits (if year
-                     (get-sitevisits db {:agency agency-code :project project-id :year year :sampleType "FieldMeasure"})
-                     (get-sitevisits db {:agency agency-code :sampleType "FieldMeasure"}))
+                     (get-sitevisits db {:agency agency-code :project project-id :year year})
+                     (get-sitevisits db {:agency agency-code}))
+
+        ;sitevisits (if year
+        ;             (get-sitevisits db {:agency agency-code :project project-id :year year :sampleType "FieldMeasure"})
+        ;             (get-sitevisits db {:agency agency-code :sampleType "FieldMeasure"}))
         ;_          (debug "first SV" (first sitevisits))
         ;sitevisits (filter-sitevisits sitevisits)
         sitevisits (sitevisit-summaries {:sitevisits sitevisits :sampleType "FieldMeasure"})
