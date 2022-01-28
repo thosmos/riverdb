@@ -839,7 +839,9 @@
 
 
 
-(defn check-sv-dupes [config]
+(defn check-sv-dupes
+  "Finds any existing sitevisit and date pairs that exist for the imported sitevisits.  Adds a vector of pairs like [[station-id date] ...] to :dupes on config and returns config."
+  [config]
   ;(debug "check-sv-dupes" (count (get-in config [:csv :data])) "rows")
   (let [{:keys [project date-column station-source station-column station-id csv]} config
         {:keys [data]} csv
@@ -1020,7 +1022,9 @@
             (log/error ex)
             {:error "something happened"}))))))
 
-(defn remove-repeaters [data]
+(defn remove-repeaters
+  "Uses the station-id and date as a unique token to recognize repeated entries"
+  [data]
   (let [[uniq data] (reduce
                       (fn [[uniq data] {:keys [station-id date] :as row}]
                         (let [token [station-id date]]

@@ -378,6 +378,17 @@
                            (set-csv-data this (first files))
                            #_(fm/set-value! this :ui/config {})))}))
 
+        (dom/div :.field
+          (dom/label "Duplicates")
+          (dom/input
+            {:type     "radio"
+             :onChange (fn [evt]
+                         (let [files (fup/evt->uploads evt)]
+                           (debug "FILES" files)
+                           (comp/set-state! this {:files files})
+                           (set-csv-data this (first files))
+                           #_(fm/set-value! this :ui/config {})))}))
+
         (div :.dimmable.fields {:key "import-source"}
           (dom/div :.field
             (dom/label "Station ID Source")

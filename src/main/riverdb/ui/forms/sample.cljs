@@ -227,6 +227,19 @@
                    :fieldresult/SamplingDeviceID   :param/devID
                    :fieldresult/SamplingDeviceCode :param/devType}})
 
+(defsc RefResultForm [this props]
+  {:ident [:org.riverdb.db.fieldobsvarlookup/gid :db/id]
+   :query [:db/id
+           :riverdb.entity/ns
+           fs/form-config-join
+           :fieldobsvarlookup/uuid
+           :fieldobsvarlookup/Active
+           :fieldobsvarlookup/ValueCode
+           :fieldobsvarlookup/IntCode
+           :fieldobsvarlookup/AnalyteName
+           :fieldobsvarlookup/Analyte]})
+
+
 (defsc FieldObsResultForm [this {:keys [] :as props}]
   {:ident         [:org.riverdb.db.fieldobsresult/gid :db/id]
    :query         [:db/id
@@ -247,14 +260,14 @@
                     :fieldobsresult/RefResults
                     :fieldobsresult/BigDecResult
                     :fieldobsresult/FieldObsResultComments}
-   :initial-state {:riverdb.entity/ns               :entity.ns/fieldobsresult
-                   :db/id                           :param/id
-                   :fieldobsresult/uuid             :param/uuid
-                   :fieldobsresult/IntResult        :param/int
-                   :fieldobsresult/TextResult       :param/text
-                   :fieldobsresult/RefResult        :param/ref
-                   :fieldobsresult/RefResults       :param/refs
-                   :fieldobsresult/BigDecResult     :param/bigdec}})
+   :initial-state {:riverdb.entity/ns           :entity.ns/fieldobsresult
+                   :db/id                       :param/id
+                   :fieldobsresult/uuid         :param/uuid
+                   :fieldobsresult/IntResult    :param/int
+                   :fieldobsresult/TextResult   :param/text
+                   :fieldobsresult/RefResult    :param/ref
+                   :fieldobsresult/RefResults   :param/refs
+                   :fieldobsresult/BigDecResult :param/bigdec}})
 
 (comment
   {:sample/Constituent           #:db{:id 17592186156795},
