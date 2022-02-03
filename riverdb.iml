@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module cursive.leiningen.project.DepsProjectsManager.isLeinModule="true" cursive.leiningen.project.LeiningenProjectsManager.displayName="riverdb" type="JAVA_MODULE" version="4">
+  <component name="BuildSystem">
+    <option name="buildSystemId" value="CLOJURE_DEPS" />
+    <option name="displayName" value="riverdb" />
+  </component>
   <component name="NewModuleRootManager" inherit-compiler-output="true">
     <exclude-output />
     <content url="file://$MODULE_DIR$">
