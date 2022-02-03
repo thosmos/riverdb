@@ -49,7 +49,7 @@
    :initial-state {}}
 
   (let [{:keys [count-sitevisits count-no-results no-results-rs param-config qapp-requirements
-                count-results percent-complete z-params count-params x-params count-dupes
+                count-results percent-complete z-params count-params x-params count-dupes dupes-rs
                 percent-params-imprecise count-params-planned count-params-possible
                 count-params-complete percent-params-complete count-params-imprecise
                 count-params-exceedance percent-params-exceedance report-year project agency]} tac-report-data
@@ -110,6 +110,31 @@
                                 (str "± " perc " % avg")
                                 unit
                                 (str "± " unit " avg")))))))))))
+
+
+          (when (seq dupes-rs)
+            (dom/div :.ui.segment
+              (dom/div {:key "dupes"}
+                (dom/h3 "Duplicate Parameters"))
+              (dom/table :.ui.striped.very.compact.table
+                (dom/thead
+                  (dom/tr
+                    (dom/th "Site")
+                    (dom/th "Date")
+                    (dom/th "Dupes")
+                    (dom/th "ID")))
+                (dom/tbody
+                  (doall
+                    (for [{:keys [db/id date site dupes]} dupes-rs]
+                      (let []
+                        (dom/tr {:key id}
+                          (dom/td (str site))
+                          (dom/td (if (= (type date) js/String)
+                                    date
+                                    (.toLocaleDateString date "en-US")))
+
+                          (dom/td (str dupes))
+                          (dom/td (str id))))))))))
 
 
           (when (seq no-results-rs)
