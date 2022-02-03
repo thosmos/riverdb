@@ -49,7 +49,7 @@
    :initial-state {}}
 
   (let [{:keys [count-sitevisits count-no-results no-results-rs param-config qapp-requirements
-                count-results percent-complete z-params count-params x-params
+                count-results percent-complete z-params count-params x-params count-dupes
                 percent-params-imprecise count-params-planned count-params-possible
                 count-params-complete percent-params-complete count-params-imprecise
                 count-params-exceedance percent-params-exceedance report-year project agency]} tac-report-data
@@ -77,6 +77,9 @@
                 (dom/tr (td "Planned Parameters: ") (td (str count-params-planned)))
                 (dom/tr (td "Possible Parameters: ") (td (str count-params-possible)))
                 (dom/tr (td "Sampled Parameters: ") (td (str count-params)))
+                nil
+                (when (> count-dupes 0)
+                  (dom/tr {:style {:color "red"}} (td "Duplicate Parameters: ") (td (str (or count-dupes 0)))))
                 (dom/tr (td "Complete Parameters: ") (td (str count-params-complete)))
                 (dom/tr (td "% Complete Parameters: ") (td (str percent-params-complete)))
                 (dom/tr (td "Imprecise Parameters: ") (td (str count-params-imprecise)))

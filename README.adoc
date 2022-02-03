@@ -101,7 +101,7 @@ You can execute CLJS code in a REPL running in the browser environment
 . Test with `(js/alert "Hello from the CLJS REPL")`
 
 
-= A More Detailed Setting Up Description ...
+== A More Detailed Setting Up Description ...
 
 The shadow-cljs compiler uses all js dependencies through
 NPM. If we use a library that is in cljsjs we will also have to add

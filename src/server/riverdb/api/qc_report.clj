@@ -920,6 +920,19 @@
      (dissoc :samples)
      (assoc :sample sample))))
 
+(defn check-dupe-samples [sv]
+  (let [site (:site sv)
+        date (:date sv)
+        check (reduce
+                (fn [r sample]
+                  (let [k (:param-key sample)]
+                    (if (get-in r [:check site date k])
+                      (update r :dupes conj k)
+                      (assoc-in r [:check site date k] true))))
+                {:dupes []
+                 :check {}} (:samples sv))]
+    (:dupes check)))
+
 (defn report-reducer
   "generate a map with summary info over whole time period, including details for each parameter in :z-params"
   [db sitevisits]
@@ -927,11 +940,29 @@
     (fn [r {:keys [samples] :as sv}]
       (try (let [param-keys (keys (:params qapp-requirements))
 
-                 ;_        (println "SV " (get-in sv [:sitevisit/StationID
-                 ;                                    :stationlookup/StationID]))
 
                  ;; count all sitevisits
                  r          (update r :count-sitevisits inc!)
+
+
+                 ;r          (update r :svs conjv
+                 ;             (->
+                 ;               (select-keys sv [:site :date :failcode :db/id :exceedance? :incomplete?])
+                 ;               (assoc :samples (count samples))
+                 ;               (assoc :dupes dupes)))
+
+                 ;r          (update r :svs #(sort-by (juxt :site :date) %))
+
+                 ;_        (println "SV"
+                 ;           (:count-sitevisits r)
+                 ;           (:site sv)
+                 ;           (:date sv)
+                 ;           (:failcode sv)
+                 ;           (empty? samples))
+
+                 ;; check for sample duplicates
+                 dupes      (check-dupe-samples sv)
+                 ;r          (update r :count-dupes + (count dupes))
 
                  r          (cond-> r
                               ;; if the sitevisit has no samples, add it to a :no-results list
@@ -946,7 +977,16 @@
                               ;; otherwise add it to :results list
                               (seq samples)
                               (->
-                                (update :count-results inc!)))
+                                (update :count-results inc!))
+
+                              ;;add dupes
+                              (seq dupes)
+                              (->
+                                (update :count-dupes (fnil + 0) (count dupes))
+                                (update :dupes-rs conjv
+                                  (assoc (select-keys sv [:site :date :db/id])
+                                    :dupes dupes))))
+
 
 
 
