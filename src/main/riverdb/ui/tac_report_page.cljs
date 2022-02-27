@@ -1,10 +1,12 @@
 (ns riverdb.ui.tac-report-page
   (:require
-    [com.fulcrologic.fulcro.dom :as dom :refer [div ul li p h3 button table tr td]]
+    [com.fulcrologic.fulcro.dom :as dom :refer [div ul li p h3 button table tr td label sup]]
     [com.fulcrologic.fulcro.components :as om :refer [defsc transact!]]
     [com.fulcrologic.fulcro.data-fetch :as f]
     [com.fulcrologic.fulcro.mutations :as fm]
     [com.fulcrologic.semantic-ui.elements.loader.ui-loader :refer [ui-loader]]
+    [com.fulcrologic.semantic-ui.elements.icon.ui-icon :refer [ui-icon]]
+    [com.fulcrologic.semantic-ui.modules.popup.ui-popup :refer [ui-popup]]
     [riverdb.model.user :as user]
     [riverdb.api.mutations :as rm]
     [riverdb.util :refer [sort-maps-by with-index]]
@@ -44,6 +46,9 @@
         unit
         (str "± " unit)))))
 
+(def info-icon
+  (dom/sup (ui-icon {:name "info" :size "small" :circular true :style {:marginLeft 5}})))
+
 (defsc TacReport [this {:keys [tac-report-data] :as props}]
   {:query         [:tac-report-data]
    :initial-state {}}
@@ -69,7 +74,11 @@
             (dom/h3 "Site Visit Completeness")
             (dom/table :.ui.collapsing.very.compact.table
               (dom/tbody
-                (dom/tr (td "Planned Site Visits: ") (td (str count-sitevisits)))
+                (dom/tr
+                  (td (ui-popup
+                        {:trigger (dom/span {} "Planned Site Visits: " info-icon)
+                         :content "Range = Max - Min of sample replicates"}))
+                  (td (str count-sitevisits)))
                 (dom/tr (td "Failed Site Visits: ") (td (str count-no-results)))
                 (dom/tr (td "Actual Site Visits: ") (td (str count-results)))
                 (dom/tr (td "Site Visit Completeness: ") (td (str percent-complete "%")))
