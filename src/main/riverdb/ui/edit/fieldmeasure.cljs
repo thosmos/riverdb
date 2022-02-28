@@ -431,7 +431,7 @@
                     items   (if dupes? samples [param])]
                 (for [item items]
                   (ui-fieldmeasure-sample-form
-                    (comp/computed {:key (:db/id item) :param param :sample (when samples item) :dupe? dupes?}
+                    (comp/computed {:key (:db/id item) :param param :sample (if dupes? item (first samples)) :dupe? dupes?}
                       {:onChangeSample   onChangeSample
                        :deviceTypeLookup deviceTypeLookup
                        :deviceLookup     deviceLookup

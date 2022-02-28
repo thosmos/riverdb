@@ -18,30 +18,32 @@
     [com.fulcrologic.fulcro.networking.file-upload :as file-upload]
     [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
     [com.fulcrologic.fulcro.ui-state-machines :as uism :refer [defstatemachine]]
+
+    [com.fulcrologic.semantic-ui.addons.confirm.ui-confirm :refer [ui-confirm]]
+    [com.fulcrologic.semantic-ui.addons.pagination.ui-pagination :refer [ui-pagination]]
+    [com.fulcrologic.semantic-ui.addons.radio.ui-radio :refer [ui-radio]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-dropdown :refer [ui-form-dropdown]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-input :refer [ui-form-input]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-text-area :refer [ui-form-text-area]]
-    [com.fulcrologic.semantic-ui.modules.dropdown.ui-dropdown :refer [ui-dropdown]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form :refer [ui-form]]
-    [com.fulcrologic.semantic-ui.elements.input.ui-input :refer [ui-input]]
-    [com.fulcrologic.semantic-ui.elements.header.ui-header :refer [ui-header]]
-    [com.fulcrologic.semantic-ui.elements.loader.ui-loader :refer [ui-loader]]
-    [com.fulcrologic.semantic-ui.modules.dimmer.ui-dimmer :refer [ui-dimmer]]
-    [com.fulcrologic.semantic-ui.addons.pagination.ui-pagination :refer [ui-pagination]]
-    [com.fulcrologic.semantic-ui.modules.checkbox.ui-checkbox :refer [ui-checkbox]]
-    [com.fulcrologic.semantic-ui.addons.radio.ui-radio :refer [ui-radio]]
     [com.fulcrologic.semantic-ui.collections.table.ui-table :refer [ui-table]]
     [com.fulcrologic.semantic-ui.collections.table.ui-table-body :refer [ui-table-body]]
-    [com.fulcrologic.semantic-ui.modules.popup.ui-popup :refer [ui-popup]]
-    [com.fulcrologic.semantic-ui.addons.confirm.ui-confirm :refer [ui-confirm]]
+    [com.fulcrologic.semantic-ui.elements.input.ui-input :refer [ui-input]]
+    [com.fulcrologic.semantic-ui.elements.icon.ui-icon :refer [ui-icon]]
+    [com.fulcrologic.semantic-ui.elements.header.ui-header :refer [ui-header]]
+    [com.fulcrologic.semantic-ui.elements.loader.ui-loader :refer [ui-loader]]
+    [com.fulcrologic.semantic-ui.modules.checkbox.ui-checkbox :refer [ui-checkbox]]
+    [com.fulcrologic.semantic-ui.modules.dimmer.ui-dimmer :refer [ui-dimmer]]
+    [com.fulcrologic.semantic-ui.modules.dropdown.ui-dropdown :refer [ui-dropdown]]
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal :refer [ui-modal]]
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal-header :refer [ui-modal-header]]
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal-content :refer [ui-modal-content]]
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal-actions :refer [ui-modal-actions]]
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal-description :refer [ui-modal-description]]
+    [com.fulcrologic.semantic-ui.modules.popup.ui-popup :refer [ui-popup]]
 
     [riverdb.application :refer [SPA]]
-    [riverdb.api.mutations :as rm]
+    [riverdb.api.mutations :as rm :refer [del-sample]]
     [riverdb.util :refer [sort-maps-by with-index]]
     [riverdb.ui.agency :refer [preload-agency Agency]]
     [riverdb.ui.components :refer [ui-datepicker]]
@@ -212,10 +214,11 @@
                     dupes? (> (count samples) 1)
                     items   (if dupes? samples [param])]
                 (for [item items]
-                  (let [sample     (when samples item)
+                  (let [sample     (if dupes? item (first samples))
+                        samp-ident (when sample (rutil/thing->ident sample))
                         obstype    (:parameter/FieldObsType param)
                         ana-nm     (:analytelookup/AnalyteName (:constituentlookup/AnalyteCode Constituent))
-                        obsresult  (first (:sample/FieldObsResults item))
+                        obsresult  (first (:sample/FieldObsResults sample))
                         textvalue  (or (:fieldobsresult/TextResult obsresult) "")
                         intval     (or (:fieldobsresult/IntResult obsresult) 0)
                         decvalue   (:fieldobsresult/BigDecResult obsresult)
@@ -239,7 +242,16 @@
                                      options)]
 
                     (tr {:key (:db/id item) :style {:color (if dupes? "red" "black")}}
-                      (td {:key "pm"} Name)
+                      (td {:key "pm"} Name
+                        (when dupes?
+                          (dom/sup
+                            (ui-icon {:name "x"
+                                      :size "small"
+                                      :circular true
+                                      :style {:marginLeft 5 :cursor "pointer"}
+                                      :onClick (fn [evt]
+                                                 (debug "CLICK")
+                                                 (del-sample sv-ident samp-ident))}))))
                       (td {:key "vars"}
                         (cond
                           (= obstype :bigdec)
