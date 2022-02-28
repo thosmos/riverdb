@@ -39,7 +39,7 @@
     "window-table": "^0.10.5-alpha.1"
   },
   "devDependencies": {
-    "karma": "^3.1.1",
+    "karma": "^6.3.14",
     "karma-chrome-launcher": "^2.2.0",
     "karma-cljs-test": "^0.1.0",
     "shadow-cljs": "2.12.5",
@@ -52,7 +52,7 @@
     "compile": "APP_ENV=dev LOG_LEVEL=0 npx shadow-cljs -A:cljs-dev compile :main",
     "release": "APP_ENV=prod TIMBRE_LEVEL=':info' LOG_LEVEL=2 npx shadow-cljs release :main",
     "log-release": "APP_ENV=prod TIMBRE_LEVEL=':debug' LOG_LEVEL=0 npx shadow-cljs release :main",
-    "server": "clojure -A:dev:server:run"
+    "server": "clojure -M:dev:server:run"
   },
   "author": "Thomas Spellman <thomas@thosmos.com>",
   "license": "GNU AFFERO GENERAL PUBLIC LICENSE, Version 3, 19 November 2007"

@@ -10,21 +10,27 @@
     [riverdb.ui.edit.fieldmeasure :refer [ui-fm-list FieldMeasureList]]
     [riverdb.ui.edit.fieldobs :refer [ui-fo-list]]
     [riverdb.ui.edit.lab :refer [ui-lr-list]]
-    [theta.log :as log :refer [debug info]]))
+    [theta.log :as log :refer [debug info warn]]))
+
+
 
 (defn calc-param-samples [params samples]
+  (debug "calc-param-samples" (count params) "params" (count samples) "samples")
   (reduce
     (fn [out sa]
       (let [sa-param (get-in sa [:sample/Parameter :db/id])
             sa-const (get-in sa [:sample/Constituent :db/id])]
         (if sa-param
           ;; if the sample already has a parameter ref, just use it
-          (assoc out sa-param sa)
+          (do
+            (when-let [sa-exists (get out sa-param)]
+              (info "param-id already in list" sa-param sa-exists sa))
+            (update out sa-param (fnil conj []) sa))
           ;; otherwise, find a param that matches the const + devType
           (let [match-ps (filter #(= sa-const (get-in % [:parameter/Constituent :db/id])) params)]
             ;; if one matches, link them, otherwise, add to :other
             (if (seq match-ps)
-              (assoc out (:db/id (first match-ps)) sa)
+              (update out (:db/id (first match-ps)) (fnil conj []) sa)
               (update out :other (fnil conj []) sa))))))
     {} samples))
 

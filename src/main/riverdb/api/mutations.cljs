@@ -2,6 +2,7 @@
   (:require
     [com.fulcrologic.fulcro.algorithms.data-targeting :as dt :refer [process-target]]
     [com.fulcrologic.fulcro.algorithms.normalize :as norm]
+    [com.fulcrologic.fulcro.algorithms.normalized-state :refer [remove-ident]]
     [com.fulcrologic.fulcro.application :as fapp]
     [com.fulcrologic.fulcro.mutations :refer [defmutation]]
     [com.fulcrologic.semantic-ui.collections.message.ui-message :refer [ui-message]]
@@ -393,6 +394,31 @@
 
 (def ui-tx-result (comp/factory TxResult))
 
+(defn remove-ident*
+  "Removes an ident, if it exists, from a list of idents in app state. This
+  function is safe to use within mutations."
+  [state-map ident path-to-idents]
+  {:pre [(map? state-map)]}
+  (let [new-list (fn [old-list]
+                   (vec (filter #(not= ident %) old-list)))]
+    (update-in state-map path-to-idents new-list)))
+
+(fm/defmutation delete-sample [{:keys [sv-ident sa-ident]}]
+  (action [{:keys [state]}]
+    (debug "MUTATION delete sample" sv-ident sa-ident)
+    (swap! state
+      (fn [s]
+        (let [sas-path (conj sv-ident :sitevisit/Samples)
+              _        (debug "samples BEFORE" (get-in s sas-path))
+
+              res      (-> s
+                         (remove-ident* sa-ident sas-path)
+                         (fs/mark-complete* sv-ident :sitevisit/Samples))
+              _ (debug "samples AFTER" (get-in res sas-path))]
+          res)))))
+
+(defn del-sample [sv-ident sa-ident]
+  (comp/transact! SPA `[(delete-sample ~{:sv-ident sv-ident :sa-ident sa-ident})]))
 
 (defmutation set-pristine
   "changes a form's current state to pristine"

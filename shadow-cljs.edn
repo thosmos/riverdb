@@ -1,4 +1,4 @@
-{:deps     {:aliases [:cljsbuild :rad :rad-dev]}
+{:deps     {:aliases [:cljsbuild :rad]}
  :nrepl    {:port 9000}
  :jvm-opts ["-Xmx1G"]
  :builds   {:main       {:target     :browser

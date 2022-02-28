@@ -13,7 +13,7 @@
     [thosmos.util :as tu]
     [thosmos.datomic :as tdb]
     [java-time :as jt]
-    [tick.alpha.api :as t]
+    [tick.core :as t]
     [theta.log :as log]))
 
 (set! *data-readers* (assoc *data-readers* 'fulcro/tempid #'riverdb.util/readTempid))

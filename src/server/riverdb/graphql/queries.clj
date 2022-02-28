@@ -20,7 +20,8 @@
             [riverdb.api.qc-report :as qc-report]
             [thosmos.util :as tu]
             [theta.util :as thu :refer [parse-long]]
-            [tick.alpha.api :as t]
+            [tick.core :as t]
+            [tick.alpha.interval :as ti]
             [riverdb.db :as rdb])
   (:import [java.util Date]
            [java.text SimpleDateFormat]))
@@ -460,7 +461,7 @@
           rez-daily   (if (seq rez)
                         (let [[inst value] (first rez)
                               ;; get the beginning and end of day for the first sample timestamp
-                              {:tick/keys [beginning end]} (t/bounds (t/date inst))
+                              {:tick/keys [beginning end]} (ti/bounds (t/date inst))
                               daily (reduce
                                       (fn [{:keys [beg end vals] :as daily} [inst value]]
                                         (if
@@ -469,7 +470,7 @@
                                           ;; add this value to the daily vals list and continue
                                           (update daily :vals conj value)
                                           ;; if it's a new day, get the mean of the previous day and save it, then prep the new day
-                                          (let [{:tick/keys [beginning end]} (t/bounds (t/date inst))]
+                                          (let [{:tick/keys [beginning end]} (ti/bounds (t/date inst))]
                                             (-> daily
                                               (merge
                                                 {:vals []
