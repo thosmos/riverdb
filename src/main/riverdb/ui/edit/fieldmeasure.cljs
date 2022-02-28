@@ -61,13 +61,13 @@
     [riverdb.ui.util :as rutil :refer [walk-ident-refs* walk-ident-refs make-tempid make-validator parse-float rui-checkbox rui-int rui-bigdec rui-input ui-cancel-save set-editing set-value set-value!! set-refs! set-ref! set-ref set-refs get-ref-set-val lookup-db-ident filter-param-typecode]]
     [riverdb.util :refer [paginate nest-by filter-sample-typecode]]
     [com.rpl.specter :as sp :refer [ALL LAST]]
-    ;[tick.alpha.api :as t]
+    ;[tick.core :as t]
     [theta.log :as log :refer [debug info]]
     [thosmos.util :as tu]
     [com.fulcrologic.fulcro.data-fetch :as df]
     [riverdb.roles :as roles]
     [edn-query-language.core :as eql]
-    [tick.alpha.api :as t]
+    [tick.core :as t]
     [testdouble.cljs.csv :as csv]))
 
 
