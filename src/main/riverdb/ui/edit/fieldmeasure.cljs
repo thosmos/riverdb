@@ -8,7 +8,7 @@
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
     [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
-    [com.fulcrologic.fulcro.algorithms.normalized-state :refer [integrate-ident]]
+    [com.fulcrologic.fulcro.algorithms.normalized-state :refer [integrate-ident remove-ident]]
     [com.fulcrologic.fulcro.application :as fapp :refer [current-state]]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc transact!]]
     [com.fulcrologic.fulcro.data-fetch :as f]
@@ -19,30 +19,32 @@
     [com.fulcrologic.fulcro.networking.file-upload :as file-upload]
     [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
     [com.fulcrologic.fulcro.ui-state-machines :as uism :refer [defstatemachine]]
+
+    [com.fulcrologic.semantic-ui.addons.pagination.ui-pagination :refer [ui-pagination]]
+    [com.fulcrologic.semantic-ui.addons.radio.ui-radio :refer [ui-radio]]
+    [com.fulcrologic.semantic-ui.addons.confirm.ui-confirm :refer [ui-confirm]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-dropdown :refer [ui-form-dropdown]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-input :refer [ui-form-input]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form-text-area :refer [ui-form-text-area]]
-    [com.fulcrologic.semantic-ui.modules.dropdown.ui-dropdown :refer [ui-dropdown]]
     [com.fulcrologic.semantic-ui.collections.form.ui-form :refer [ui-form]]
+    [com.fulcrologic.semantic-ui.collections.table.ui-table :refer [ui-table]]
+    [com.fulcrologic.semantic-ui.collections.table.ui-table-body :refer [ui-table-body]]
+    [com.fulcrologic.semantic-ui.elements.icon.ui-icon :refer [ui-icon]]
     [com.fulcrologic.semantic-ui.elements.input.ui-input :refer [ui-input]]
     [com.fulcrologic.semantic-ui.elements.header.ui-header :refer [ui-header]]
     [com.fulcrologic.semantic-ui.elements.loader.ui-loader :refer [ui-loader]]
-    [com.fulcrologic.semantic-ui.modules.dimmer.ui-dimmer :refer [ui-dimmer]]
-    [com.fulcrologic.semantic-ui.addons.pagination.ui-pagination :refer [ui-pagination]]
     [com.fulcrologic.semantic-ui.modules.checkbox.ui-checkbox :refer [ui-checkbox]]
-    [com.fulcrologic.semantic-ui.addons.radio.ui-radio :refer [ui-radio]]
-    [com.fulcrologic.semantic-ui.collections.table.ui-table :refer [ui-table]]
-    [com.fulcrologic.semantic-ui.collections.table.ui-table-body :refer [ui-table-body]]
-    [com.fulcrologic.semantic-ui.modules.popup.ui-popup :refer [ui-popup]]
-    [com.fulcrologic.semantic-ui.addons.confirm.ui-confirm :refer [ui-confirm]]
+    [com.fulcrologic.semantic-ui.modules.dimmer.ui-dimmer :refer [ui-dimmer]]
+    [com.fulcrologic.semantic-ui.modules.dropdown.ui-dropdown :refer [ui-dropdown]]
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal :refer [ui-modal]]
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal-header :refer [ui-modal-header]]
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal-content :refer [ui-modal-content]]
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal-actions :refer [ui-modal-actions]]
     [com.fulcrologic.semantic-ui.modules.modal.ui-modal-description :refer [ui-modal-description]]
+    [com.fulcrologic.semantic-ui.modules.popup.ui-popup :refer [ui-popup]]
 
     [riverdb.application :refer [SPA]]
-    [riverdb.api.mutations :as rm]
+    [riverdb.api.mutations :as rm :refer [del-sample]]
     [riverdb.util :refer [sort-maps-by with-index]]
     [riverdb.ui.agency :refer [preload-agency Agency]]
     [riverdb.ui.components :refer [ui-datepicker]]
@@ -110,7 +112,6 @@
             (fs/mark-complete* samp-ident k)))))
     (when onChange
       (onChange v))))
-
 
 (defn set-field-result* [state db-id val]
   (-> state
@@ -193,9 +194,9 @@
 
 (defsc FieldMeasureSampleForm
   [this
-   {:keys [param sample] :as props}
+   {:keys [param sample dupe?] :as props}
    {:keys [sv-comp reps deviceTypeLookup deviceLookup onChangeSample]}]
-  {:query          [:param :sample]
+  {:query          [:param :sample :dupe?]
    :initLocalState (fn [this props]
                      ;(debug "INIT LOCAL STATE FieldMeasureParamForm" props)
                      (let [;comps  (:fulcro.client.primitives/computed props)
@@ -283,10 +284,19 @@
         ;time          (or time (:fieldresult/ResultTime (first results)))
         time          (:sample/Time sample)
         unit          (get-in p-const [:constituentlookup/UnitCode :unitlookup/Unit])]
-    ;(debug "RENDER FieldMeasureSampleForm" p-name p-id "sample?" samp-ident) ;"props" props) ; "devType" devType "devID" devID "p-const" p-const "fieldresults" fieldresults)
+    (debug "RENDER FieldMeasureSampleForm" p-name p-id "sample?" samp-ident "dupe?" dupe?) ;"props" props) ; "devType" devType "devID" devID "p-const" p-const "fieldresults" fieldresults)
 
-    (tr {:key p-id}
-      (td {:key "name"} p-name)
+    (tr {:key p-id :style {:color (if dupe? "red" "black")}}
+      (td {:key "name"} p-name
+        (when dupe?
+          (dom/sup
+            (ui-icon {:name "x"
+                      :size "small"
+                      :circular true
+                      :style {:marginLeft 5 :cursor "pointer"}
+                      :onClick (fn [evt]
+                                 (debug "CLICK")
+                                 (del-sample sv-ident samp-ident))}))))
       (td {:key "inst"}
         (ui-theta-options (comp/computed
                             (merge deviceTypeLookup
@@ -352,30 +362,30 @@
 (def ui-fieldmeasure-sample-form (comp/factory FieldMeasureSampleForm {:keyfn :key}))
 
 
-(defn calc-param-samples [params samples]
-  (reduce
-    (fn [out sa]
-      (let [sa-param   (get-in sa [:sample/Parameter :db/id])
-            sa-const   (get-in sa [:sample/Constituent :db/id])
-            sa-devType (get-in sa [:sample/DeviceType :db/id])]
-
-        (if sa-param
-          ;; if the sample already has a parameter ref, just use it
-          (assoc out sa-param sa)
-          ;; otherwise, find a param that matches the const + devType
-          (let [filt-fn  (fn [param]
-                           (and
-                             (= sa-const (get-in param [:parameter/Constituent :db/id]))
-                             (= sa-devType (get-in param [:parameter/DeviceType :db/id]))))
-                filt-fn2 (fn [param]
-                           (= sa-const (get-in param [:parameter/Constituent :db/id])))
-                match-ps (filter filt-fn2 params)]
-            ;; if one matches, link them, otherwise, add to :other
-            (if (seq match-ps)
-              (assoc out (:db/id (first match-ps)) sa)
-              (update out :other (fnil conj []) sa))))))
-
-    {} samples))
+;(defn calc-param-samples [params samples]
+;  (reduce
+;    (fn [out sa]
+;      (let [sa-param   (get-in sa [:sample/Parameter :db/id])
+;            sa-const   (get-in sa [:sample/Constituent :db/id])
+;            sa-devType (get-in sa [:sample/DeviceType :db/id])]
+;
+;        (if sa-param
+;          ;; if the sample already has a parameter ref, just use it
+;          (assoc out sa-param sa)
+;          ;; otherwise, find a param that matches the const + devType
+;          (let [filt-fn  (fn [param]
+;                           (and
+;                             (= sa-const (get-in param [:parameter/Constituent :db/id]))
+;                             (= sa-devType (get-in param [:parameter/DeviceType :db/id]))))
+;                filt-fn2 (fn [param]
+;                           (= sa-const (get-in param [:parameter/Constituent :db/id])))
+;                match-ps (filter filt-fn2 params)]
+;            ;; if one matches, link them, otherwise, add to :other
+;            (if (seq match-ps)
+;              (assoc out (:db/id (first match-ps)) sa)
+;              (update out :other (fnil conj []) sa))))))
+;
+;    {} samples))
 
 (defsc FieldMeasureList [this {:keys [params samples param-samples] :as props} {:keys [sv-comp onChangeSample] :as comps}]
   {:query [:sample-type
@@ -391,7 +401,7 @@
                                (max reps mx)
                                mx))
                            1 params)]
-    ;(debug "RENDER FieldMeasureList" "param-samps" param-samples) ;"params" params "samples" samples)
+    (debug "RENDER FieldMeasureList" "param-samples" param-samples) ;"params" params "samples" samples)
     (div :.ui.segment {:key "fm-list"}
       (ui-header {} "Field Measurements")
       (table :.ui.very.compact.mini.table {:key "wqtab"}
@@ -414,17 +424,18 @@
         (tbody {:key 2}
           (vec
             (for [param params]
-              (let [sample (get param-samples (:db/id param))
-                    #_#_sample (if sample
-                                 sample
-                                 (let [sa-frm (comp/get-initial-state SampleForm {:type :sampletypelookup.SampleTypeCode/FieldMeasure})]))]
-
-                (ui-fieldmeasure-sample-form
-                  (comp/computed {:key (:db/id param) :param param :sample sample}
-                    {:onChangeSample   onChangeSample
-                     :deviceTypeLookup deviceTypeLookup
-                     :deviceLookup     deviceLookup
-                     :sv-comp          sv-comp
-                     :reps             max-reps}))))))))))
+              (let [samples (get param-samples (:db/id param))
+                    cnt (count samples)
+                    dupes? (> cnt 1)
+                    ;; show empty form when there is no sample
+                    items   (if dupes? samples [param])]
+                (for [item items]
+                  (ui-fieldmeasure-sample-form
+                    (comp/computed {:key (:db/id item) :param param :sample (when samples item) :dupe? dupes?}
+                      {:onChangeSample   onChangeSample
+                       :deviceTypeLookup deviceTypeLookup
+                       :deviceLookup     deviceLookup
+                       :sv-comp          sv-comp
+                       :reps             max-reps})))))))))))
 
 (def ui-fm-list (comp/factory FieldMeasureList {:keyfn :sample-type}))

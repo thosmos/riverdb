@@ -137,9 +137,9 @@
             (fs/mark-complete* ident)))))))
 
 (defsc LabSampleForm [this
-                      {:keys [param sample] :as props}
+                      {:keys [param sample dupe?] :as props}
                       {:keys [sv-comp qualLookup onChangeSample]}]
-  {:query          [:param :sample]
+  {:query          [:param :sample :dupe?]
    :initLocalState (fn [this props]
                      ;(debug "INIT LOCAL STATE FieldMeasureParamForm" props)
                      (let [;comps  (:fulcro.client.primitives/computed props)
@@ -164,7 +164,7 @@
         ;_          (debug "LR-IDENT" lr-ident "qualLookup" qualLookup)
         qualLookup (update qualLookup :ui/options (fn [opts] (vec (remove #(= (:text %) ": no qualifier") opts))))
         rslt       (-> lab-result :labresult/Result parse-float)]
-    (tr {}
+    (tr {:style {:color (if dupe? "red" "black")}}
       (td {} (:parameter/Name param))
       (td {} (ui-checkbox {:checked (if sample true false)
                            :onChange (fn []
@@ -227,29 +227,27 @@
             (th {:key "grab"} "Grab")
             (th {:key "result"} "Result")
             (th {:key "qual"} "Qual")
-            (th {:key "notes"} "Notes")))
+            (th {:key "notes"} "Notes")
+            (th {:key "clear"} "Clear")))
         (tbody {:key 2}
           (vec
             (for [param params]
-              (let [sample (get param-samples (:db/id param))
-                    #_#_sample (if sample
-                                 sample
-                                 (let [sa-frm (comp/get-initial-state SampleForm {:type :sampletypelookup.SampleTypeCode/FieldMeasure})]))]
-                (tr {:key (:db/id param)}
-                  (td (:parameter/Name param))
-                  (td (str sample)))
-                (ui-lab-sample-form
-                  (comp/computed {:key (:db/id param) :param param :sample sample}
-                    {:onChangeSample   onChangeSample
-                     :sv-comp          sv-comp
-                     :qualLookup       qualLookup}))
-                #_(ui-fieldmeasure-sample-form
-                    (comp/computed {:key (:db/id param) :param param :sample sample}
-                      {:onChangeSample   onChangeSample
-                       :deviceTypeLookup deviceTypeLookup
-                       :deviceLookup     deviceLookup
-                       :sv-comp          sv-comp
-                       :reps             max-reps}))))))))))
+              (let [samples (get param-samples (:db/id param))
+                    dupes? (> (count samples) 1)
+                    items   (if dupes? samples [param])]
+                (for [item items]
+                  (ui-lab-sample-form
+                    (comp/computed {:key (:db/id item) :param param :sample (when samples item) :dupe? dupes?}
+                      {:onChangeSample onChangeSample
+                       :sv-comp        sv-comp
+                       :qualLookup     qualLookup}))
+                  #_(ui-fieldmeasure-sample-form
+                      (comp/computed {:key (:db/id param) :param param :sample sample}
+                        {:onChangeSample   onChangeSample
+                         :deviceTypeLookup deviceTypeLookup
+                         :deviceLookup     deviceLookup
+                         :sv-comp          sv-comp
+                         :reps             max-reps})))))))))))
 
 
 (def ui-lr-list (comp/factory LabResultList {:keyfn #(str (:sample-type %))}))

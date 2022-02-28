@@ -208,81 +208,85 @@
         (tbody {:key 2}
           (vec
             (for [{:parameter/keys [Name Constituent] :as param} params]
-              (let [sample    (get param-samples (:db/id param))
-                    obstype   (:parameter/FieldObsType param)
-                    ana-nm    (:analytelookup/AnalyteName (:constituentlookup/AnalyteCode Constituent))
-                    obsresult (first (:sample/FieldObsResults sample))
-                    textvalue (or (:fieldobsresult/TextResult obsresult) "")
-                    intval    (or (:fieldobsresult/IntResult obsresult) 0)
-                    decvalue  (:fieldobsresult/BigDecResult obsresult)
-                    refvalue  (:fieldobsresult/RefResult obsresult)
+              (let [samples (get param-samples (:db/id param))
+                    dupes? (> (count samples) 1)
+                    items   (if dupes? samples [param])]
+                (for [item items]
+                  (let [sample     (when samples item)
+                        obstype    (:parameter/FieldObsType param)
+                        ana-nm     (:analytelookup/AnalyteName (:constituentlookup/AnalyteCode Constituent))
+                        obsresult  (first (:sample/FieldObsResults item))
+                        textvalue  (or (:fieldobsresult/TextResult obsresult) "")
+                        intval     (or (:fieldobsresult/IntResult obsresult) 0)
+                        decvalue   (:fieldobsresult/BigDecResult obsresult)
+                        refvalue   (:fieldobsresult/RefResult obsresult)
 
-                    RefResults (:fieldobsresult/RefResults obsresult)
-                    refsvalue (when (= obstype :refs)
-                                (let [refsvalue (mapv #(rutil/thing->id %) (or RefResults []))]
-                                  (debug "FieldObs refsvalue" refsvalue)
-                                  refsvalue))
+                        RefResults (:fieldobsresult/RefResults obsresult)
+                        refsvalue  (when (= obstype :refs)
+                                     (let [refsvalue (mapv #(rutil/thing->id %) (or RefResults []))]
+                                       (debug "FieldObs refsvalue" refsvalue)
+                                       refsvalue))
 
-                    ana       (select-keys (:constituentlookup/AnalyteCode Constituent) [:db/id])
-                    opts-filt (cond
-                                (#{:ref :refs} obstype)
-                                #(and (= (:filt %) ana) (> (:sort %) 0)))
-                    options   (when opts-filt
-                                (filter opts-filt
-                                  (:ui/options fieldobsvarlookup-options)))
-                    options   (if (and (seq options) (= :ref obstype))
-                                (conj options {:value "" :text "NR" :sort 0})
-                                options)]
+                        ana        (select-keys (:constituentlookup/AnalyteCode Constituent) [:db/id])
+                        opts-filt  (cond
+                                     (#{:ref :refs} obstype)
+                                     #(and (= (:filt %) ana) (> (:sort %) 0)))
+                        options    (when opts-filt
+                                     (filter opts-filt
+                                       (:ui/options fieldobsvarlookup-options)))
+                        options    (if (and (seq options) (= :ref obstype))
+                                     (conj options {:value "" :text "NR" :sort 0})
+                                     options)]
 
-                (tr {:key (:db/id param)}
-                  (td {:key "pm"} Name)
-                  (td {:key "vars"}
-                    (cond
-                      (= obstype :bigdec)
-                      (rutil/rui-bigdec-input
-                        {:value decvalue
-                         :style {:width 80}
-                         :onChange (fn [v]
-                                     (debug "BigDec CHANGE" v "obsresult" obsresult)
-                                     (comp/transact! this `[(save-obs {:sv-ident ~sv-ident :sample ~sample :obsresult ~obsresult :value ~v :param ~param})]))})
-                      (= obstype :text)
-                      (ui-input
-                        {:value    textvalue
-                         :style {:width "100%"}
-                         :onChange (fn [e]
-                                     (let [v (-> e .-target .-value)]
-                                       (debug "Text CHANGE" v)
-                                       (comp/transact! this `[(save-obs {:sv-ident ~sv-ident :sample ~sample :obsresult ~obsresult :value ~v :param ~param})])))})
+                    (tr {:key (:db/id item) :style {:color (if dupes? "red" "black")}}
+                      (td {:key "pm"} Name)
+                      (td {:key "vars"}
+                        (cond
+                          (= obstype :bigdec)
+                          (rutil/rui-bigdec-input
+                            {:value    decvalue
+                             :style    {:width 80}
+                             :onChange (fn [v]
+                                         (debug "BigDec CHANGE" v "obsresult" obsresult)
+                                         (comp/transact! this `[(save-obs {:sv-ident ~sv-ident :sample ~sample :obsresult ~obsresult :value ~v :param ~param})]))})
+                          (= obstype :text)
+                          (ui-input
+                            {:value    textvalue
+                             :style    {:width "100%"}
+                             :onChange (fn [e]
+                                         (let [v (-> e .-target .-value)]
+                                           (debug "Text CHANGE" v)
+                                           (comp/transact! this `[(save-obs {:sv-ident ~sv-ident :sample ~sample :obsresult ~obsresult :value ~v :param ~param})])))})
 
-                      (seq options)
-                      (vec
-                        (map-indexed
-                          (fn [j {:keys [value text sort] :as opt}]
-                            (let [checked (cond
-                                            (= obstype :ref)
-                                            (= intval sort)
-                                            (= obstype :refs)
-                                            (some? ((set refsvalue) value)))]
-                              (ui-checkbox
-                                {:radio    (= :ref obstype)
-                                 :key      value
-                                 :label    text
-                                 :name     Name
-                                 :value    value
-                                 :checked  checked
-                                 :style    {:marginLeft 10}
-                                 :onChange (fn []
-                                             (let [checked (not checked)
-                                                   val     (if (= obstype :refs)
-                                                             (if checked
-                                                               (vec (set (conj refsvalue value)))
-                                                               (vec (remove #(= % value) refsvalue)))
-                                                             value)
-                                                   val     (if (and (= obstype :refs) (empty? val))
-                                                             nil
-                                                             val)]
-                                               (debug "ON CHANGE" Name "sample:" (:db/id sample) "value:" val "intval:" sort "checked:" checked)
-                                               (comp/transact! this `[(save-obs {:sv-ident ~sv-ident :sample ~sample :obsresult ~obsresult :value ~val :intval ~sort :param ~param :checked ~checked})])))})))
-                          options)))))))))))))
+                          (seq options)
+                          (vec
+                            (map-indexed
+                              (fn [j {:keys [value text sort] :as opt}]
+                                (let [checked (cond
+                                                (= obstype :ref)
+                                                (= intval sort)
+                                                (= obstype :refs)
+                                                (some? ((set refsvalue) value)))]
+                                  (ui-checkbox
+                                    {:radio    (= :ref obstype)
+                                     :key      value
+                                     :label    text
+                                     :name     Name
+                                     :value    value
+                                     :checked  checked
+                                     :style    {:marginLeft 10}
+                                     :onChange (fn []
+                                                 (let [checked (not checked)
+                                                       val     (if (= obstype :refs)
+                                                                 (if checked
+                                                                   (vec (set (conj refsvalue value)))
+                                                                   (vec (remove #(= % value) refsvalue)))
+                                                                 value)
+                                                       val     (if (and (= obstype :refs) (empty? val))
+                                                                 nil
+                                                                 val)]
+                                                   (debug "ON CHANGE" Name "sample:" (:db/id sample) "value:" val "intval:" sort "checked:" checked)
+                                                   (comp/transact! this `[(save-obs {:sv-ident ~sv-ident :sample ~sample :obsresult ~obsresult :value ~val :intval ~sort :param ~param :checked ~checked})])))})))
+                              options)))))))))))))))
 
 (def ui-fo-list (comp/factory FieldObsList {:keyfn :sample-type}))
