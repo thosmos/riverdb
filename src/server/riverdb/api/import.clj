@@ -15,7 +15,7 @@
     [theta.util :refer [parse-bool parse-long parse-double parse-date parse-bigdec]]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
     [thosmos.util :as tu]
-    [tick.alpha.api :as t])
+    [tick.core :as t])
   (:import (java.util Date)
            (java.io Reader File)
            (org.apache.commons.io FileUtils FileExistsException)

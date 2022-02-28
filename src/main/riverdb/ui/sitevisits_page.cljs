@@ -8,6 +8,7 @@
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.fulcro.algorithms.tempid :as tempid]
     [com.fulcrologic.fulcro.algorithms.data-targeting :as targeting]
+    [com.fulcrologic.fulcro.algorithms.normalized-state :refer [remove-ident]]
     [com.fulcrologic.fulcro.application :as fapp :refer [current-state]]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc transact!]]
     [com.fulcrologic.fulcro.data-fetch :as f]
@@ -66,7 +67,7 @@
     [com.fulcrologic.fulcro.data-fetch :as df]
     [riverdb.roles :as roles]
     [edn-query-language.core :as eql]
-    [tick.alpha.api :as t]
+    [tick.core :as t]
     [tick.timezone]
     [tick.locale-en-us]
     [testdouble.cljs.csv :as csv]
@@ -244,6 +245,8 @@
               (fn [st wt]
                 (rutil/set-value* st wt :worktime/date date))
               st wts)))))))
+
+
 
 (defsc SiteVisitForm [this
                       {:ui/keys [ready create globals add-person-modal error]

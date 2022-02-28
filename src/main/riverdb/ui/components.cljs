@@ -8,7 +8,7 @@
     [com.fulcrologic.fulcro.algorithms.react-interop :as interop]
     [com.fulcrologic.fulcro.mutations :as fm]
     ;[goog.object :as gobj]
-    ;[tick.alpha.api :as t]
+    ;[tick.core :as t]
     ;[tick.timezone]
     [theta.log :refer [debug]]
     ["react-datepicker/dist" :default DatePicker]
