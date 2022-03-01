@@ -74,26 +74,43 @@
             (dom/h3 "Site Visit Completeness")
             (dom/table :.ui.collapsing.very.compact.table
               (dom/tbody
-                (dom/tr
-                  (td (ui-popup
-                        {:trigger (dom/span {} "Planned Site Visits: " info-icon)
-                         :content "Range = Max - Min of sample replicates"}))
-                  (td (str count-sitevisits)))
+                (dom/tr (td "Planned Site Visits: ") (td (str count-sitevisits)))
                 (dom/tr (td "Failed Site Visits: ") (td (str count-no-results)))
                 (dom/tr (td "Actual Site Visits: ") (td (str count-results)))
                 (dom/tr (td "Site Visit Completeness: ") (td (str percent-complete "%")))
                 (dom/tr (td " ") (td ""))
-                (dom/tr (td "Planned Parameters: ") (td (str count-params-planned)))
-                (dom/tr (td "Possible Parameters: ") (td (str count-params-possible)))
-                (dom/tr (td "Sampled Parameters: ") (td (str count-params)))
+                (dom/tr (td
+                          (ui-popup
+                            {:trigger (dom/span {} "Planned Parameters: " info-icon)
+                             :content "Planned Site Visits * QC Parameters"})) (td (str count-params-planned)))
+                (dom/tr (td
+                          (ui-popup
+                            {:trigger (dom/span {} "Possible Parameters: " info-icon)
+                             :content "Actual Site Visits * QC Parameters"})) (td (str count-params-possible)))
+                (dom/tr (td
+                          (ui-popup
+                            {:trigger (dom/span {} "Actual Parameters: " info-icon)
+                             :content "Count of parameters processed.  Should <= Possible Parameters.  Otherwise, something's wrong."})) (td (str count-params)))
                 nil
                 (when (> count-dupes 0)
                   (dom/tr {:style {:color "red"}} (td "Duplicate Parameters: ") (td (str (or count-dupes 0)))))
-                (dom/tr (td "Complete Parameters: ") (td (str count-params-complete)))
-                (dom/tr (td "% Complete Parameters: ") (td (str percent-params-complete)))
-                (dom/tr (td "Imprecise Parameters: ") (td (str count-params-imprecise)))
+                (dom/tr (td
+                          (ui-popup
+                            {:trigger (dom/span {} "Complete Parameters: " info-icon)
+                             :content "Count of parameters with required # of replicates satisfied"})) (td (str count-params-complete)))
+                (dom/tr (td
+                          (ui-popup
+                            {:trigger (dom/span {} "% Complete Parameters: " info-icon)
+                             :content "(Complete Parameters / Actual Parameters) * 100"})) (td (str percent-params-complete)))
+                (dom/tr (td
+                          (ui-popup
+                            {:trigger (dom/span {} "Imprecise Parameters: " info-icon)
+                             :content "Count of parameters with a precision violation"})) (td (str count-params-imprecise)))
                 (dom/tr (td "% Imprecise Parameters: ") (td (str percent-params-imprecise)))
-                (dom/tr (td "Exceedance Parameters: ") (td (str count-params-exceedance)))
+                (dom/tr (td
+                          (ui-popup
+                            {:trigger (dom/span {} "Exceedance Parameters: " info-icon)
+                             :content "Count of parameters with values outside of desired limits"})) (td (str count-params-exceedance)))
                 (dom/tr (td "% Exceedance Parameters: ") (td (str percent-params-exceedance)))))
 
             (dom/h3 nil "Precision Standards")
