@@ -927,10 +927,9 @@
         date (:date sv)
         check (reduce
                 (fn [r sample]
-                  (let [k (:param-key sample)
-                        id (:param-id sample)]
+                  (let [id (:param-id sample)]
                     (if (get-in r [:check site date id])
-                      (update r :dupes conj id)
+                      (update r :dupes conj (:param-nm sample))
                       (assoc-in r [:check site date id] true))))
                 {:dupes []
                  :check {}} (:samples sv))]
