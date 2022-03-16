@@ -137,7 +137,8 @@
      {[:sample/DeviceID :as :device]
       [[:samplingdevice/CommonID :as :id]]}
      {[:sample/Parameter :as :param]
-      [[:parameter/Replicates :as :reps]
+      [:db/id
+       [:parameter/Replicates :as :reps]
        [:parameter/NameShort :as :name]
        [:parameter/High :as :high]
        [:parameter/Low :as :low]
@@ -545,6 +546,7 @@
                             (get-in (first results) [:qual :code]))
                   summary (cond-> {:param-key param-k
                                    :param-nm  (:name param)
+                                   :param-id  (:db/id param)
                                    :type      type
                                    :unit      unit
                                    :matrix    matrix
@@ -925,10 +927,11 @@
         date (:date sv)
         check (reduce
                 (fn [r sample]
-                  (let [k (:param-key sample)]
-                    (if (get-in r [:check site date k])
-                      (update r :dupes conj k)
-                      (assoc-in r [:check site date k] true))))
+                  (let [k (:param-key sample)
+                        id (:param-id sample)]
+                    (if (get-in r [:check site date id])
+                      (update r :dupes conj id)
+                      (assoc-in r [:check site date id] true))))
                 {:dupes []
                  :check {}} (:samples sv))]
     (:dupes check)))

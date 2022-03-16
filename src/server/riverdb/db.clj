@@ -125,6 +125,7 @@
   ([eid query]
    (d/pull (db) query eid)))
 
+
 (defn pull-tx [eid]
   (d/q '[:find (pull ?t [*]) .
          :in $ ?e
@@ -132,6 +133,9 @@
          [?e _ _ ?t]]
     (db) eid))
 
+(defn pull-txs [eid]
+  (sort-by :db/txInstant
+    (d/q '[:find [(pull ?tx [*]) ...] :in $ ?e :where [?e _ _ ?tx]] (db) eid)))
 
 
 (defn find-lab-parameters []
@@ -267,8 +271,16 @@
 (defn pull-sv
   "a full graph query of the most significant fields in a sitevisit"
   [db-id]
-  (d/pull (db) '[*
-                 {[:sample/_SiteVisitID :as :sitevisit/Samples]
+  (d/pull (db) '[:db/id
+                 :org.riverdb/import-key
+                 :sitevisit/SiteVisitDate
+                 :sitevisit/ProjectID
+                 :sitevisit/AgencyCode
+                 :sitevisit/StationID
+                 :sitevisit/StationFailCode
+                 :sitevisit/VisitType
+                 :sitevisit/CreationTimestamp
+                 {:sitevisit/Samples
                   [:db/id
                    {:sample/EventType
                     [:db/id :eventtypelookup/EventType]}
@@ -276,27 +288,48 @@
                     [:db/id :sampletypelookup/SampleTypeCode]}
                    :sample/QCCheck
                    :sample/SampleReplicate
+                   :org.riverdb/import-key
                    {:sample/Constituent
-                    [:constituentlookup/ConstituentCode
-                     {:constituentlookup/AnalyteCode [:analytelookup/AnalyteCode
-                                                      :analytelookup/AnalyteName]}]}
-                   {[:fieldresult/_SampleRowID :as :sample/FieldResults]
-                    [:db/id
-                     :fieldresult/Result
-                     :fieldresult/FieldReplicate
-                     :fieldresult/QAFlag
-                     :fieldresult/ResultTime
-                     :fieldresult/SigFig
-                     {:fieldresult/SamplingDeviceID
-                      [:db/id
-                       :samplingdevice/CommonID
-                       {:samplingdevice/DeviceType [:samplingdevicelookup/SampleDevice]}]}]}
+                    [[:constituentlookup/ConstituentCode :as :code]
+                     {[:constituentlookup/AnalyteCode :as :analyte] [[:analytelookup/AnalyteName :as :name]]}]}
+                   {[:sample/Parameter :as :param]
+                    [[:parameter/Name :as :name]]}
+                   {:sample/FieldResults
+                    [[:fieldresult/Result :as :result]
+                     [:fieldresult/FieldReplicate :as :rep]
+                     :org.riverdb/import-key]}
 
-                   {[:fieldobsresult/_SampleRowID :as :sample/FieldObservations] [*]}
-                   {[:labresult/_SampleRowID :as :sample/LabResults]
+                   {:sample/FieldObsResults [*]}
+                   {:sample/LabResults
                     [* {:labresult/DigestExtractCode [*]} {:labresult/ResQualCode [*]}]}]}]
     db-id))
 
+(defn pull-sv2
+  ([eid]
+   (d/pull
+     (db)
+     '[:db/id
+       :org.riverdb/import-key
+       :sitevisit/SiteVisitDate
+       :sitevisit/ProjectID
+       :sitevisit/AgencyCode
+       :sitevisit/StationID
+       :sitevisit/StationFailCode
+       :sitevisit/VisitType
+       {:sitevisit/Samples
+        [:db/id
+         {:sample/Constituent
+          [:constituentlookup/Analyte
+           :constituentlookup/Name]}
+         :sample/DeviceType
+         {:sample/Parameter
+          [:db/id :parameter/Name]}
+         {:sample/FieldResults
+          [:db/id
+           :fieldresult/Result
+           :fieldresult/FieldReplicate
+           :org.riverdb/import-key]}]}]
+     eid)))
 
 (defn rollback
   "Reassert retracted datoms and retract asserted datoms in a transaction,
