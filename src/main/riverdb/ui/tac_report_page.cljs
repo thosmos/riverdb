@@ -160,7 +160,7 @@
                                     (.toLocaleDateString date "en-US")))
 
                           (dom/td (str dupes))
-                          (dom/td (str id))))))))))
+                          (dom/td (dom/a {:href (str "/sitevisit/edit/" id)} (str id)))))))))))
 
 
           (when (seq no-results-rs)
