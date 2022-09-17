@@ -9,7 +9,6 @@
         :clj
         [[com.fulcrologic.fulcro.dom-server :as dom :refer [div label input datalist option]]])
     [com.fulcrologic.rad.ids :as ids]
-    [com.fulcrologic.rad.ui-validation :as validation]
     [com.fulcrologic.fulcro.rendering.multiple-roots-renderer :as mroot]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
     [com.fulcrologic.fulcro.data-fetch :as df]
@@ -44,8 +43,8 @@
         visible?           (form/field-visible? form-instance attribute)
         read-only?         (form/read-only? form-instance attribute)
         input-props        (?! (form/field-style-config env attribute :input/props) env)
-        invalid?           (validation/invalid-attribute-value? env attribute)
-        validation-message (when invalid? (validation/validation-error-message env attribute))
+        invalid?           (form/invalid-attribute-value? env attribute)
+        validation-message (when invalid? (form/validation-error-message env attribute))
         options            (po/current-form-options form-instance attribute)]
     ;(log/debug "RENDER InputList" qualified-key "props" props "form-props" form-props "value" value)
     (when visible?

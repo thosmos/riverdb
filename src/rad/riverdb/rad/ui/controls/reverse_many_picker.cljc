@@ -8,7 +8,6 @@
     [com.fulcrologic.rad.form :as form]
     [com.fulcrologic.rad.attributes :as attr]
     [com.fulcrologic.rad.picker-options :as picker-options]
-    [com.fulcrologic.rad.ui-validation :as validation]
     [com.fulcrologic.rad.options-util :refer [?!]]
     [taoensso.timbre :as log]))
 
@@ -41,9 +40,9 @@
                                            [target-id-key id])))
                                  (get props qualified-key))
             field-label        (form/field-label env attr)
-            invalid?           (validation/invalid-attribute-value? env attr)
+            invalid?           (form/invalid-attribute-value? env attr)
             read-only?         (form/read-only? form-instance attr)
-            validation-message (when invalid? (validation/validation-error-message env attr))]
+            validation-message (when invalid? (form/validation-error-message env attr))]
         (div :.ui.field {:classes [(when invalid? "error")]}
           (dom/label field-label " " (when invalid? validation-message))
           (div :.ui.middle.aligned.celled.list.big
