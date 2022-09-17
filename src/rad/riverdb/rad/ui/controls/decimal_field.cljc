@@ -1,0 +1,16 @@
+(ns riverdb.rad.ui.controls.decimal-field
+  (:require
+    [theta.log :refer [debug]]
+    [com.fulcrologic.fulcro.components :as comp]
+    [com.fulcrologic.fulcro.dom.inputs :as inputs]
+    [clojure.string :as str]
+    [com.fulcrologic.rad.rendering.semantic-ui.field :refer [render-field-factory]]
+    [com.fulcrologic.rad.type-support.decimal :as math]))
+
+(def ui-decimal-input
+  (comp/factory (inputs/StringBufferedInput ::DecimalInput
+                  {:model->string (fn [n] (math/numeric->str n))
+                   :string->model (fn [s] (math/numeric s))
+                   :string-filter (fn [s] (first (re-find #"^-?\d*(\.\d*)?" s)))})))
+
+(def render-field (render-field-factory {} ui-decimal-input))

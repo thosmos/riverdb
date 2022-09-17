@@ -24,6 +24,7 @@
     [riverdb.rad.ui.controls.autocomplete]
     [riverdb.rad.ui.controls.inputlist]
     [riverdb.rad.ui.controls.reverse-many-picker]
+    [riverdb.rad.ui.controls.decimal-field]
     [riverdb.ui.globals :as globals]
     ;[riverdb.model :as model]
     [riverdb.ui.root :as root]
@@ -45,7 +46,10 @@
                        (assoc-in [::form/type->style->control :string :inputlist]
                          riverdb.rad.ui.controls.inputlist/render-inputlist-field)
                        (assoc-in [::form/type->style->control :ref :pick-many-reverse]
-                         riverdb.rad.ui.controls.reverse-many-picker/to-many-picker))]
+                         riverdb.rad.ui.controls.reverse-many-picker/to-many-picker)
+                       (assoc-in [::form/type->style->control :decimal :river-decimal]
+                         riverdb.rad.ui.controls.decimal-field/render-field))]
+
 
     (rad-app/install-ui-controls! app all-controls)))
 

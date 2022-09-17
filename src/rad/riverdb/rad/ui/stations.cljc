@@ -42,7 +42,8 @@
                         station/Active
                         station/Agency
                         station/Description station/StationComments
-                        station/Lat station/Lon
+                        station/Lat
+                        station/Lon
                         station/ForkTribGroup station/RiverFork station/LocalWatershed
                         station/NHDWaterbody station/Elevation station/DOcorrection]
    fo/default-values   {:stationlookup/Active true
@@ -69,10 +70,11 @@
                         :stationlookup/NHDWaterbody    "NHD Waterbody"
                         :stationlookup/TargetLat       "Lat"
                         :stationlookup/TargetLong      "Long"
-                        :projectslookup/_Stations      "Stations"}
+                        :projectslookup/_Stations      "Projects"}
    fo/field-styles     {:stationlookup/Agency     :pick-one
                         :stationlookup/Active     :default
-                        :projectslookup/_Stations :pick-many}
+                        :projectslookup/_Stations :pick-many
+                        :stationlookup/TargetLong :river-decimal}
    fo/read-only-fields #{:stationlookup/Agency}
    fo/field-options    {:stationlookup/Agency agency-picker
                         :projectslookup/_Stations proj-picker}
