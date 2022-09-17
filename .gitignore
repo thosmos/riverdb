@@ -51,3 +51,4 @@ import-resources
 resources/public/admin/js/main/manifest.edn
 classes/*
 
+/.clj-kondo/
