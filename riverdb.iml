@@ -22,6 +22,8 @@
       <excludeFolder url="file://$MODULE_DIR$/resources/public" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/projectFilesBackup" />
+      <excludeFolder url="file://$MODULE_DIR$/.portal" />
+      <excludeFolder url="file://$MODULE_DIR$/.clj-kondo" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
