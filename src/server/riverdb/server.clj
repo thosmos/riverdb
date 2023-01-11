@@ -21,10 +21,10 @@
             [riverdb.graphql.resolvers :refer [resolvers]]
             [riverdb.graphql.schema :as sch]
             [riverdb.server-components.config]
+            [riverdb.server-components.nrepl]
             [riverdb.server-components.middleware :as middle :refer [middleware]]
             [riverdb.state :refer [start-dbs]]
             [theta.util]
-            [nrepl.server :refer [start-server stop-server]]
             [theta.log :as log]))
 
 ;(set! *warn-on-reflection* 1)
@@ -328,8 +328,6 @@
 (defstate server
   :start (start-service)
   :stop (stop-service server))
-
-(defonce nreplServer (start-server :port 9595))
 
 (defn start []
   (mount/start-with-args {:config "config/prod.edn"}))
