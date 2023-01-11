@@ -82,7 +82,8 @@
 
 
 
-         :repl       {:jvm-opts ["-server" "-Dclojure.server.repl={:port,5555,:accept,clojure.core.server/repl}"]}}
+         :repl       {:jvm-opts ["-server" "-Dclojure.server.repl={:port,5555,:accept,clojure.core.server/repl}"]}
+         :nREPL      {:extra-deps {nrepl/nrepl {:mvn/version "1.0.0"}}}}
  ;["-Xms512m" "-Xmx512m" "-server" "-Dclojure.server.repl={:port,5555,:accept,clojure.core.server/repl}"]}},
  :deps
         {org.clojure/clojure                 {:mvn/version "1.10.3"}

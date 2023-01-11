@@ -24,6 +24,7 @@
             [riverdb.server-components.middleware :as middle :refer [middleware]]
             [riverdb.state :refer [start-dbs]]
             [theta.util]
+            [nrepl.server :refer [start-server stop-server]]
             [theta.log :as log]))
 
 ;(set! *warn-on-reflection* 1)
@@ -280,7 +281,7 @@
   (let [options   {:graphiql      true
                    :ide-path      "/graphiql"
                    :subscriptions false
-                   :port          (or (Long/parseLong (dotenv/env :PORT)) 8989)
+                   :port          (Long/parseLong (or (dotenv/env :PORT) "8989"))
                    :env           (or (keyword dotenv/app-env) :dev)}
         inceptors (vec (concat [] (lacinia/default-interceptors #(process-schemas) options)))
         inceptors (-> inceptors
@@ -327,6 +328,8 @@
 (defstate server
   :start (start-service)
   :stop (stop-service server))
+
+(defonce nreplServer (start-server :port 9595))
 
 (defn start []
   (mount/start-with-args {:config "config/prod.edn"}))
