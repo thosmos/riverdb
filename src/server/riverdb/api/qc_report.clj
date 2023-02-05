@@ -10,7 +10,7 @@
     [riverdb.util :as util]
     [riverdb.state :refer [db cx]]
     [riverdb.db :as rdb :refer [rpull pull-entities]]
-    [taoensso.timbre :as log :refer [debug info]]
+    [theta.log :as log]
     [thosmos.util :as tu]
     [clojure.pprint :refer [pprint]]
     [com.fulcrologic.fulcro.components :as comp]
@@ -69,24 +69,27 @@
   ([db agencies]
    ;(log/info "get-agency-project-years")
    (let [pjs  (get-agency-projects db agencies)
-         pjis (into (sorted-map) (for [pj pjs]
-                                   (let [{:projectslookup/keys [ProjectID AgencyCode Name]
-                                          :db/keys             [id]} pj
-                                         years (vec (map str (sort > (get-project-years db ProjectID))))
-                                         ;_ (log/debug "project" ProjectID "years" years)
-                                         sites (d/q '[:find [(pull ?st [:db/id :stationlookup/StationName :stationlookup/StationID]) ...]
-                                                      :in $ ?pj
-                                                      :where [?pj :projectslookup/Stations ?st]]
-                                                 db id)]
-                                     ;_ (log/debug "project" ProjectID "sites" sites)]
+         pjis (into
+                (sorted-map)
+                (for [pj pjs]
+                  (let [{:projectslookup/keys [ProjectID AgencyCode Name]
+                         :db/keys             [id]} pj
+                        years (vec (map str (sort > (get-project-years db ProjectID))))
+                        ;_ (log/debug "project" ProjectID "years" years)
+                        sites (d/q '[:find [(pull ?st [:db/id :stationlookup/StationName :stationlookup/StationID]) ...]
+                                     :in $ ?pj
+                                     :where [?pj :projectslookup/Stations ?st]]
+                                db id)]
+                    ;_ (log/debug "project" ProjectID "sites" sites)]
 
-                                     (when (seq years)
-                                       [(keyword ProjectID) {:id      ProjectID
-                                                             :agency  AgencyCode
-                                                             :project (tu/walk-modify-k-vals pj :db/id str)
-                                                             :name    Name
-                                                             :years   years
-                                                             :sites   (tu/walk-modify-k-vals sites :db/id str)}]))))]
+                    (when (seq years)
+                      [(keyword ProjectID)
+                       {:id      ProjectID
+                        :agency  AgencyCode
+                        :project (tu/walk-modify-k-vals pj :db/id str)
+                        :name    Name
+                        :years   years
+                        :sites   (tu/walk-modify-k-vals sites :db/id str)}]))))]
      ;(log/info "get-agency-project-years results: " pjis)
      pjis)))
 
@@ -167,7 +170,7 @@
 
 ;; one graph query to pull all the data we need at once!
 (defn get-sitevisits [db {:keys [agency fromDate toDate year sampleType
-                                 project station stationCode query qaCheck] :as opts}]
+                                 project stationRef stationID stationCode query qaCheck] :as opts}]
 
   (let [fromDate (if (some? fromDate)
                    fromDate
@@ -178,7 +181,7 @@
                    (when year
                      (jt/plus fromDate (jt/years 1))))
 
-        _        (log/debug "GET SITEVISITS" agency project station year fromDate toDate)
+        _        (log/debug "GET SITEVISITS" agency project stationRef stationID stationCode year fromDate toDate)
 
         query    (or query default-query)
 
@@ -189,14 +192,21 @@
 
         q        (cond-> q
 
-                   ;; if station
-                   station
+                   ;; if stationRef
+                   stationRef
+                   (->
+                     (update :where #(conj % '[?sv :sitevisit/StationID ?stationRef]))
+                     (update :in conj '?stationRef)
+                     (update :args conj stationRef))
+
+                   ;; if stationID
+                   stationID
                    (->
                      (update :where #(-> %
-                                       (conj '[?st :stationlookup/StationID ?station])
+                                       (conj '[?st :stationlookup/StationID ?stationID])
                                        (conj '[?sv :sitevisit/StationID ?st])))
-                     (update :in conj '?station)
-                     (update :args conj station))
+                     (update :in conj '?stationID)
+                     (update :args conj stationID))
 
                    ;; if stationCode
                    stationCode
@@ -263,15 +273,14 @@
                      '[?sv :sitevisit/SiteVisitDate ?date])
 
                    qaCheck
-                   (update q :where conj '[?sv :sitevisit/QACheck true])
+                   (update :where conj '[?sv :sitevisit/QACheck true]))
 
-                   ;; last one, in case there are no conditions, get all sitevisits
-                   (empty? (:where q))
-                   (->
-                     (update :where conj '[?sv :sitevisit/StationID])))
-        q        (remap-query q)
+        ;; if there are no conditions, return nothing
+        q        (if (empty? (:where q))
+                   (log/debug "NO CONDITIONS, and we're not going to return everything ...")
+                   (remap-query q))
         ;_ (log/debug "SITEVISITS QUERY" q)
-        result   (d/qseq q)
+        result   (if q (d/qseq q) [])
         _        (log/debug "SITEVISIT RESULTS" (count result))]
 
     ;; this query only returns field results due to missing :db/id on sample
@@ -484,7 +493,7 @@
         _min     (apply min bigvals)
         _max     (apply max bigvals)
         _        (when (and (> (count vals) 2) (> mn _max))
-                   (debug "WEIRD MEAN" mn bigvals))
+                   (log/debug "WEIRD MEAN" mn bigvals))
         plus     (- _max mn)
         minus    (- mn _min)
         pm       (max plus minus)
@@ -581,7 +590,7 @@
   (vec
     (for [{:keys [type vals unit matrix analyte qual deviceType device param param-key] :as sum} sums]
       (do
-        ;(debug "CALC " v)
+        ;(log/debug "CALC " v)
         (try
           (let [
                 ;; calculate sample quantity exceedance
@@ -620,13 +629,13 @@
               :else
               (let [scale          (or (:scale deviceType) (get-scale vals))
                     _              (when (nil? scale)
-                                     (debug "SCALE IS NIL" sum))
+                                     (log/debug "SCALE IS NIL" sum))
 
                     ;; calculate
                     bigcalcs       (calc3 scale vals)
                     {:keys [mean max min range stddev]} bigcalcs
 
-                    ;_            (debug "param-sums" param-name bigcalcs)
+                    ;_            (log/debug "param-sums" param-name bigcalcs)
 
                     ;range        (round2 4 (- mx mn))
                     ;bigrange     (- bigmax bigmin)
@@ -757,12 +766,12 @@
 (defn sitevisit-summaries
   "create summary info per sitevisit"
   [{:keys [sitevisits sampleType] :as opts}]
-  (debug "CREATE SV SUMMARIES" (keys opts))
+  (log/debug "CREATE SV SUMMARIES" (keys opts))
   (vec
     (for [sv sitevisits]
       (try
         (let [;dt   (str (datetime/inst->local-date (:date sv)))
-              ;_    (debug "processing SV " (get-in sv [:station :station_id]) dt)
+              ;_    (log/debug "processing SV " (get-in sv [:station :station_id]) dt)
 
               ;; remap nested values to root
               sv   (-> sv
@@ -778,7 +787,7 @@
                      (filter #(= (get-in % [:type :code]) sampleType) sas)
                      sas)
 
-              ;_    (debug "reduce Samples to param sums")
+              ;_    (log/debug "reduce Samples to param sums")
               sums (summarize-samples sas)
               sums (sample-calcs sums)
               ;; remove the list of samples and add the new param map
@@ -787,11 +796,11 @@
                      ;(assoc :fieldresults sums)
                      (assoc :samples sums))
 
-              ;_   (debug "count valid params")
+              ;_   (log/debug "count valid params")
               ;; count valid params
 
               sv   (sv-sample-stats sv)]
-          ;(debug "SV" sv)
+          ;(log/debug "SV" sv)
 
           sv)
         (catch Exception ex (log/error ex))))))
@@ -809,12 +818,12 @@
 (defn sitevisit-summaries2
   "create summary info per sitevisit"
   [{:keys [sitevisits sampleType project params-list params-map] :as opts}]
-  ;(debug "CREATE SV SUMMARIES" (keys opts))
+  ;(log/debug "CREATE SV SUMMARIES" (keys opts))
   (vec
     (for [sv sitevisits]
       (try
         (let [;dt   (str (datetime/inst->local-date (:date sv)))
-              ;_    (debug "processing SV " (get-in sv [:station :station_id]) dt)
+              ;_    (log/debug "processing SV " (get-in sv [:station :station_id]) dt)
 
               ;; remap nested values to root
               sv      (-> sv
@@ -826,13 +835,13 @@
               ;; pull out samples list
               sas     (get-in sv [:samples])
 
-              ;_       (debug "FIRST SAMPLE OF " (count sas) (first sas))
+              ;_       (log/debug "FIRST SAMPLE OF " (count sas) (first sas))
 
               sas     (if sampleType
                         (filter #(= (get-in % [:type :code]) sampleType) sas)
                         sas)
 
-              ;_    (debug "reduce Samples to param sums")
+              ;_    (log/debug "reduce Samples to param sums")
               sums    (summarize-samples sas)
               sums    (sample-calcs sums)
               stats   (sample-stats sums)
@@ -1165,7 +1174,7 @@
         ;sitevisits (if year
         ;             (get-sitevisits db {:agency agency-code :project project-id :year year :sampleType "FieldMeasure"})
         ;             (get-sitevisits db {:agency agency-code :sampleType "FieldMeasure"}))
-        ;_          (debug "first SV" (first sitevisits))
+        ;_          (log/debug "first SV" (first sitevisits))
         ;sitevisits (filter-sitevisits sitevisits)
         sitevisits (sitevisit-summaries {:sitevisits sitevisits :sampleType "FieldMeasure"})
         ;_          (println "report reducer" (first sitevisits))
@@ -1208,7 +1217,7 @@
           year        (if (= year "") nil (Long/parseLong year))
 
           sitevisits  (get-sitevisits db {:project project-code :year year})
-          ;_            (debug "sitevisits" (count svs))
+          ;_            (log/debug "sitevisits" (count svs))
           ;svs          (create-sitevisit-summaries3 svs)
           project     (rpull
                         [:projectslookup/ProjectID project-code]
@@ -1224,14 +1233,14 @@
           params      (sort compare-param params)
           params-list (mapv :parameter/NameShort params)
           params-map  (riverdb.util/nest-by [:parameter/NameShort] params)
-          ;_           (debug "PARAMS" params-list)
+          ;_           (log/debug "PARAMS" params-list)
           sitevisits  (sitevisit-summaries2 {:sitevisits sitevisits :params-list params-list :params-map params-map})
-          ;_            (debug "sitevisits filtered" (count svs))
+          ;_            (log/debug "sitevisits filtered" (count svs))
           ;svs          (filter-empty-fieldresults svs)
-          ;_            (debug "sitevisits summaries" (count svs))
+          ;_            (log/debug "sitevisits summaries" (count svs))
           sitevisits  (sort-by :date sitevisits)
-          ;_           (debug "sitevisits first" (first sitevisits))
-          ;_            (debug "sitevisits last" (last svs))
+          ;_           (log/debug "sitevisits first" (first sitevisits))
+          ;_            (log/debug "sitevisits last" (last svs))
           result      {:results     sitevisits
                        ;:params            params
                        :params-list params-list

@@ -622,7 +622,7 @@
                     :description "List of sitevisit summaries"
                     :args        {:fromYear    {:type 'Int}
                                   :toYear      {:type 'Int}
-                                  :station     {:type 'Int}
+                                  :stationRef  {:type 'ID}
                                   :stationCode {:type 'String}
                                   :agency      {:type 'String}
                                   :project     {:type 'String}
@@ -669,6 +669,7 @@
                    {:type    '(list :logsample)
                     :resolve :resolve-logsamples
                     :args    {:loggerRef {:type 'ID}
+                              :stationRef {:type 'ID}
                               :stationCode {:type 'String}
                               :before    {:type 'Int}
                               :after     {:type 'Int}}}

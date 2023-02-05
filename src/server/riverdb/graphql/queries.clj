@@ -133,14 +133,19 @@
                      (jt/java-date (jt/zoned-date-time (:fromYear args))))
         toDate     (when (:toYear args)
                      (jt/java-date (jt/zoned-date-time (:toYear args))))
-        ;_          (debug "ARGS" args)
+
+        stationRef (when-let [st (:stationRef args)]
+                     (Long/parseLong st))
+
+        _          (debug "ARGS" args)
         opts       (cond-> args
                      fromDate
-                     (merge
-                       {:fromDate fromDate})
+                     (assoc :fromDate fromDate)
                      toDate
-                     (merge
-                       {:toDate toDate}))
+                     (assoc :toDate toDate)
+                     stationRef
+                     (assoc :stationRef stationRef))
+        _          (debug "OPTS" opts)
 
         svs        (qc-report/get-sitevisits (db) opts)
 
@@ -421,7 +426,7 @@
       (debug "LOGGERS ERROR" ex)
       {:error (.toString ex)})))
 
-(defn resolve-logsamples [context {:keys [stationCode loggerRef before after] :as args} value]
+(defn resolve-logsamples [context {:keys [stationRef loggerRef before after] :as args} value]
   (log/debug "RESOLVE LOGSAMPLES" args)
 
   (comment
@@ -430,6 +435,8 @@
     {:type    '(list :logsample)
      :resolve :resolve-logsamples
      :args    {:loggerRef {:type 'ID}
+               :stationRef {:type 'ID}
+               :stationCode {:type 'String}
                :before    {:type 'Int}
                :after     {:type 'Int}}}
 
@@ -448,6 +455,8 @@
           inst-field? (some #{:inst} fields)
           ;args         (into {} (mapv (fn [[k v]] identity [k (Long/parseLong v)]) args))
           args        (cond-> args
+                        stationRef
+                        (assoc :stationRef (Long/parseLong stationRef))
                         loggerRef
                         (assoc :loggerRef (Long/parseLong loggerRef))
                         before

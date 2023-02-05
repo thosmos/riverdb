@@ -70,7 +70,7 @@
       rez)
     (catch Exception ex (log/debug "ERROR: " (.getMessage ex)))))
 
-(defn get-logger-samples [db {:keys [loggerRef after before stationCode] :as args}]
+(defn get-logger-samples [db {:keys [loggerRef after before stationCode stationRef] :as args}]
   (log/debug "GET-LOGSAMPLES"  args)
   (try
     (let [q   {:query {:find  '[?inst ?val]
@@ -98,6 +98,14 @@
                   (update-in [:query :in] conj '?stc)
                   (update :args conj stationCode))
 
+                stationRef
+                (->
+                  (update-in [:query :where]
+                    #(conj %
+                       '[?lgr :logger/stationRef ?stationRef]
+                       '[?e :logsample/logger ?lgr]))
+                  (update-in [:query :in] conj '?stationRef)
+                  (update :args conj stationRef))
 
                 loggerRef
                 (->
