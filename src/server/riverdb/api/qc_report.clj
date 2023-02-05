@@ -195,7 +195,7 @@
                    ;; if stationRef
                    stationRef
                    (->
-                     (update :where #(conj % '[?sv :sitevisit/StationID ?stationRef]))
+                     (update :where conj '[?sv :sitevisit/StationID ?stationRef])
                      (update :in conj '?stationRef)
                      (update :args conj stationRef))
 
@@ -228,23 +228,20 @@
 
                    agency
                    (->
-                     (update :where #(-> %
-                                       (conj '[?pj :projectslookup/AgencyCode ?agency])))
+                     (update :where conj '[?pj :projectslookup/AgencyCode ?agency])
                      (update :in conj '?agency)
                      (update :args conj agency))
 
                    project
                    (->
-                     (update :where #(-> %
-                                       (conj '[?pj :projectslookup/ProjectID ?proj])))
+                     (update :where conj '[?pj :projectslookup/ProjectID ?proj])
                      (update :in conj '?proj)
                      (update :args conj project))
 
 
                    (or agency project)
                    (->
-                     (update :where #(-> %
-                                       (conj '[?sv :sitevisit/ProjectID ?pj]))))
+                     (update :where conj '[?sv :sitevisit/ProjectID ?pj]))
 
 
                    ;; If the `fromDate` filter was passed, do the following:
@@ -255,22 +252,19 @@
                    (->
                      (update :in conj '?fromDate)
                      (update :args conj (jt/java-date fromDate))
-                     (update :where conj
-                       '[(>= ?date ?fromDate)]))
+                     (update :where conj '[(>= ?date ?fromDate)]))
 
                    ;; similar to ?fromDate
                    toDate
                    (->
                      (update :in conj '?toDate)
                      (update :args conj (jt/java-date toDate))
-                     (update :where conj
-                       '[(< ?date ?toDate)]))
+                     (update :where conj '[(< ?date ?toDate)]))
 
                    ;; If either from- or to- date were passed, join the `sitevisit` entity
                    ;; and bind its `SiteVisitDate` attribute to the `?date` variable.
                    (or fromDate toDate)
-                   (update :where conj
-                     '[?sv :sitevisit/SiteVisitDate ?date])
+                   (update :where conj '[?sv :sitevisit/SiteVisitDate ?date])
 
                    (some? qaCheck)
                    (->
