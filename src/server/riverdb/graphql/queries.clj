@@ -144,7 +144,9 @@
                      toDate
                      (assoc :toDate toDate)
                      stationRef
-                     (assoc :stationRef stationRef))
+                     (assoc :stationRef stationRef)
+                     (nil? (:qaCheck args))
+                     (assoc :qaCheck true))
         _          (debug "OPTS" opts)
 
         svs        (qc-report/get-sitevisits (db) opts)

@@ -272,8 +272,11 @@
                    (update :where conj
                      '[?sv :sitevisit/SiteVisitDate ?date])
 
-                   qaCheck
-                   (update :where conj '[?sv :sitevisit/QACheck true]))
+                   (some? qaCheck)
+                   (->
+                     (update :in conj '?qaCheck)
+                     (update :args conj qaCheck)
+                     (update :where conj '[?sv :sitevisit/QACheck ?qaCheck])))
 
         ;; if there are no conditions, return nothing
         q        (if (empty? (:where q))

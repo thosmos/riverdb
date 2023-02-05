@@ -630,7 +630,8 @@
                                                 :default 10}
                                   :offset      {:type    'Int
                                                 :default 0}
-                                  :sampleType  {:type 'String}}}
+                                  :sampleType  {:type 'String}
+                                  :qaCheck     {:type 'Boolean}}}
 
                    :stations
                    {:type        '(list :stationdetail)
