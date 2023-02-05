@@ -172,7 +172,10 @@
                        (update :station thosmos.util/walk-remove-ns)
                        (clojure.set/rename-keys key-change)
                        (tu/walk-modify-k-vals :id str)
-                       (update :date #(.format formatter %))))]
+                       (as-> _sv
+                         (update _sv :date
+                           #(try (.format formatter %)
+                                 (catch Exception _ (log/debug "BAD DATE" % "SV" (:id _sv))))))))]
     ;(add-results fields)
     ;(add-resultsv fields)))]
     ;(debug "SITEVISITS first:" (first svs))
