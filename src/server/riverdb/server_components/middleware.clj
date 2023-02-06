@@ -16,6 +16,7 @@
     [ring.util.response :as resp]
     [ring.util.io :as ring-io]
     [riverdb.api.tac-report :as tac]
+    [riverdb.api.csv-report :refer [csv-report]]
     [riverdb.server-components.config :refer [config]]
     [riverdb.server-components.pathom :refer [parser]]
     [riverdb.rad.comps.blob-store :as bs]
@@ -106,7 +107,7 @@
     (log/debug "RENDER CSV" query-params)
     (-> (resp/response
           (ring-io/piped-input-stream
-            #(tac/csv-all-years (io/make-writer % {}) db agency project))))))
+            #(csv-report (io/make-writer % {}) db {:agencyCode agency :projectID project}))))))
 ;(response/content-type "text/plain")
 ;(response/charset "ANSI")
 

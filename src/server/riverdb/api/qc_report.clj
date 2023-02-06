@@ -112,6 +112,7 @@
    [:sitevisit/SiteVisitID :as :svid]
    [:sitevisit/SiteVisitDate :as :date]
    [:sitevisit/Time :as :time]
+   [:sitevisit/QACheck :as :publish]
    [:sitevisit/Notes :as :notes]
    {[:sitevisit/StationID :as :station]
     [:db/id
@@ -929,8 +930,8 @@
      (assoc :sample sample))))
 
 (defn check-dupe-samples [sv]
-  (let [site (:site sv)
-        date (:date sv)
+  (let [site  (:site sv)
+        date  (:date sv)
         check (reduce
                 (fn [r sample]
                   (let [id (:param-id sample)]
@@ -1208,12 +1209,13 @@
     [(get type-order (get-in y [:parameter/SampleType :db/ident])) (:parameter/Order y)]))
 
 (defn get-datatable-report
-  [db {project-code :project :keys [agency year]}]
+  [db {project-code :project :keys [agency year qaCheck]}]
   (try
     (let [_           (log/debug "GET DATATABLE" year project-code)
-          year        (if (= year "") nil (Long/parseLong year))
+          year        (when year
+                        (if (= year "") nil (Long/parseLong year)))
 
-          sitevisits  (get-sitevisits db {:project project-code :year year})
+          sitevisits  (get-sitevisits db {:project project-code :year year :qaCheck qaCheck})
           ;_            (log/debug "sitevisits" (count svs))
           ;svs          (create-sitevisit-summaries3 svs)
           project     (rpull
@@ -1247,5 +1249,5 @@
                        :agency      agency
                        :projectName Name}]
       result)
-    (catch Exception ex (log/error "DATATABLE ERROR" (.getMessage ex)))))
+    (catch Exception ex (log/error "DATATABLE ERROR" ex))))
 
