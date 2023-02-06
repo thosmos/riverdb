@@ -55,6 +55,7 @@
            ends  [#_(th {:key 96 :className "info"} "Invalid_Total")
                   #_(th {:key 97 :className "danger"} "Exceed_Total")
                   "ID"
+                  "Edit"
                   #_(th {:key 95} "SVID")
                   "Notes"]]
 
@@ -104,9 +105,9 @@
                             (for [col cols] (or col "")))))))
            notes  [#_count-params-invalid
                    #_count-params-exceedance
-                   (str (or id ""))
-                   #_(or svid "")
-                   (or notes "")]
+                   (str id)
+                   (when id (str "https://admin.riverdb.org/sitevisit/edit/" id))
+                   (str notes)]
            result (concat heads ps notes)]
        result)
      (catch Exception ex (log/debug "CELL ERROR", ex))))
@@ -126,9 +127,9 @@
 (defn csv-report
   ([db {:keys [projectID agencyCode] :as args}]
    (csv-report *out* db args))
-  ([^Writer writer db {:keys [projectID agencyCode] :as args}]
+  ([^Writer writer db {:keys [projectID agencyCode year] :as args}]
    (let [_                (log/info "CSV REPORT" agencyCode projectID)
-         datatable-report (qc/get-datatable-report db {:agency agencyCode :project projectID})
+         datatable-report (qc/get-datatable-report db {:agency agencyCode :project projectID :year year})
          {:keys [results params-list params-map reportYear agency projectName]} datatable-report
          _                (log/debug "DETAILS" reportYear agency projectName)
          heads            (csv-headers params-list params-map)
