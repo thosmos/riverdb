@@ -8,7 +8,7 @@
     [com.fulcrologic.semantic-ui.collections.message.ui-message :refer [ui-message]]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
     [com.fulcrologic.fulcro.networking.http-remote :as http-remote]
-    [theta.log :as log :refer [debug]]
+    [theta.log :as log :refer [debug info]]
     [riverdb.application :refer [SPA]]
     [riverdb.ui.lookups :as looks]
     [riverdb.util :as util :refer [sort-maps-by]]
@@ -134,9 +134,9 @@
 
 (defmutation process-project-years [{:keys [desired-route proj-k]}]
   (action [{:keys [state]}]
-    (debug (clojure.string/upper-case "process-project-years"))
+    (log/info (clojure.string/upper-case "process-project-years"))
     (let [agency-project-years (get-in @state [:component/id :proj-years :agency-project-years])
-          _                    (debug "agency-project-years" agency-project-years)
+          _                    (log/info "agency-project-years" agency-project-years)
           current-project      (get @state :ui.riverdb/current-project)
           current-year         (get @state :ui.riverdb/current-year)
           proj-k               (or proj-k
@@ -164,15 +164,15 @@
             year
             (set-root-key* :ui.riverdb/current-year year))))
       (when desired-route
-        (debug "ROUTE TO desired-route" desired-route)
+        (info "ROUTE TO desired-route" desired-route)
         (let [params (:params desired-route)
               rad?   (:_rp_ params)]
           (if rad?
             (do
-              (log/debug "RAD ROUTE" desired-route)
+              (log/info "RAD ROUTE" desired-route)
               (hist5/apply-route! SPA desired-route))
             (do
-              (log/debug "NON-RAD ROUTE" desired-route)
+              (log/info "NON-RAD ROUTE" desired-route)
               (dr/change-route! SPA (:route desired-route))
               (hist/replace-route! SPA (:route desired-route) (:params desired-route)))))))))
 

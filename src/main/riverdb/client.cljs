@@ -49,8 +49,6 @@
                          riverdb.rad.ui.controls.reverse-many-picker/to-many-picker)
                        (assoc-in [::form/type->style->control :decimal :river-decimal]
                          riverdb.rad.ui.controls.decimal-field/render-field))]
-
-
     (rad-app/install-ui-controls! app all-controls)))
 
   ;;(report/install-formatter! app :boolean :affirmation (fn [_ value] (if value "yes" "no"))))

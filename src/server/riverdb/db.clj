@@ -250,7 +250,9 @@
   ([]
    (d/q '[:find
           [(pull ?e
-             [:db/id [:constituentlookup/Name :as :name]
+             [:db/id
+              [:constituentlookup/Name :as :name]
+              [:constituentlookup/ConstituentCode :as :code]
               {[:constituentlookup/AnalyteCode :as :analyte] [[:analytelookup/AnalyteName :as :name]]}
               {[:constituentlookup/MatrixCode :as :matrix] [[:matrixlookup/MatrixName :as :name]]}
               {[:constituentlookup/UnitCode :as :unit] [[:unitlookup/Unit :as :name]]}

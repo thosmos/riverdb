@@ -237,7 +237,7 @@
    :route-segment ["main"]}
   (let []
     (div :.ui.segment
-      (h3 "Welcome")
+      (h3 "Welcome!!!")
       (let [{current-user :account/name
              logged-in?   :session/valid?
              error :session/error} session]
@@ -322,9 +322,11 @@
         auth-user     (some-> current-session :account/auth :user)
         agency-uuid   (get-in props [:ui.riverdb/current-agency :agencylookup/uuid])
         ag-ident      [:agencylookup/uuid agency-uuid]
-        admin?        (->> auth-user :user/role :db/ident (= :role.type/admin))
-        rdb-admin?    (->> auth-user :user/role :db/ident (= :role.type/riverdb-admin))]
-    ;(debug "RENDER TopChrome" "admin?" admin? "user" auth-user)
+        rdb-admin?    (->> auth-user :user/role :db/ident (= :role/riverdb-admin))
+        user-role     (->> auth-user :user/role)
+        admin?        (or rdb-admin? (->> auth-user :user/role :db/ident (= :role.type/admin)))
+        _ (debug "RENDER TopChrome" "admin?" admin? "user" auth-user)]
+
     (div {:style {:display "grid" :gridTemplateRows "45px 1fr" :gridRowGap "0.2em" :height "100%"}}
       (div :.ui.secondary.pointing.menu {:style {:height "40px"}}
         (dom/a :.item {:classes [(when (= :main current-tab) "active")]
