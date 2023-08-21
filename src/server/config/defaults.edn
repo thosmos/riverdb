@@ -44,11 +44,11 @@
                                                  :not-modified-responses true}
                                      :static    {:resources "public"}
                                      :session   true
-                                     :security  {:anti-forgery   true
-                                                 :hsts           true
+                                     :security  {:anti-forgery   false
+                                                 :hsts           false
                                                  :ssl-redirect   false
                                                  :frame-options  :sameorigin
-                                                 :xss-protection {:enable? true
+                                                 :xss-protection {:enable? false
                                                                   :mode    :block}}}
 
  :com.fulcrologic.rad.pathom/config {:trace?         false
