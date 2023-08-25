@@ -444,6 +444,12 @@
       (d/transact cx (vec t)))))
 
 
+(defn find-resqualcode [code]
+  (d/q '[:find ?e .
+         :in $ ?id
+         :where
+         [?e :resquallookup/ResQualCode ?id]]
+    (db) code))
 
 
 ;(defn retract-sitevisits-since [cx date]

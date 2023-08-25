@@ -15,7 +15,7 @@
 
 
 
-#?(:clj (defmacro log-level [] (Integer/parseInt (or (dotenv/env :LOG_LEVEL) "0"))))
+#?(:clj (defmacro log-level [] (if (= (theta.log/app-env) "dev") 0 (Integer/parseInt (or (dotenv/env :LOG_LEVEL) "0")))))
 (println (str "LOADING CLJC theta.log at log-level: " (theta.log/log-level) ", app-env: " (theta.log/app-env)))
 
 #?(:clj
@@ -31,25 +31,25 @@
             args)))
 
 #?(:clj (defmacro debug [& args]
-          (when (<= (log-level) 1)
+          (when (<= (theta.log/log-level) 1)
             (if (cljs? &env)
               (let [args (pr-args args)]
-                `(do (~'js/console.debug ~@args) nil))
+                `(do (~'js/console.log ~@args) nil))
               `(log/debug ~@args)))))
 #?(:clj (defmacro info [& args]
-          (when (<= (log-level) 2)
+          (when (<= (theta.log/log-level) 2)
             (if (cljs? &env)
               (let [args (pr-args args)]
                 `(do (~'js/console.log ~@args) nil))
               `(log/info ~@args)))))
 #?(:clj (defmacro warn [& args]
-          (when (<= (log-level) 3)
+          (when (<= (theta.log/log-level) 3)
             (if (cljs? &env)
               (let [args (pr-args args)]
                 `(do (~'js/console.warn ~@args) nil))
               `(log/warn ~@args)))))
 #?(:clj (defmacro error [& args]
-          (when (<= (log-level) 4)
+          (when (<= (theta.log/log-level) 4)
             (if (cljs? &env)
               (let [args (pr-args args)]
                 `(do (~'js/console.error ~@args) nil))
@@ -58,6 +58,7 @@
 
 
 (defn test-logs []
+  (println "testing logs with log-level " (theta.log/log-level))
   (theta.log/debug "testing log debug")
   (theta.log/info "testing log info")
   (theta.log/warn "testing log warn")

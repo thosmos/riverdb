@@ -73,7 +73,7 @@
   (log/test-logs)
 
   (log/info "Application starting.")
-  (log/debug "Version" version)
+  (log/info "Version" version)
   (datetime/set-timezone! "America/Los_Angeles")
   (cssi/upsert-css "componentcss" {:component root/Root})
   ;(inspect/app-started! SPA)

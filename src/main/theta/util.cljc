@@ -35,7 +35,7 @@
 (defn parse-bigdec [str]
   (when str
     #?(:clj (try
-              (BigDecimal. ^String str)
+              (bigdec str)
               (catch Exception ex (warn "parse-bigdec failed for: " (pr-str str) (type str)))))))
 
 (defn parse-bool [str]

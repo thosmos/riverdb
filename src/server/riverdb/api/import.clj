@@ -477,17 +477,24 @@
 
 
 
-(defn import-field-results [import-token vals]
+(defn import-field-results [import-token {:keys [vals qual]}]
   ;(debug "import-field-results" vals)
   (vec
     (for [i (range (count vals))]
-      (let [import-key (str import-token "-" (inc i))]
-        ;(debug import-key (double (get vals i)))
-        {:org.riverdb/import-key     import-key
-         :riverdb.entity/ns          :entity.ns/fieldresult
-         :fieldresult/uuid           (d/squuid)
-         :fieldresult/Result         (double (get vals i))
-         :fieldresult/FieldReplicate (inc i)}))))
+      (let [import-key   (str import-token "-" (inc i))
+            val          (get vals i)
+            result-val   val
+            resqual-code (rdb/find-resqualcode val)
+            result       (cond->
+                           {:org.riverdb/import-key     import-key
+                            :riverdb.entity/ns          :entity.ns/fieldresult
+                            :fieldresult/uuid           (d/squuid)
+                            :fieldresult/FieldReplicate (inc i)}
+                           result-val
+                           (assoc :fieldresult/Result result-val)
+                           qual
+                           (assoc :fieldresult/ResQualCode resqual-code))]
+        result))))
 ;:fieldresult/ConstituentRowID   constituent}))))
 ;:fieldresult/SamplingDeviceCode devType}))))
 
@@ -499,7 +506,7 @@
         res (cond-> res
               value
               (->
-                (assoc :labresult/Result (double value))
+                (assoc :labresult/Result value)
                 (assoc :labresult/SigFig (.precision value)))
               qual
               (assoc :labresult/ResQualCode qual))]
@@ -628,7 +635,7 @@
                             (assoc :sample/Parameter (:db/id parameter))
                             (= type :field)
                             (->
-                              (assoc :sample/FieldResults (import-field-results import-key-sa (:vals result)))
+                              (assoc :sample/FieldResults (import-field-results import-key-sa result))
                               (cond->
                                 devType
                                 (assoc :sample/DeviceType devType)
@@ -769,8 +776,8 @@
                     (db)))
                 vec
                 ;; put <= and >= at the end to match after < = >
-                (conj "<=" ">="))]
-    ;_ (debug "QUALS" quals)]
+                (conj "<=" ">="))
+        _ (debug "QUALS" quals)]
     (reduce
       (fn [sv [col {:keys [type field] :as cfg}]]
         (let [p        (get params col)
@@ -789,9 +796,7 @@
                              sv
                              (case samptype
                                :sampletypelookup.SampleTypeCode/FieldMeasure
-                               (let [bd-val (try
-                                              (bigdec val)
-                                              (catch Exception _ val))]
+                               (let [bd-val (parse-bigdec val)]
                                  (-> sv
                                    (assoc-in [:results NameShort :parameter] p)
                                    (update-in [:results NameShort :type] :field)
@@ -873,7 +878,7 @@
 
 
 (defn csv->data [config filename]
-  ;(debug "csv->data")
+  (debug "csv->data")
   (let [{:keys [csv date-column station-source
                 station-column station-id project dupes]} config
         {:keys [data]} csv
@@ -1033,14 +1038,15 @@
     data))
 
 (defn process-sitevisit-file [config file]
-  ;(debug "process-sitevisit-file")
+  (debug "process-sitevisit-file")
   (let [filename (:filename file)
         config   (check-sv-dupes config)
         ;_        (debug "FIRST DUPES" (take 5 (:dupes config)))
         data     (csv->data config filename)
         data     (remove-repeaters data)
-        ;_        (debug "FIRST DATA" (first data))
-        txds     (data->txds config data)]
+        _        (debug "FIRST DATA" (first data))
+        txds     (data->txds config data)
+        _        (debug "FIRST TXD" (first txds))]
     ;_        (debug (count txds) "TXDS" txds)]
     (assoc config :txds txds)))
 
@@ -1298,6 +1304,7 @@
 (defn process-file [{:as   env
                      :keys [file-i file]}
                     {:keys [data] :as csv}]
+  (debug "process-file")
   (try
     (let [filename  (:filename file)
           config    (:config env)
@@ -1306,7 +1313,7 @@
                   station-ids
                   project-type]} config
           proj-type (:projecttype/ident project-type)
-          _         (debug "PROCESSING FILE" filename)
+          _         (debug "PROCESSING FILE" proj-type filename)
           ;_ (debug "FIRST DATE" (parse-date (get (first data) date-column)))
 
           config    (-> config
@@ -1325,14 +1332,14 @@
                         (= proj-type "sitevisit")
                         (process-sitevisit-file file)))
 
-          ;_         (log/debug "FINISHED PROCESSING FILE")
+          _         (log/debug "FINISHED PROCESSING FILE")
 
           dupes     (:dupes config)
           env       (if (seq dupes)
                       (update-in env [:res :msgs] conj (format "Skipped %d duplicates for %s" (count dupes) filename))
                       env)
 
-          ;_         (log/debug "BEGINNING DB TRANSACTIONS")
+          _         (log/debug "BEGINNING DB TRANSACTIONS")
 
           env       (update env :res
                       (fn [res]
@@ -1345,7 +1352,7 @@
                               (update res :msgs conj (format "Ran %d transactions for %s" cnt filename)))
                             (update res :msgs conj "No transactions for " filename)))))]
 
-      ;_         (log/debug "FINISHED DB TRANSACTIONS")]
+      _         (log/debug "FINISHED DB TRANSACTIONS")
       ;; return env
       env)
     (catch Exception ex
@@ -1353,6 +1360,7 @@
       (update-in env [:res :errors] conj (str "PROCESS CSV ERROR: " ex " for " (:filename file))))))
 
 (defn process-uploads [{:keys [config files] :as env}]
+  (log/debug "process-uploads" config)
   (try
     (let [{:keys [agency project skip-line station-source station-column
                   station-id station-ids col-config]} config
