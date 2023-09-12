@@ -112,6 +112,25 @@
 ;(response/charset "ANSI")
 
 
+(defn htmx [csrf-token]
+  ;(log/debug "GENERATE ADMIN CLIENT HTML" csrf-token)
+  (html5
+    [:html {:lang "en"}
+     [:head {:lang "en"}
+      [:title "HTMX"]
+      [:meta {:charset "utf-8"}]
+      [:meta {:name "viewport" :content "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"}]
+      [:link {:href "/admin/css/semantic.min.css" :rel "stylesheet"}]
+      [:link {:href "/admin/css/app.css" :rel "stylesheet"}]
+      [:link {:rel "shortcut icon" :href "data:image/x-icon;," :type "image/x-icon"}]
+      [:script (str "var fulcro_network_csrf_token = '" csrf-token "';")]
+      [:script {:src "https://unpkg.com/htmx.org@1.9.5"}]]
+
+     [:body
+      [:div#htmx
+       [:div "Hello HTMX"]]]]))
+
+
 (defn wrap-html-routes [ring-handler]
   (fn [{:keys [uri params query-params path-info anti-forgery-token] :as req}]
     ;(log/debug "HTML ROUTES HANDLER" uri path-info "PARAMS" params "QUERY PARAMS" query-params (keys req))
@@ -120,6 +139,10 @@
       (#{"/sitevisits.csv"} uri)
       (render-csv req)
       ;(resp/content-type "text/html"))
+
+      (#{"/htmx"} uri)
+      (-> (resp/response (htmx anti-forgery-token))
+        (resp/content-type "text/html"))
 
       (#{"/" "/index.html"} uri)
       (->
