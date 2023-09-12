@@ -19,7 +19,13 @@
    po/query-key        :projectslookup/all
    po/query-parameters (fn [app cls props]
                          (log/debug "Projects Picker Query Params FN" props)
-                         {:projectslookup/AgencyRef [:agencylookup/AgencyCode "SYRCL"]})
+                         (let [ag (:stationlookup/Agency props)
+                               ag-ref (when ag (vec (first ag)))]
+                           (log/debug "AGENCY" ag (vec (first ag)))
+                           (if ag-ref
+                             {:projectslookup/AgencyRef ag-ref}
+                             {:projectslookup/AgencyRef [:agencylookup/AgencyCode "SYRCL"]})))
+
    po/cache-time-ms    3600000
    po/query-component  ProjectOptsQuery
    po/options-xform    (fn [_ options]
