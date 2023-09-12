@@ -475,16 +475,23 @@
 ;                               (gen-site-with-map cx agency project site))]
 ;                 [site-id db-id])))))
 
+(defn find-resqualcode [code]
+  (debug "find-resqualcode" code)
+  (d/q '[:find ?e .
+         :in $ ?id
+         :where
+         [?e :resquallookup/ResQualCode ?id]]
+    (db) code))
 
-
-(defn import-field-results [import-token {:keys [vals qual]}]
+(defn import-field-results [import-token {:keys [vals fm-values]}]
   ;(debug "import-field-results" vals)
   (vec
     (for [i (range (count vals))]
       (let [import-key   (str import-token "-" (inc i))
             val          (get vals i)
+            fm-value     (get fm-values i)
+            qualcode     (when (:qual fm-value) (find-resqualcode (:qual fm-value)))
             result-val   val
-            resqual-code (rdb/find-resqualcode val)
             result       (cond->
                            {:org.riverdb/import-key     import-key
                             :riverdb.entity/ns          :entity.ns/fieldresult
@@ -492,8 +499,8 @@
                             :fieldresult/FieldReplicate (inc i)}
                            result-val
                            (assoc :fieldresult/Result result-val)
-                           qual
-                           (assoc :fieldresult/ResQualCode resqual-code))]
+                           qualcode
+                           (assoc :fieldresult/ResQualCode qualcode))]
         result))))
 ;:fieldresult/ConstituentRowID   constituent}))))
 ;:fieldresult/SamplingDeviceCode devType}))))
@@ -768,6 +775,7 @@
   sv)
 
 (defn parse-parameter-cols [sv {:keys [params col-config] :as config} row]
+  ;(debug "parse-parameter-cols v1")
   (let [quals (->
                 (remove #(contains? #{"" "<=" ">="} %)
                   (d/q '[:find [?qual ...]
@@ -776,8 +784,7 @@
                     (db)))
                 vec
                 ;; put <= and >= at the end to match after < = >
-                (conj "<=" ">="))
-        _ (debug "QUALS" quals)]
+                (conj "<=" ">="))]
     (reduce
       (fn [sv [col {:keys [type field] :as cfg}]]
         (let [p        (get params col)
@@ -796,12 +803,35 @@
                              sv
                              (case samptype
                                :sampletypelookup.SampleTypeCode/FieldMeasure
-                               (let [bd-val (parse-bigdec val)]
+                               (let [fm-val     val
+                                     qual?      (reduce
+                                                  (fn [res qual]
+                                                    (if (clojure.string/includes? fm-val qual)
+                                                      qual
+                                                      res))
+                                                  nil quals)
+
+                                     fm-val    (if qual?
+                                                 (str/replace fm-val qual? "")
+                                                 fm-val)
+
+                                     fm-val    (when (not= fm-val "")
+                                                 fm-val)
+
+                                     bd-val (parse-bigdec fm-val)]
                                  (-> sv
                                    (assoc-in [:results NameShort :parameter] p)
                                    (update-in [:results NameShort :type] :field)
                                    (update-in [:results NameShort :vals] (fnil conj []) bd-val)
-                                   (update-in [:results NameShort :sample-count] (fnil inc 0))))
+                                   (update-in [:results NameShort :sample-count] (fnil inc 0))
+                                   (update-in [:results NameShort :fm-values] (fnil conj [])
+                                     {:qual qual?
+                                      :value bd-val
+                                      :fm-val fm-val
+                                      :val val})
+                                   (cond->
+                                     qual?
+                                     (update-in [:results NameShort :quals] (fnil conj []) qual?))))
                                :sampletypelookup.SampleTypeCode/Grab
                                (let [lab-val    val
                                      lab-result {:parameter p
@@ -936,94 +966,97 @@
     (vec
       ;; remove any that have no station
       ; filter #(:sitevisit/StationID (first %))
-      (for [dat data]
-        (try
-          (let [{:keys [svid station-id site-name date dateStr Notes time results
-                        StreamWidth UnitStreamWidth WaterDepth UnitWaterDepth
-                        DataEntryDate DataEntryNotes DataEntryPerson QADate QACheck QAPerson]} dat
-                import-token-sv (str project-code "-" (or svid (str station-id "-" dateStr)))
-                ;_               (debug "importing sitevisit" import-token-sv)
-                SiteVisitDate   date
-                _               (when-not SiteVisitDate
-                                  (throw (Exception. (str "Missing date field for station-id " station-id))))
+      (map-indexed
+        (fn [idx dat]
+          (debug idx (:svid dat))
+          (try
+            (let [{:keys [svid station-id site-name date dateStr Notes time results
+                          StreamWidth UnitStreamWidth WaterDepth UnitWaterDepth
+                          DataEntryDate DataEntryNotes DataEntryPerson QADate QACheck QAPerson]} dat
+                  import-token-sv (str project-code "-" (or svid (str station-id "-" dateStr)))
+                  _               (debug "importing sitevisit" idx import-token-sv)
+                  SiteVisitDate   date
+                  _               (when-not SiteVisitDate
+                                    (throw (Exception. (str "Missing date field for station-id " station-id))))
 
-                DataEntryDate   (parse-date DataEntryDate)
-                DataEntryPerson (parse-long DataEntryPerson)
-                QACheck         (parse-bool QACheck)
-                QADate          (parse-date QADate)
-                QAPerson        (parse-long QAPerson)
+                  DataEntryDate   (parse-date DataEntryDate)
+                  DataEntryPerson (parse-long DataEntryPerson)
+                  QACheck         (parse-bool QACheck)
+                  QADate          (parse-date QADate)
+                  QAPerson        (parse-long QAPerson)
 
-                WaterDepth      (parse-bigdec WaterDepth)
-                StreamWidth     (parse-bigdec StreamWidth)
-                time            time
-                site-id-id      (when station-id (proj-site->station-id stations station-id))
-                site-id-name    (when site-name (proj-site-name->station-id stations site-name))
-                site-id         (or site-id-id site-id-name)
+                  WaterDepth      (parse-bigdec WaterDepth)
+                  StreamWidth     (parse-bigdec StreamWidth)
+                  time            time
+                  site-id-id      (when station-id (proj-site->station-id stations station-id))
+                  site-id-name    (when site-name (proj-site-name->station-id stations site-name))
+                  site-id         (or site-id-id site-id-name)
 
-                _               (when-not site-id
-                                  (throw (Exception. (str "Failed to find project station for station " site-id))))
+                  _               (when-not site-id
+                                    (throw (Exception. (str "Failed to find project station for station " site-id))))
 
-                ;_               (debug "BEGINNING TXD generation")
-                sv              {:org.riverdb/import-key      import-token-sv
-                                 :riverdb.entity/ns           :entity.ns/sitevisit,
-                                 :sitevisit/uuid              (d/squuid)
-                                 :sitevisit/ProjectID         [:projectslookup/ProjectID project-code]
-                                 :sitevisit/AgencyCode        [:agencylookup/AgencyCode agency-code]
-                                 :sitevisit/StationID         [:stationlookup/StationCode site-id]
-                                 :sitevisit/QACheck           true
-                                 :sitevisit/CreationTimestamp (Date.)
-                                 :sitevisit/StationFailCode   [:stationfaillookup/StationFailCode 0]
-                                 :sitevisit/VisitType         [:sitevisittype/id 1]}
-                ;_               (debug "SV" sv)
-                sv              (cond-> sv
-                                  time
-                                  (assoc :sitevisit/Time time)
-                                  SiteVisitDate
-                                  (assoc :sitevisit/SiteVisitDate SiteVisitDate)
+                  ;_               (debug "BEGINNING TXD generation")
+                  sv              {:org.riverdb/import-key      import-token-sv
+                                   :riverdb.entity/ns           :entity.ns/sitevisit,
+                                   :sitevisit/uuid              (d/squuid)
+                                   :sitevisit/ProjectID         [:projectslookup/ProjectID project-code]
+                                   :sitevisit/AgencyCode        [:agencylookup/AgencyCode agency-code]
+                                   :sitevisit/StationID         [:stationlookup/StationCode site-id]
+                                   :sitevisit/QACheck           true
+                                   :sitevisit/CreationTimestamp (Date.)
+                                   :sitevisit/StationFailCode   [:stationfaillookup/StationFailCode 0]
+                                   :sitevisit/VisitType         [:sitevisittype/id 1]}
+                  ;_               (debug "SV" sv)
+                  sv              (cond-> sv
+                                    time
+                                    (assoc :sitevisit/Time time)
+                                    SiteVisitDate
+                                    (assoc :sitevisit/SiteVisitDate SiteVisitDate)
 
-                                  Notes
-                                  (assoc :sitevisit/Notes Notes)
+                                    Notes
+                                    (assoc :sitevisit/Notes Notes)
 
-                                  DataEntryNotes
-                                  (assoc :sitevisit/DataEntryNotes DataEntryNotes)
-                                  DataEntryDate
-                                  (assoc :sitevisit/DataEntryDate DataEntryDate)
-                                  DataEntryPerson
-                                  (assoc :sitevisit/DataEntryPerson DataEntryPerson)
+                                    DataEntryNotes
+                                    (assoc :sitevisit/DataEntryNotes DataEntryNotes)
+                                    DataEntryDate
+                                    (assoc :sitevisit/DataEntryDate DataEntryDate)
+                                    DataEntryPerson
+                                    (assoc :sitevisit/DataEntryPerson DataEntryPerson)
 
-                                  QADate
-                                  (assoc :sitevisit/QADate QADate)
-                                  QACheck
-                                  (assoc :sitevisit/QACheck QACheck)
-                                  QAPerson
-                                  (assoc :sitevisit/QAPerson QAPerson)
+                                    QADate
+                                    (assoc :sitevisit/QADate QADate)
+                                    QACheck
+                                    (assoc :sitevisit/QACheck QACheck)
+                                    QAPerson
+                                    (assoc :sitevisit/QAPerson QAPerson)
 
-                                  StreamWidth
-                                  (assoc :sitevisit/StreamWidth StreamWidth)
-                                  UnitStreamWidth
-                                  (assoc :sitevisit/UnitStreamWidth UnitStreamWidth)
-                                  WaterDepth
-                                  (assoc :sitevisit/WaterDepth WaterDepth)
-                                  UnitWaterDepth
-                                  (assoc :sitevisit/UnitWaterDepth UnitWaterDepth)
+                                    StreamWidth
+                                    (assoc :sitevisit/StreamWidth StreamWidth)
+                                    UnitStreamWidth
+                                    (assoc :sitevisit/UnitStreamWidth UnitStreamWidth)
+                                    WaterDepth
+                                    (assoc :sitevisit/WaterDepth WaterDepth)
+                                    UnitWaterDepth
+                                    (assoc :sitevisit/UnitWaterDepth UnitWaterDepth)
 
-                                  (and StreamWidth UnitStreamWidth)
-                                  (assoc :sitevisit/WidthMeasured true)
+                                    (and StreamWidth UnitStreamWidth)
+                                    (assoc :sitevisit/WidthMeasured true)
 
-                                  (and WaterDepth UnitWaterDepth)
-                                  (assoc :sitevisit/DepthMeasured true))
-                ;_               (debug "SV pre-samples" sv)
-                samples         (import-samples
-                                  {:agency          agency-code
-                                   :project         project-code
-                                   :import-token-sv import-token-sv
-                                   :results         results
-                                   :create-devices? create-devices?})
-                sv              (assoc sv :sitevisit/Samples samples)]
-            sv)
-          (catch Exception ex
-            (log/error ex)
-            {:error "something happened"}))))))
+                                    (and WaterDepth UnitWaterDepth)
+                                    (assoc :sitevisit/DepthMeasured true))
+                  ;_               (debug "SV pre-samples" sv)
+                  samples         (import-samples
+                                    {:agency          agency-code
+                                     :project         project-code
+                                     :import-token-sv import-token-sv
+                                     :results         results
+                                     :create-devices? create-devices?})
+                  sv              (assoc sv :sitevisit/Samples samples)]
+              sv)
+            (catch Exception ex
+              (log/error ex)
+              {:error "something happened"})))
+        data))))
 
 (defn remove-repeaters [data]
   (let [[uniq data] (reduce
