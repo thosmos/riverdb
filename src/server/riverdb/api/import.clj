@@ -429,30 +429,28 @@
         (:tempids @(d/transact (cx) txds))))))
 
 
-(defn proj-site->station-id [stations site-id]
-  ;(debug "proj-site->station-id" site-id)
-  (when (seq stations)
-    (let [site-id-long (parse-long site-id)]
-      (loop [sts stations]
-        (let [{:stationlookup/keys [StationCode StationID StationIDLong]} (first sts)]
-          ;(debug "station-id loop" site-id site-id-long "=?" StationID StationCode)
-          (if
-            (or
-              (= StationID site-id)
-              (= StationIDLong site-id-long))
-            StationCode
-            (recur (rest sts))))))))
-
-(defn proj-site-name->station-id [stations site-name]
-  ;(debug "proj-site-name->station-id" site-name)
+(defn proj-site->station-id [stations station-id]
+  (debug "proj-site->station-id" station-id)
   (when (seq stations)
     (loop [sts stations]
-      (let [{:stationlookup/keys [StationCode StationID StationName]} (first sts)]
+      (let [{:stationlookup/keys [StationID]} (first sts)]
+        (debug "station-id loop" station-id "=?" StationID)
+        (if
+          (= StationID station-id)
+          station-id
+          (recur (rest sts)))))))
+
+(defn proj-site-name->station-id [stations site-name]
+  (debug "proj-site-name->station-id" site-name)
+  (when (seq stations)
+    (loop [sts stations]
+      (let [{:db/keys [id] :stationlookup/keys [StationID StationName uuid] :as st} (first sts)]
+        (debug "site-name loop" site-name "=?" StationName StationID)
         (if
           (or
             (= site-name StationName)
             (= site-name StationID))
-          StationCode
+          uuid
           (recur (rest sts)))))))
 
 ;(defn gen-site-with-map
@@ -498,7 +496,7 @@
                             :fieldresult/uuid           (d/squuid)
                             :fieldresult/FieldReplicate (inc i)}
                            result-val
-                           (assoc :fieldresult/Result result-val)
+                           (assoc :fieldresult/Result (double result-val))
                            qualcode
                            (assoc :fieldresult/ResQualCode qualcode))]
         result))))
@@ -513,7 +511,7 @@
         res (cond-> res
               value
               (->
-                (assoc :labresult/Result value)
+                (assoc :labresult/Result (double value))
                 (assoc :labresult/SigFig (.precision value)))
               qual
               (assoc :labresult/ResQualCode qual))]
@@ -803,20 +801,20 @@
                              sv
                              (case samptype
                                :sampletypelookup.SampleTypeCode/FieldMeasure
-                               (let [fm-val     val
-                                     qual?      (reduce
-                                                  (fn [res qual]
-                                                    (if (clojure.string/includes? fm-val qual)
-                                                      qual
-                                                      res))
-                                                  nil quals)
+                               (let [fm-val val
+                                     qual?  (reduce
+                                              (fn [res qual]
+                                                (if (clojure.string/includes? fm-val qual)
+                                                  qual
+                                                  res))
+                                              nil quals)
 
-                                     fm-val    (if qual?
-                                                 (str/replace fm-val qual? "")
-                                                 fm-val)
+                                     fm-val (if qual?
+                                              (str/replace fm-val qual? "")
+                                              fm-val)
 
-                                     fm-val    (when (not= fm-val "")
-                                                 fm-val)
+                                     fm-val (when (not= fm-val "")
+                                              fm-val)
 
                                      bd-val (parse-bigdec fm-val)]
                                  (-> sv
@@ -825,10 +823,10 @@
                                    (update-in [:results NameShort :vals] (fnil conj []) bd-val)
                                    (update-in [:results NameShort :sample-count] (fnil inc 0))
                                    (update-in [:results NameShort :fm-values] (fnil conj [])
-                                     {:qual qual?
-                                      :value bd-val
+                                     {:qual   qual?
+                                      :value  bd-val
                                       :fm-val fm-val
-                                      :val val})
+                                      :val    val})
                                    (cond->
                                      qual?
                                      (update-in [:results NameShort :quals] (fnil conj []) qual?))))
@@ -918,13 +916,16 @@
                 (let [dateStr    (get row date-column)
                       date       (parse-date dateStr)
                       ;; set column-based station id
+                      site-name  (if (= station-source "column")
+                                   (get row station-column))
                       station-id (if (= station-source "column")
-                                   (get row station-column)
+                                   site-name
                                    station-id)
 
                       sv         {:date       date
                                   :dateStr    dateStr
-                                  :station-id station-id}
+                                  :station-id station-id
+                                  :site-name  site-name}
 
                       ;dupes      (check-sv-dupes project station-id date)
                       dupe?      (contains? dupes [station-id date])]
@@ -952,9 +953,8 @@
          :keys        [create-devices?]} config
 
         ;; get stations from this project
-        station-q [:stationlookup/StationID
-                   :stationlookup/StationIDLong
-                   :stationlookup/StationCode
+        station-q [:stationlookup/uuid
+                   :stationlookup/StationID
                    :stationlookup/StationName]
         proj-id   (:db/id project)
         stations  (d/q '[:find [(pull ?e qu) ...]
@@ -979,6 +979,8 @@
                   _               (when-not SiteVisitDate
                                     (throw (Exception. (str "Missing date field for station-id " station-id))))
 
+                  _               (debug "BEGINNING SV generation for " "station-id" station-id "site-name" site-name)
+
                   DataEntryDate   (parse-date DataEntryDate)
                   DataEntryPerson (parse-long DataEntryPerson)
                   QACheck         (parse-bool QACheck)
@@ -987,21 +989,24 @@
 
                   WaterDepth      (parse-bigdec WaterDepth)
                   StreamWidth     (parse-bigdec StreamWidth)
+
+                  _               (debug "PARSED SV fields")
+
                   time            time
-                  site-id-id      (when station-id (proj-site->station-id stations station-id))
-                  site-id-name    (when site-name (proj-site-name->station-id stations site-name))
-                  site-id         (or site-id-id site-id-name)
+                  site-uuid       (when site-name (proj-site-name->station-id stations site-name))
+                  ;site-id-id      (when station-id (proj-site->station-id stations station-id))
+                  ;site-id         (or site-id-name site-id-id)
 
-                  _               (when-not site-id
-                                    (throw (Exception. (str "Failed to find project station for station " site-id))))
+                  _               (debug "BEGINNING TXD generation for " (pr-str site-name) (pr-str site-uuid))
 
-                  ;_               (debug "BEGINNING TXD generation")
+                  _               (when-not site-uuid
+                                    (throw (Exception. (str "Failed to find project station for station " site-name))))
                   sv              {:org.riverdb/import-key      import-token-sv
                                    :riverdb.entity/ns           :entity.ns/sitevisit,
                                    :sitevisit/uuid              (d/squuid)
                                    :sitevisit/ProjectID         [:projectslookup/ProjectID project-code]
                                    :sitevisit/AgencyCode        [:agencylookup/AgencyCode agency-code]
-                                   :sitevisit/StationID         [:stationlookup/StationCode site-id]
+                                   :sitevisit/StationID         [:stationlookup/uuid site-uuid]
                                    :sitevisit/QACheck           true
                                    :sitevisit/CreationTimestamp (Date.)
                                    :sitevisit/StationFailCode   [:stationfaillookup/StationFailCode 0]
@@ -1044,7 +1049,7 @@
 
                                     (and WaterDepth UnitWaterDepth)
                                     (assoc :sitevisit/DepthMeasured true))
-                  ;_               (debug "SV pre-samples" sv)
+                  _               (debug "SV pre-samples" sv)
                   samples         (import-samples
                                     {:agency          agency-code
                                      :project         project-code

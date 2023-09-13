@@ -1,6 +1,7 @@
 (ns riverdb.ui.upload
   (:require
     [clojure.string :as str]
+    [clojure.set]
     [com.fulcrologic.fulcro.data-fetch :as df]
     [com.fulcrologic.fulcro.dom :as dom :refer [div ul li p h3 button label span table tr th td thead tbody]]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
@@ -253,95 +254,121 @@
                                    {:params {:limit  -1
                                              :filter {:projectslookup/Stations {:reverse id}}}
                                     :target (conj ident :ui/stations)}))))))}
-  (let [save-ref       (comp/get-state this :save-ref)
-        csv-data       (comp/get-state this :csv)
-        csv-cols       (if skip-line (second csv-data) (first csv-data))
+  (let [save-ref     (comp/get-state this :save-ref)
+        csv-data     (comp/get-state this :csv)
+        csv-cols     (if skip-line (second csv-data) (first csv-data))
         ;csv-row      (if skip-line (nth csv-data 2) (second csv-data))
 
-        files          (not-empty (comp/get-state this :files))
-        parse?         (and
-                         (= station-source "file")
-                         files)
-        parsedIDs      (when parse?
-                         (try
-                           (vec
-                             (for [file files]
-                               (let [filename (:file/name file)]
-                                 (subs filename 0 (clojure.string/index-of filename "_")))))
-                           (catch js/Object _)))
+        colID?       (and
+                       (= station-source "column")
+                       station-column)
+        ;st-names       (when colID?
+        ;                 (set (map string (map :stationlookup/StationName stations)))
+        ;st-datas       (when colID?
+        ;                 (set (map #(get % station-column) (if skip-line (rest (rest csv-data)) (rest csv-data)))))
+        ;st-missing     (when colID?
+        ;                 (clojure.set/difference st-datas st-names))
 
-        station-opts   (map-indexed
-                         (fn [i m]
-                           {:key   i
-                            :text  (str (:stationlookup/StationID m) " " (:stationlookup/StationName m))
-                            :value (str (:stationlookup/StationID m))})
-                         stations)
 
-        missing?       (when (and (seq parsedIDs) (seq stations))
-                         (let [station-set (set (map :value station-opts))
-                               parsed-set  (set parsedIDs)]
-                           ;(debug "MISSING?" station-set parsed-set)
-                           (not-empty
-                             (clojure.set/difference parsed-set station-set))))
+        st-missing   (when colID?
+                       (let [st-names (set (map :stationlookup/StationName stations))
+                             st-datas (set (map #(get % station-column) (if skip-line (rest (rest csv-data)) (rest csv-data))))
+                             diff     (clojure.set/difference st-datas st-names)]
+                         diff))
 
-        parse-err?     (when (and
-                               parse?
-                               (not parsedIDs)))
 
-        agency         (:ui.riverdb/current-agency props)
+        files        (not-empty (comp/get-state this :files))
+        parse?       (and
+                       (= station-source "file")
+                       files)
+        parsedIDs    (when parse?
+                       (try
+                         (vec
+                           (for [file files]
+                             (let [filename (:file/name file)]
+                               (subs filename 0 (clojure.string/index-of filename "_")))))
+                         (catch js/Object _)))
+
+        station-opts (map-indexed
+                       (fn [i m]
+                         {:key   i
+                          :text  (str (:stationlookup/StationID m) " " (:stationlookup/StationName m))
+                          :value (str (:stationlookup/StationID m))})
+                       stations)
+
+        file-missing (when (and (seq parsedIDs) (seq stations))
+                       (let [station-set (set (map :value station-opts))
+                             parsed-set  (set parsedIDs)]
+                         ;(debug "MISSING?" station-set parsed-set)
+                         (not-empty
+                           (clojure.set/difference parsed-set station-set))))
+
+        missing?     (or (not-empty st-missing) (not-empty file-missing))
+        missing      (when missing?
+                       (if (not-empty st-missing)
+                         st-missing
+                         file-missing))
+
+        parse-err?   (when (and
+                             parse?
+                             (not parsedIDs)))
+
+        agency       (:ui.riverdb/current-agency props)
         {:agencylookup/keys [AgencyCode Projects]} agency
 
-        proj-opts      (coll->opts :projectslookup/Name :projectslookup/ProjectID Projects)
-        projs-map      (nest-by [:projectslookup/ProjectID] Projects)
-        project-code   (or project-code (:value (first proj-opts)))
-        project        (get projs-map project-code)
+        proj-opts    (coll->opts :projectslookup/Name :projectslookup/ProjectID Projects)
+        projs-map    (nest-by [:projectslookup/ProjectID] Projects)
+        project-code (or project-code (:value (first proj-opts)))
+        project      (get projs-map project-code)
         {:projectslookup/keys [Parameters]} project
+        Parameters   (filter :parameter/Active Parameters)
 
-        params-map     (nest-by [:parameter/NameShort] Parameters)
-        params-opts    (coll->opts :parameter/Name :parameter/NameShort Parameters)
+        params-map   (nest-by [:parameter/NameShort] Parameters)
+        params-opts  (coll->opts :parameter/Name :parameter/NameShort Parameters)
 
         ;samps-map    (nest-by [:sampletypelookup/SampleTypeCode] SampleTypes)
         ;samps-opts   (coll->opts :sampletypelookup/Name :sampletypelookup/SampleTypeCode SampleTypes)
         ;samp-type    (or samp-type (:value (first samps-opts)))
 
-        up-config      {:agency         AgencyCode
-                        :project        project-code
-                        :skip-line      skip-line
-                        :station-source station-source
-                        :station-column (when (= station-source "column") station-column)
-                        :station-id     (when (= station-source "select") station-id)
-                        :station-ids    (when parse? parsedIDs)}
+        up-config    {:agency         AgencyCode
+                      :project        project-code
+                      :skip-line      skip-line
+                      :station-source station-source
+                      :station-column (when (= station-source "column") station-column)
+                      :station-id     (when (= station-source "select") station-id)
+                      :station-ids    (when parse? parsedIDs)}
 
-        config         (when csv-cols
-                         (update-config config up-config params-map csv-cols))
+        config       (when csv-cols
+                       (update-config config up-config params-map csv-cols))
 
-        up-config      (assoc up-config :col-config config)
+        up-config    (assoc up-config :col-config config)
 
-        enable         (if
-                         (or
-                           (not files)
-                           (empty? config)
-                           parse-err?
-                           ;; TODO re-enable this
-                           ;missing?
-                           (and
-                             (= station-source "select")
-                             (not station-id))
-                           (and
-                             (= station-source "column")
-                             (not station-column)))
-                         false
-                         true)
-        phase (cond
-                (= progress 100)
-                "complete"
-                (< progress 49)
-                "uploading ..."
-                (>= progress 49)
-                "processing ...")]
+        enable       (if
+                       (or
+                         (not files)
+                         (empty? config)
+                         parse-err?
+                         ;; TODO re-enable this
+                         ;missing?
+                         (and
+                           (= station-source "select")
+                           (not station-id))
+                         (and
+                           (= station-source "column")
+                           (not station-column)))
+                       false
+                       true)
+        phase        (cond
+                       (= progress 100)
+                       "complete"
+                       (< progress 49)
+                       "uploading ..."
+                       (>= progress 49)
+                       "processing ...")]
 
 
     #_(debug "RENDER UploadComp" "code" AgencyCode "agency" agency "project-code" project-code "proj-opts" proj-opts "projs" projs-map "samps" samps-map "samps-opts" samps-opts "params" params-map "params-opts" params-opts "csv-data" (take 3 csv-data) "parsedIDs" parsedIDs "stations" stations "config" config)
+    (debug "RENDER UploadComp" "AgencyCode" AgencyCode "st-missing" st-missing)
 
     (dom/div :.ui.segment
       (dom/div :.ui.header "BULK IMPORT CSV DATA")
@@ -449,7 +476,7 @@
           (dom/div :.ui.negative.message
             (dom/div :.header "Missing Stations")
             (dom/p "There are some parsed station IDs without matching stations in the database")
-            (dom/p (str/join ", " missing?))))
+            (dom/p (str/join ", " missing))))
 
         (when csv-data
           (dom/div :.field {:key "columns"}

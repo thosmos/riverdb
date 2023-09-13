@@ -56,6 +56,7 @@
                                     clj-mailgun/clj-mailgun             {:mvn/version "0.2.0"}
                                     clojure-csv/clojure-csv             {:mvn/version "2.0.2"}
                                     com.datomic/datomic-pro             {:mvn/version "1.0.6397" :exclusions [org.slf4j/slf4j-nop org.slf4j/jul-to-slf4j org.slf4j/log4j-over-slf4j org.slf4j/jcl-over-slf4j]}
+                                    ;com.datomic/peer                    {:mvn/version "1.0.6735" :exclusions [org.slf4j/slf4j-nop org.slf4j/jul-to-slf4j org.slf4j/log4j-over-slf4j org.slf4j/jcl-over-slf4j]}
                                     com.walmartlabs/lacinia-pedestal    {:mvn/version "1.1" :exclusions [clojure-future-spec/clojure-future-spec org.clojure/spec.alpha org.clojure/tools.reader]}
                                     datomic-schema/datomic-schema       {:mvn/version "1.3.1"}
                                     io.pedestal/pedestal.jetty          {:mvn/version "0.5.10"}

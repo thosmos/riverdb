@@ -325,7 +325,8 @@
         rdb-admin?    (->> auth-user :user/role :db/ident (= :role/riverdb-admin))
         user-role     (->> auth-user :user/role)
         admin?        (or rdb-admin? (->> auth-user :user/role :db/ident (= :role.type/admin)))
-        _ (debug "RENDER TopChrome" "admin?" admin? "user" auth-user)]
+        ;_             (debug "RENDER TopChrome" "admin?" admin? "user" auth-user)
+        _ ""]
 
     (div {:style {:display "grid" :gridTemplateRows "45px 1fr" :gridRowGap "0.2em" :height "100%"}}
       (div :.ui.secondary.pointing.menu {:style {:height "40px"}}
