@@ -755,6 +755,7 @@
                         ptypes)
         ;_             (debug "ptypes" ptypes "ptypes-opts" ptypes-opts)
 
+        is-temp?      (tempid/tempid? id)
         dirty-fields  (fs/dirty-fields props true)
         dirty?        (some? (seq dirty-fields))
         ;_             (debug "DIRTY?" dirty? dirty-fields)
@@ -777,7 +778,7 @@
             (if editing
               (div :.fields {}
                 (ui-popup
-                  {:trigger (rui-input this :projectslookup/ProjectID {:label (label {} "ID" info-icon) :disabled true :required true})}
+                  {:trigger (rui-input this :projectslookup/ProjectID {:label (label {} "ID" info-icon) :disabled (not is-temp?) :required true})}
                   "This must be unique across all organizations and must remained unchanged after the project has data.  To change it contact RiverDB Support")
                 (rui-input this :projectslookup/Name {:required true})
                 (div :.field {}
@@ -870,6 +871,8 @@
             ;; cleanup the load key
             (dissoc :org.riverdb.db.projectslookup)))))))
 
+
+
 (defn load-projs [this projs]
   (let [proj-ids (mapv :db/id projs)]
     (debug "LOAD PROJECTS" proj-ids)
@@ -882,6 +885,17 @@
          :without              #{[:root/tx-result '_]
                                  [:riverdb.theta.options/ns '_]
                                  [:org.riverdb.db.fieldobsvarlookup/gid '_]}}))))
+
+
+(defmutation new-project [{:keys [proj-ident proj]}]
+  (action [{:keys [state]}]
+    (debug "MUTATION" new-project (pr-str proj-ident))
+    (swap! state
+      (fn [s]
+        (let [proj (assoc proj :ui/editing true)
+              s (assoc-in s proj-ident proj)
+              s (update-in s [:component/id :projects :projects] (fnil conj []) proj-ident)]
+          s)))))
 
 
 (defsc Projects [this {:keys            [ui/ready projects]
@@ -922,8 +936,13 @@
         ;agencyRef (riverdb.ui.util/thing->ident (:ui.riverdb/current-agency props))
         agencyRef (select-keys (:ui.riverdb/current-agency props) [:db/id])
         onNew     (fn []
-                    (let [pj (comp/get-initial-state ProjectForm {:agencyRef agencyRef})]
-                      (debug "NEW PROJECT" pj)))]
+                    (let [pj (comp/get-initial-state ProjectForm {:agencyRef agencyRef})
+                          proj-ident [:org.riverdb.db.projectslookup/gid (:db/id pj)]]
+                      (debug "NEW PROJECT" pj)
+                      (comp/transact! this
+                        `[(new-project ~{:proj-ident       proj-ident
+                                         :proj pj})])))]
+
     (if ready
       (div :.ui.segment
         (ui-header {:key "title"} "Projects")
