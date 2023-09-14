@@ -272,9 +272,14 @@
 
         st-missing   (when colID?
                        (let [st-names (set (map :stationlookup/StationName stations))
+                             st-ids   (set (map :stationlookup/StationID stations))
                              st-datas (set (map #(get % station-column) (if skip-line (rest (rest csv-data)) (rest csv-data))))
-                             diff     (clojure.set/difference st-datas st-names)]
-                         diff))
+                             diff     (clojure.set/difference st-datas st-names)
+                             diff-ids (clojure.set/difference st-datas st-ids)]
+                         (if
+                           (< (count diff-ids) (count diff))
+                           diff-ids
+                           diff)))
 
 
         files        (not-empty (comp/get-state this :files))
