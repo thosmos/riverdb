@@ -73,7 +73,8 @@
                                     hiccup/hiccup                       {:mvn/version "1.0.5"}
                                     clj-time/clj-time                   {:mvn/version "0.15.2"}
                                     clojure.java-time/clojure.java-time {:mvn/version "0.3.2"}
-                                    nrepl/nrepl                         {:mvn/version "1.0.0"}}}
+                                    nrepl/nrepl                         {:mvn/version "1.0.0"}
+                                    io.github.starfederation/datastar   {:mvn/version "0.20.3"}}}
 
          :db         {:extra-deps  { com.datomic/datomic-pro            {:mvn/version "1.0.6397" :exclusions [org.slf4j/slf4j-nop org.slf4j/jul-to-slf4j org.slf4j/log4j-over-slf4j org.slf4j/jcl-over-slf4j]}}}
 

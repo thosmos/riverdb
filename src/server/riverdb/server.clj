@@ -24,6 +24,7 @@
             [riverdb.server-components.nrepl]
             [riverdb.server-components.middleware :as middle :refer [middleware]]
             [riverdb.state :refer [start-dbs]]
+            [riverdb.html.server]
             [theta.util]
             [theta.log :as log]))
 
