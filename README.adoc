@@ -37,39 +37,35 @@ yarn main
 
 === Datomic
 
-Download Datomic Free https://my.datomic.com/downloads/free
+Download Datomic Pro
+https://docs.datomic.com/setup/pro-setup.html#get-datomic
 ```
-unzip datomic-free-0.9.5703.21.zip
-cd datomic-free-0.9.5703.21
+unzip datomic-pro-0.9.6397.zip
+cd datomic-pro-0.9.6397
 
 # Get the data zip from a project member
 unzip ../riverdb-backup-data.zip
 
-# if you're using JDK 1.8, then just:
-bin/transactor config/samples/free-transactor-template.properties
-
-# otherwise you'll need to override the PATH and JAVA_HOME to use 1.8:
-PATH=/Library/Java/JavaVirtualMachines/jdk1.8.0_172.jdk/Contents/Home/bin:$PATH JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk1.8.0_172.jdk/Contents/Home/  bin/transactor config/samples/free-transactor-template.properties
+bin/transactor config/dev-transactor-template.properties
 ```
-(or Datomic Pro if you wish https://docs.datomic.com/on-prem/dev-setup.html)
 
 === Backend Server
 
 Change some defaults using environment variables like `DATOMIC_URI` in an `.env` file or in the shell (the following are the defaults)
 ```
 APP_ENV=dev
-DATOMIC_URI=datomic:free://localhost:4334/riverdb
+DATOMIC_URI=datomic:dev://localhost:4334/riverdb
 PORT=8989
 ```
 
 run the server:
 ```
-clojure -A:server:run
+clojure -A:dev:server:rad:nrepl:run
 ```
 
 OR start the server in a REPL:
 ```Shell
-clj -A:dev:server
+clj -A:dev:server:rad:nrepl
 
 # The ns is defined in src/dev/user
 ## Start the server
@@ -78,12 +74,16 @@ user=> (start)
 user=> (restart)
 ```
 
-
-
 Browse to the app at: http://localhost:8989
 
 
 === The client build server
+
+Run the shadow-cljs build server with:
+
+```
+yarn main
+```
 
 Optionally open the http://localhost:9630[client build manager UI]
 There you can recompile or trigger release builds
@@ -127,7 +127,7 @@ for more information.
 
 Dependency Aliases:
 
-You will want to enable the `:dev` and `:server` Clojure dependencies while developing the server-side of this project.  In IntelliJ this is in the
+You will want to enable the `:dev`, `:server`, and `:rad` Clojure dependencies while developing the server-side of this project.  In IntelliJ this is in the
 "Clojure Deps" border tab window under "Aliases".
 
 The client and common project source is in `src/main`.

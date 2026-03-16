@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: com.fulcrologic/semantic-ui-wrapper:2.0.2">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/fulcrologic/semantic-ui-wrapper/2.0.2/semantic-ui-wrapper-2.0.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

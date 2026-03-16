@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.java-websocket/Java-WebSocket:1.5.1">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/java-websocket/Java-WebSocket/1.5.1/Java-WebSocket-1.5.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

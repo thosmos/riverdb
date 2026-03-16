@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: com.fulcrologic/fulcro-garden-css:3.0.9">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/fulcrologic/fulcro-garden-css/3.0.9/fulcro-garden-css-3.0.9.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

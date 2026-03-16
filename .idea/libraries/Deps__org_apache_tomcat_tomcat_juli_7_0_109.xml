@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.apache.tomcat/tomcat-juli:7.0.109">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/apache/tomcat/tomcat-juli/7.0.109/tomcat-juli-7.0.109.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

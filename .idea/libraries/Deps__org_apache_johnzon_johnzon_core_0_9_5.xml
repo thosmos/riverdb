@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.apache.johnzon/johnzon-core:0.9.5">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/apache/johnzon/johnzon-core/0.9.5/johnzon-core-0.9.5.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: io.netty/netty-transport-classes-kqueue:4.1.73.Final">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/io/netty/netty-transport-classes-kqueue/4.1.73.Final/netty-transport-classes-kqueue-4.1.73.Final.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

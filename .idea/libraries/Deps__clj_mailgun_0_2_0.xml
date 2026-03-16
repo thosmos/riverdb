@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: clj-mailgun:0.2.0">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/clj-mailgun/clj-mailgun/0.2.0/clj-mailgun-0.2.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

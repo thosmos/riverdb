@@ -3,8 +3,10 @@
   (:require [hiccup.page :refer [html5 include-css include-js]]
             [hiccup.core :refer [html]]))
 
-(def basecoat-cdn "https://cdn.jsdelivr.net/npm/basecoat@0.7.5/dist/basecoat.min.css")
-(def datastar-cdn "https://cdn.jsdelivr.net/npm/@sudodevnull/datastar@0.20.3/dist/datastar.js")
+(def basecoat-cdn "https://cdn.jsdelivr.net/npm/basecoat-css@0.3.11/dist/basecoat.cdn.min.css")
+(def basecoat-js-cdn "https://cdn.jsdelivr.net/npm/basecoat-css@0.3.11/dist/js/all.min.js")
+(def datastar-cdn "https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.8/bundles/datastar.js")
+(def tailwind-cdn "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4")
 
 (defn base-layout
   "Base HTML layout with Basecoat CSS and Datastar JS"
@@ -16,10 +18,14 @@
      [:meta {:name "viewport" :content "width=device-width, initial-scale=1"}]
      [:title (or title "RiverDB HTML App")]
      (include-css basecoat-cdn)
+     (include-js basecoat-js-cdn)
+     (include-js tailwind-cdn)
+
      head-extra]
-    [:body
+    [:body.p-5
      body
-     [:script {:src datastar-cdn :type "module" :defer true}]]))
+     [:script {:src datastar-cdn :type "module" :defer true}]
+     ]))
 
 (defn container
   "Basecoat container component"
@@ -29,7 +35,7 @@
 (defn card
   "Basecoat card component"
   [{:keys [title subtitle]} & content]
-  [:div.card
+  [:div.card.p-3
    (when (or title subtitle)
      [:div.card-header
       (when title [:h3.card-title title])
@@ -102,7 +108,7 @@
       [:a.navbar-brand {:href "/"} brand])
     [:div.navbar-nav
      (for [{:keys [href label active]} items]
-       [:a.nav-link
+       [:a.nav-link.pr-2
         {:href href
-         :class (when active "active")}
+         :class (when active "font-bold")}
         label])]]])

@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: garden:1.3.10">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/garden/garden/1.3.10/garden-1.3.10.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

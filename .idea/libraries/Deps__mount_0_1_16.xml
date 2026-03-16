@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: mount:0.1.16">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/mount/mount/0.1.16/mount-0.1.16.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

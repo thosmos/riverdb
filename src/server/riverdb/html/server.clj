@@ -20,6 +20,10 @@
      :route-name :about]
     ["/demo" :get (conj common-interceptors `handlers/demo-page)
      :route-name :demo]
+    ["/hello" :get (conj common-interceptors `handlers/hello-page)
+     :route-name :hello]
+    ["/hello-world" :get (conj common-interceptors (handlers/->hello-interceptor))
+     :route-name :hello-world]
     ["/html/increment" :get (conj common-interceptors `handlers/increment-handler)
      :route-name :increment]
     ["/html/search" :get (conj common-interceptors `handlers/search-handler)

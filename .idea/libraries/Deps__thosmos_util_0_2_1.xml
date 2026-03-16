@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: thosmos/util:0.2.1">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/thosmos/util/0.2.1/util-0.2.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

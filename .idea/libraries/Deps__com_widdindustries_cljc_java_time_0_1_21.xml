@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: com.widdindustries/cljc.java-time:0.1.21">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/widdindustries/cljc.java-time/0.1.21/cljc.java-time-0.1.21.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

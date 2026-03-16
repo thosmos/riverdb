@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.clojure/google-closure-library-third-party:0.0-20211011-0726fdeb">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/clojure/google-closure-library-third-party/0.0-20211011-0726fdeb/google-closure-library-third-party-0.0-20211011-0726fdeb.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

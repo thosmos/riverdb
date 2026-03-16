@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.codehaus.janino/commons-compiler:3.0.12">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/codehaus/janino/commons-compiler/3.0.12/commons-compiler-3.0.12.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

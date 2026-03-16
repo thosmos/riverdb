@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DepsProjectSettings">
+    <option name="enabledAliases">
+      <set>
+        <option value="db" />
+        <option value="dev" />
+        <option value="nrepl" />
+        <option value="rad" />
+        <option value="server" />
+      </set>
+    </option>
+    <option name="toolAliases">
+      <set>
+        <option value="db" />
+        <option value="dev" />
+        <option value="rad" />
+        <option value="server" />
+      </set>
+    </option>
+  </component>
+  <component name="DepsProjectsManager">
+    <option name="dirTypeMappings">
+      <set>
+        <FolderState>
+          <option name="dirUrl" value="file://$PROJECT_DIR$/src/test" />
+          <option name="type" value="TEST_SOURCE" />
+        </FolderState>
+      </set>
+    </option>
+    <option name="projectFiles">
+      <set>
+        <option value="file://$PROJECT_DIR$/deps.edn" />
+      </set>
+    </option>
+  </component>
+</project>

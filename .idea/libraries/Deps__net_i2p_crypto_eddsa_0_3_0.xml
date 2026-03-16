@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: net.i2p.crypto/eddsa:0.3.0">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/net/i2p/crypto/eddsa/0.3.0/eddsa-0.3.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

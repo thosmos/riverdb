@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: bk/ring-gzip:0.3.0">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/bk/ring-gzip/0.3.0/ring-gzip-0.3.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

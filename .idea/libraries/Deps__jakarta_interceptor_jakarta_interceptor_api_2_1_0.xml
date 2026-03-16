@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: jakarta.interceptor/jakarta.interceptor-api:2.1.0">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/jakarta/interceptor/jakarta.interceptor-api/2.1.0/jakarta.interceptor-api-2.1.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

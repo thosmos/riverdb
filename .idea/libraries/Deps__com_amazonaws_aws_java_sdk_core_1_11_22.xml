@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: com.amazonaws/aws-java-sdk-core:1.11.22">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/amazonaws/aws-java-sdk-core/1.11.22/aws-java-sdk-core-1.11.22.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

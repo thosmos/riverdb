@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.apache.activemq/artemis-commons:2.19.1">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/apache/activemq/artemis-commons/2.19.1/artemis-commons-2.19.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

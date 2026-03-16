@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: jakarta.enterprise/jakarta.enterprise.cdi-api:4.0.1">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/jakarta/enterprise/jakarta.enterprise.cdi-api/4.0.1/jakarta.enterprise.cdi-api-4.0.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

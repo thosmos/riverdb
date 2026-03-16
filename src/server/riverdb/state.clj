@@ -5,7 +5,7 @@
     [theta.log :as log]
     dotenv))
 
-;(def uri (or (dotenv/env :DATOMIC_URI) "datomic:free://localhost:4334/test-db"))
+;(def uri (or (dotenv/env :DATOMIC_URI) "datomic:dev://localhost:4334/test-db"))
 
 (def default-uri "datomic:dev://localhost:4334/riverdb")
 

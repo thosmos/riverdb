@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: clojure-csv:2.0.2">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/clojure-csv/clojure-csv/2.0.2/clojure-csv-2.0.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

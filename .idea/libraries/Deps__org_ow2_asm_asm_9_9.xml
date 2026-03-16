@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: org.ow2.asm/asm:9.9">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/ow2/asm/asm/9.9/asm-9.9.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

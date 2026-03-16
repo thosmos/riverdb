@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: com.datomic/query-support:0.8.28">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/datomic/query-support/0.8.28/query-support-0.8.28.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

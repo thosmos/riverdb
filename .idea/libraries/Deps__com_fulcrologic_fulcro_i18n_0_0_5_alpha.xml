@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: com.fulcrologic/fulcro-i18n:0.0.5-alpha">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/fulcrologic/fulcro-i18n/0.0.5-alpha/fulcro-i18n-0.0.5-alpha.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

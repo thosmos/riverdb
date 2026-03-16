@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="Deps: expound:0.8.9">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/expound/expound/0.8.9/expound-0.8.9.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
