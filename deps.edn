@@ -18,7 +18,8 @@
                                     org.clojure/tools.deps.alpha {:mvn/version "0.8.666"}
                                     vlaaad/reveal                {:mvn/version "0.1.0-ea1"}}}
          :dev        {:extra-paths ["src/dev"]
-                      :extra-deps  {expound/expound              {:mvn/version "0.8.9"}}}
+                      :extra-deps  {expound/expound              {:mvn/version "0.8.9"}
+                                    binaryage/devtools           {:mvn/version "1.0.7"}}}
          :local-dev  {:override-deps
                       {thosmos/util           {:local/root "/Users/thomas/Develop/clojure/thosmos.util"
                                                :exclusions [com.datomic/datomic-free]}
@@ -113,7 +114,7 @@
          com.rpl/specter                     {:mvn/version "1.1.6"}
 
          ;; fulcro
-         com.fulcrologic/fulcro              {:mvn/version "3.5.24"}
+         com.fulcrologic/fulcro              {:mvn/version "3.7.10"}
          ;com.fulcrologic/fulcro-i18n         {:mvn/version "0.0.5-alpha" :exclusions [com.fulcrologic/fulcro]}
          com.fulcrologic/fulcro-garden-css   {:mvn/version "3.0.9" :exclusions [com.fulcrologic/fulcro garden/garden]}
          com.fulcrologic/semantic-ui-wrapper {:mvn/version "2.0.2" :exclusions [com.fulcrologic/fulcro]}

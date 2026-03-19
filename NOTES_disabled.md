@@ -3,7 +3,7 @@
 ### Backend Server
 ```bash
 # Start with REPL (recommended for development)
-clj -A:dev:server:rad:nrepl
+clj -A:dev:server:rad
 # Then in REPL:
 user=> (start)
 user=> (stop)
@@ -39,6 +39,6 @@ npx shadow-cljs compile :ci-tests && npx karma start --single-run
 
 ### Full Dev Setup
 1. Start Datomic transactor `bin/transactor config/dev-transactor-template.properties` (default URI: `datomic:dev://localhost:4334/riverdb`)
-2. Terminal 1: `clj -A:dev:server:rad:nrepl` → `(start)`
+2. Terminal 1: `clj -A:dev:server:rad` → `(start)`
 3. Terminal 2: `npm run main`
 4. App: http://localhost:8989 | GraphiQL: http://localhost:8989/graphiql

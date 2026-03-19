@@ -60,12 +60,12 @@ PORT=8989
 
 run the server:
 ```
-clojure -A:dev:server:rad:nrepl:run
+clojure -A:dev:server:rad:run
 ```
 
 OR start the server in a REPL:
 ```Shell
-clj -A:dev:server:rad:nrepl
+clj -A:dev:server:rad
 
 # The ns is defined in src/dev/user
 ## Start the server

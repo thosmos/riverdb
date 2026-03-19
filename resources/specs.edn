@@ -2580,7 +2580,10 @@
    #:attr{:name "Agency",
           :key :samplingdevice/Agency,
           :cardinality :one,
-          :type :ref}
+          :type :ref,
+          :ref #:entity{:ns :entity.ns/agencylookup},
+          :doc "a ref to the Agency entity",
+          :refKey :entity.ns/agencylookup}
    #:attr{:name "uuid",
           :key :samplingdevice/uuid,
           :identity true,

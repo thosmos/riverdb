@@ -12,7 +12,7 @@ RiverDB is a River Science Data Management System — a full-stack web applicati
 ## Architecture
 
 ### deps.edn Aliases
-Key aliases to combine: `:dev` (adds `src/dev`), `:server` (adds `src/server` + all server deps), `:rad` (adds `src/rad` + Fulcro RAD), `:nrepl` (adds an nREPL for dev connection).
+Key aliases to combine: `:dev` (adds `src/dev`), `:server` (adds `src/server` + all server deps), `:rad` (adds `src/rad` + Fulcro RAD).
 
 ### Source Layout
 ```

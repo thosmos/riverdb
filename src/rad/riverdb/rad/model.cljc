@@ -7,6 +7,7 @@
     [riverdb.rad.model.worktime :as worktime]
     [riverdb.rad.model.device :as device]
     [riverdb.rad.model.devicetype :as devicetype]
+    [riverdb.rad.model.constituent :as constituent]
     [riverdb.rad.model.station :as station]
     [riverdb.rad.model.project :as project]
 
@@ -33,6 +34,7 @@
                            worktime/attributes
                            device/attributes
                            devicetype/attributes
+                           constituent/attributes
                            station/attributes
                            project/attributes
                            [all-projects])))
@@ -43,5 +45,6 @@
                       worktime/resolvers
                       device/resolvers
                       devicetype/resolvers
+                      constituent/resolvers
                       station/resolvers
                       project/resolvers)))
