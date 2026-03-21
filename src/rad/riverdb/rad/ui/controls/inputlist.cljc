@@ -5,27 +5,17 @@
          [goog.object :as gobj]
          [cljs.reader :refer [read-string]]
          [com.fulcrologic.semantic-ui.modules.dropdown.ui-dropdown :refer [ui-dropdown]]]
-         ;[com.fulcrologic.semantic-ui.elements.input.ui-input :refer [ui-input]]]
         :clj
         [[com.fulcrologic.fulcro.dom-server :as dom :refer [div label input datalist option]]])
-    [com.fulcrologic.rad.ids :as ids]
-    [com.fulcrologic.fulcro.rendering.multiple-roots-renderer :as mroot]
     [com.fulcrologic.fulcro.components :as comp :refer [defsc]]
-    [com.fulcrologic.fulcro.data-fetch :as df]
-    [com.fulcrologic.fulcro.dom.events :as evt]
-    [com.fulcrologic.fulcro.dom.html-entities :as ent]
-    [com.fulcrologic.fulcro.mutations :as m :refer [defmutation]]
-    [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.rad.form :as form]
     [com.fulcrologic.rad.options-util :as opts :refer [?!]]
-    [com.fulcrologic.rad.rendering.semantic-ui.components :refer [ui-wrapped-dropdown]]
     [com.fulcrologic.rad.rendering.semantic-ui.field]
     [com.fulcrologic.rad.attributes :as attr]
     [com.fulcrologic.rad.picker-options :as po]
     [clojure.string :as str]
     [theta.log :as log]
-    [com.fulcrologic.rad.form :as form]
-    [com.fulcrologic.fulcro.algorithms.normalized-state :as fns]))
+    [com.fulcrologic.rad.form :as form]))
 
 (defsc InputList [_ {:keys [env attribute] :as props}]
   {:componentDidMount (fn [this]

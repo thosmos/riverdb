@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: com.fulcrologic/fulcro-rad-datomic:1.3.2">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/com/fulcrologic/fulcro-rad-datomic/1.3.2/fulcro-rad-datomic-1.3.2.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

@@ -7,6 +7,7 @@
     [com.fulcrologic.fulcro-css.css-injection :as cssi]
     [com.fulcrologic.fulcro.data-fetch :as df]
     [com.fulcrologic.fulcro.inspect.inspect-client :as inspect]
+    [fulcro.inspect.tool]
     [com.fulcrologic.fulcro.mutations :as m]
     [com.fulcrologic.fulcro.networking.http-remote :as net]
     [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
@@ -41,8 +42,8 @@
 (defn setup-RAD [app]
   (history/install-route-history! app (html5-history))
   (let [all-controls (-> sui/all-controls
-                       (assoc-in [::form/type->style->control :string :autocomplete]
-                         riverdb.rad.ui.controls.autocomplete/render-autocomplete-field)
+                       ;(assoc-in [::form/type->style->control :string :autocomplete]
+                       ;  riverdb.rad.ui.controls.autocomplete/render-autocomplete-field)
                        (assoc-in [::form/type->style->control :string :inputlist]
                          riverdb.rad.ui.controls.inputlist/render-inputlist-field)
                        (assoc-in [::form/type->style->control :ref :pick-many-reverse]
@@ -94,6 +95,7 @@
   ;(auth/start! app [root/LoginForm] {:after-session-check `fix-route})
   ;(log/info "Starting Pushy")
   ;(routes/start!)
+  (fulcro.inspect.tool/add-fulcro-inspect! SPA)
 
   (log/info "Mounting Root")
   (app/mount! SPA root/Root "app" {:initialize-state? false}))

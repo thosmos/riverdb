@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: io.pedestal/pedestal.route:0.8.1">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/io/pedestal/pedestal.route/0.8.1/pedestal.route-0.8.1.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

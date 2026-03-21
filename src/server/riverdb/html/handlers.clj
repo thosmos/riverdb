@@ -36,6 +36,7 @@
 
 (def ^:private bufSize 1024)
 (def read-json (charred/parse-json-fn {:async? false :bufsize bufSize}))
+(def parse-json json/decode)
 
 (defn get-signals*
   "Returns the signals json string. You need to use some middleware
@@ -49,7 +50,7 @@
     (:body request)))
 
 (defn get-signals [req]
-  (some-> req get-signals* read-json))
+  (some-> req get-signals* json/decode))
 
 (def message "Hello, world!")
 
@@ -59,7 +60,7 @@
   (let [result (html
           [:div {:id "message"}
            (subs message 0 (inc i))])]
-    (debug "FRAG" result)
+    ;(debug "FRAG" result)
     result))
 
 
@@ -79,15 +80,19 @@
 (defn error-fn [arg1 arg2]
   (debug "ERROR" arg1 arg2))
 
-(defn hello-handler [ctx]
+(defn hello-handler [ctx sse]
   (let [params (get-in ctx [:request :query-params])
-        d (-> (:request ctx) get-signals (get "delay") int)]
-    (debug "making HELLO handler" params )
-    (fn [sse]
-      (d*/with-open-sse sse
-                        (dotimes [i msg-count]
-                          (d*/patch-elements! sse (->frag i))
-                          (Thread/sleep d))))))
+        _ (debug "params" params)
+        d (-> (:request ctx) get-signals (get "delay"))
+        _ (debug "delay" d (type d))
+        d (if (string? d) (int d) d)
+        d (if (not (number? d)) 100 d)]
+    (debug "HELLO handler" params )
+    (d*/with-open-sse sse
+                      (d*/patch-elements! sse (html [:div {:id "hello"} "Hello World Indeed!"]))
+                      (dotimes [i msg-count]
+                        (d*/patch-elements! sse (->frag i))
+                        (Thread/sleep d)))))
 
 (defn handler-fn [sse]
   ;(d*/patch-elements! sse "<div>1</div>")
@@ -105,8 +110,9 @@
    :enter (fn [ctx]
             (d*.pedestal/->sse-response
               ctx
-              {d*.pedestal/on-open      (hello-handler ctx)
-               d*.pedestal/on-exception error-fn}))})
+              {d*.pedestal/on-open #(hello-handler ctx %)
+               ;d*.pedestal/on-exception error-fn
+               }))})
 
 (defn hello-page
   "A datastar hello world page"
@@ -140,6 +146,7 @@
         [:div.my-16.text-8xl.font-bold.text-transparent
          {:style "background: linear-gradient(to right in oklch, red, orange, yellow, green, blue, blue, violet); background-clip: text"}
          [:div#message "Hello, world!"]]
+         [:div#hello "hello?"]
        ])))
   )
 
@@ -178,21 +185,21 @@
            {:title "Counter Demo"
             :subtitle "Click the button to increment the counter"}
            [:div
-            {:data-store "{count: 0}"}
+            {:data-signals "{count: 0}"}
             [:p.text-lg
-             "Count: "
+             "Count?: "
              [:span.badge.badge-primary
-              {:data-text "$count"}
-              "5"]]
+              {:data-text "$count"}]]
             [:button.btn.btn-primary.mt-2
              {:data-on:click "@get('/html/increment')"}
              "Increment"]
              [:button.rounded-md.bg-sky-500.px-5.py-2.5.leading-5.font-semibold.text-white.hover:bg-sky-700.hover:text-gray-100.cursor-pointer
-              ;{:data-on:click "@get('/hello-world')"}
-              {:data-on:click "alert('hi there')"}
+              {:data-on:click "@get('/hello-world')"}
+              ;{:data-on:click "alert('hi there')"}
               "HI"]
-             [:button.btn.btn-primary.mt-2 {:data-on:click "@get('/endpoint')"} "Open the pod bay doors, HAL."]
-             [:div#hal]
+            ;[:button.btn.btn-primary.mt-2 {:data-on:click "@get('/endpoint')"} "Open the pod bay doors, HAL."]
+            [:div#message]
+            [:div#hello]
             ])
 
          [:div.mt-4
@@ -200,44 +207,99 @@
             {:title "Live Search Demo"
              :subtitle "Search updates as you type"}
             [:div
-             {:data-store "{query: '', results: []}"}
-             (layout/input
-               {:id "search"
+             {:data-signals "{query: '', results: []}"}
+             [:div.form-group
+              [:input.form-control
+               {:id          "search"
+                :data-bind   "query"
                 :placeholder "Type to search..."
-                :class "data-model-query data-on-input-$get('/html/search')"})
-             [:div.mt-3
-              {:data-show "$results.length > 0"}
-              [:h5 "Results:"]
-              [:ul
-               {:id "results"}
-               [:template
-                {:data-for "result in $results"}
-                [:li {:data-text "$result"}]]]]])]]))))
+                :data-on:input "@get('/html/search')"}]]
+             #_(layout/input
+                 {:id          "search"
+                  :data-bind   "query"
+                  :placeholder "Type to search..."
+                  :class       "data-on-input-get('/html/search')"})
+             #_[:button.btn.btn-primary.mt-2
+              {:data-on:click "@get('/html/search')"}
+              "Search"]
+             [:div#results.mt-3]])]
+         ]))))
+
+
 
 (defn increment-handler
   "Datastar handler for incrementing counter"
-  [request]
-  (debug "INCREMENT REQUEST" (:params request))
-  (let [current-count (or (some-> (get-in request [:params :count]) (Integer/parseInt)) 0)
-        new-count (inc current-count)]
-    {:status 200
-     :headers {"Content-Type" "text/vnd.datastar.fragment+html"}
-     :body (html
-             [:div
-              {:data-merge-store (str "{count: " new-count "}")}])}))
+  [ctx sse]
+  (debug "INCREMENT PARAMS" (-> ctx :request :query-params))
+  (let [params (-> ctx :request :query-params)
+        _ (debug "inc params 1" params)
+        params (get-in ctx [:request :query-params])
+        _ (debug "inc params 2" params)
+        sigs (-> (:request ctx) get-signals)
+        _ (debug "SIGNALS" sigs)
+        count (get sigs "count")
+        _ (debug "count" count (type count) (pr-str count))
+        count (if (not (number? count)) 0 count)
+        new-count (inc count)]
+    (d*/with-open-sse
+      sse
+      (d*/patch-elements! sse (html [:div {:id "hello"} "Hello World " (str new-count) "!"]))
+      (d*/patch-signals!  sse (json/encode {:count new-count}))
+      )))
+
+(defn ->inc-interceptor
+  []
+  {:name ::inc-interceptor
+   :enter (fn [ctx]
+            (d*.pedestal/->sse-response
+              ctx
+              {d*.pedestal/on-open      #(increment-handler ctx %)
+               d*.pedestal/on-exception error-fn}))})
 
 (defn search-handler
   "Datastar handler for live search"
-  [request]
-  (let [query (get-in request [:params :query] "")
+  [ctx sse]
+  (let [request (:request ctx)
+        params (:query-params request)
+        _ (debug "params" params)
+        signals (get-signals request)
+        _ (debug "signals" signals)
+        query (get-in request [:params :query] "")
+        _ (debug "query" query)
+        query (get signals "query")
+        _ (debug "signal query" query)
         results (if (empty? query)
                   []
-                  ["Result 1" "Result 2" "Result 3"])]
-    {:status 200
+                  ["Result 1" "Result 2" "Result 3"])
+        _ (debug "results" results)]
+    (d*/with-open-sse
+      sse
+      (d*/console-log! sse "hi from the backend")
+      (d*/patch-elements!
+        sse
+        (html
+          (if (empty? results)
+            [:div#results.mt-3]
+            [:div#results.mt-3
+             [:h5 "Results:"]
+             [:ul
+              (for [result results]
+               [:li result])]])))
+      )
+    #_{:status 200
      :headers {"Content-Type" "text/vnd.datastar.fragment+html"}
      :body (html
              [:div
               {:data-merge-store (str "{results: " (pr-str results) "}")}])}))
+
+(defn ->search
+  []
+  {:name ::search-interceptor
+   :enter (fn [ctx]
+            (d*.pedestal/->sse-response
+              ctx
+              {d*.pedestal/on-open      #(search-handler ctx %)
+               d*.pedestal/on-exception error-fn}))})
 
 (defn not-found
   "404 handler"

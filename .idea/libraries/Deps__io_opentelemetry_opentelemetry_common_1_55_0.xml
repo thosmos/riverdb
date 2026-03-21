@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: io.opentelemetry/opentelemetry-common:1.55.0">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/io/opentelemetry/opentelemetry-common/1.55.0/opentelemetry-common-1.55.0.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: com.taoensso/sente:1.16.2">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/com/taoensso/sente/1.16.2/sente-1.16.2.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

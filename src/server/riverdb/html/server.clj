@@ -24,9 +24,9 @@
      :route-name :hello]
     ["/hello-world" :get (conj common-interceptors (handlers/->hello-interceptor))
      :route-name :hello-world]
-    ["/html/increment" :get (conj common-interceptors `handlers/increment-handler)
+    ["/html/increment" :get (conj common-interceptors (handlers/->inc-interceptor))
      :route-name :increment]
-    ["/html/search" :get (conj common-interceptors `handlers/search-handler)
+    ["/html/search" :get (conj common-interceptors (handlers/->search))
      :route-name :search]})
 
 (defn create-service-map

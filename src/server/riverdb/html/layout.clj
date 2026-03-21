@@ -1,7 +1,7 @@
 (ns riverdb.html.layout
   "HTML layout helpers using Hiccup and Basecoat UI components"
   (:require [hiccup.page :refer [html5 include-css include-js]]
-            [hiccup.core :refer [html]]))
+            [starfederation.datastar.clojure.api :as d*]))
 
 (def basecoat-cdn "https://cdn.jsdelivr.net/npm/basecoat-css@0.3.11/dist/basecoat.cdn.min.css")
 (def basecoat-js-cdn "https://cdn.jsdelivr.net/npm/basecoat-css@0.3.11/dist/js/all.min.js")
@@ -53,7 +53,7 @@
 
 (defn input
   "Basecoat input component"
-  [{:keys [type id name placeholder value label class]
+  [{:keys [type id name placeholder value label class data-bind]
     :or {type "text"}}]
   [:div.form-group
    (when label
@@ -62,6 +62,7 @@
     (merge
       {:type type}
       (when id {:id id})
+      (when data-bind {:data-bind data-bind})
       (when name {:name name})
       (when placeholder {:placeholder placeholder})
       (when value {:value value})

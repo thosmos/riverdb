@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: org.eclipse.jetty.ee10/jetty-ee10-webapp:12.0.29">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/org/eclipse/jetty/ee10/jetty-ee10-webapp/12.0.29/jetty-ee10-webapp-12.0.29.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

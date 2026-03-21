@@ -6,8 +6,8 @@
             [com.fulcrologic.fulcro.data-fetch :as df]
             [com.fulcrologic.fulcro.networking.file-upload :as file-upload]
             [com.fulcrologic.fulcro.networking.http-remote :as net]
-            [com.fulcrologic.fulcro.rendering.keyframe-render2 :as kf2]
-            [com.fulcrologic.fulcro.rendering.multiple-roots-renderer :as mroot]
+            ;[com.fulcrologic.fulcro.rendering.keyframe-render2 :as kf2]
+            ;[com.fulcrologic.fulcro.rendering.multiple-roots-renderer :as mroot]
             [com.fulcrologic.fulcro.routing.dynamic-routing :as dr]
             [com.fulcrologic.fulcro.ui-state-machines :as uism]
             [com.wsscode.pathom.core :as p]
@@ -122,7 +122,7 @@
                                           (app/default-remote-error? result)
                                           (contains-error? body)))
                 ;:optimized-render!    kf2/render!
-                :optimized-render!    mroot/render!
+                ;:optimized-render!    mroot/render!
                 ;:global-eql-transform global-eql-transform-old
                 :global-eql-transform (global-eql-transform (elision-predicate default-network-blacklist))}))
                 ;:client-did-mount     (fn [app]

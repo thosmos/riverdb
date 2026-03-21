@@ -11,11 +11,11 @@
     ;[tick.core :as t]
     ;[tick.timezone]
     [theta.log :refer [debug]]
-    ["react-datepicker/dist" :default DatePicker]
+    ["react-datepicker" :refer [DatePicker]]
     ["js-joda" :as js-joda :refer [DateTimeFormatter, LocalDateTime, LocalDate]]
     ;["react-treeview-semantic" :default SourceTree]))
     ["react-treeview/lib/react-treeview" :as TreeView]
-    ["react-virtualized-auto-sizer/dist/index.cjs.js" :as AutoSizer]
+    ["react-virtualized-auto-sizer/dist/react-virtualized-auto-sizer.js" :as AutoSizer]
     ["react-beautiful-dnd" :refer [DragDropContext Droppable Draggable]]))
 
 (defn f

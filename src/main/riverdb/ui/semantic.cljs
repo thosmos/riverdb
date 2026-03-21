@@ -22,14 +22,14 @@
     ["semantic-ui-react/dist/commonjs/modules/Sidebar" :default Sidebar]
     ["semantic-ui-react/dist/commonjs/addons/Responsive" :default Responsive]
 
-    ["react-datepicker/dist" :default DatePicker]
+    ;["react-datepicker/dist/index.js" :default DatePicker]
     [com.fulcrologic.fulcro.dom :as dom]
     [com.fulcrologic.fulcro.algorithms.react-interop :as interop]))
 
 (defn factory [Thing]
   (interop/react-factory Thing))
 
-(def ui-datepicker (factory DatePicker))
+;(def ui-datepicker (factory DatePicker))
 
 ;(:require ["semantic-ui-react/dist/commonjs/modules/Dropdown" :default Dropdown])
 ;(def dropdown (interop/react-factory Dropdown))

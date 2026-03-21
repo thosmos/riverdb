@@ -20,6 +20,8 @@
                          :dev        {:closure-defines {com.fulcrologic.fulcro.inspect.inspect_ws/SERVER_PORT 8237}}
                          :devtools   {:after-load riverdb.client/refresh
                                       :preloads   [com.fulcrologic.fulcro.inspect.preload
+                                                   com.fulcrologic.fulcro.inspect.dom-picker-preload
+                                                   com.fulcrologic.devtools.chrome-preload
                                                    ;com.fulcrologic.fulcro.inspect.websocket-preload
                                                    riverdb.development-preload]
                                       :watch-dir  "resources/public/admin/css"}

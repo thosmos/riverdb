@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: com.fulcrologic/guardrails:1.1.11">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/com/fulcrologic/guardrails/1.1.11/guardrails-1.1.11.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>
