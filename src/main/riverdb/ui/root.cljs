@@ -55,7 +55,8 @@
     [riverdb.rad.ui.users :refer [UserList UserForm]]
     [riverdb.rad.ui.worktime :refer [WorkTimeList WorkTimeForm]]
     [riverdb.rad.ui.devices :refer [DeviceList DeviceForm]]
-    [riverdb.rad.ui.stations :refer [StationList StationForm]]))
+    [riverdb.rad.ui.stations :refer [StationList StationForm]]
+    [riverdb.rad.ui.devicetypes :refer [DeviceTypeList DeviceTypeForm]]))
 
 (defn field [{:keys [label valid? error-message] :as props}]
   (let [input-props (-> props (assoc :name label) (dissoc :label :valid? :error-message))]
@@ -268,7 +269,7 @@
   {:router-targets        [Main Signup SignupSuccess ThetaRoot Projects TacReportPage
                            DataVizPage SiteVisitsPage UploadPage PersonForm PersonList
                            UserList UserForm WorkTimeList WorkTimeForm DeviceList DeviceForm
-                           StationList StationForm DataTablePage]
+                           StationList StationForm DeviceTypeList DeviceTypeForm DataTablePage]
    :shouldComponentUpdate (fn [_ _ _] true)})
 (def ui-top-router (comp/factory TopRouter))
 
@@ -355,6 +356,7 @@
                 (ui-dropdown-menu {}
                   (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this Projects {}))} "Projects")
                   (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this StationList {:stationlookup/Agency ag-ident}))} "Stations")
+                  (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this DeviceTypeList {}))} "Device Types")
                   (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this UserList {:user/agency ag-ident}))} "User Logins")
                   (when rdb-admin?
                     (ui-dropdown-item {:onClick (fn [] (rroute/route-to! this ThetaRoot {:user/agency ag-ident}))} "Tables"))))))

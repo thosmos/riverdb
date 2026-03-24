@@ -527,7 +527,7 @@
 
 (defn find-uuids-factory [uuid-k]
   (fn [env]
-    (debug "find" uuid-k)
+    (debug "find:" uuid-k "query:" (:query-params env))
     (try
       (if-let [db (some-> (get-in env [::datomic/databases :production]) deref)]
         (let [query-params (:query-params env)

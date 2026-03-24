@@ -51,22 +51,6 @@
                           (log/debug "samplingdevicelookup PICKER OPTS" opts)
                           opts))})
 
-(form/defsc-form DeviceTypeForm [this props]
-  {fo/id               devicetype/uid
-   fo/attributes       [devicetype/Active devicetype/SampleDevice global/EntityNS]
-   fo/default-values   {:samplingdevicelookup/Active    true
-                        :riverdb.entity/ns :entity.ns/samplingdevicelookup}
-   ;::form/enumeration-order :person/Name
-   ;::form/cancel-route      ["people"]
-   fo/route-prefix     "device"
-   ;:route-segment     ["person"]
-   fo/title            "Edit Device"
-   fo/layout           [[:samplingdevicelookup/SampleDevice]
-                        [:samplingdevicelookup/Active]]
-   ;[:samplingdevice/DeviceType]
-   ;[:samplingdevice/Active]]
-   ;[:samplingdevice/Agency]]
-   fo/field-labels     {:samplingdevicelookup/SampleDevice "Name"}})
 
 (form/defsc-form DeviceForm [this props]
   {fo/id               device/uid
