@@ -26,9 +26,9 @@
          :bench      {:extra-deps {criterium/criterium {:mvn/version "0.4.5"}}}
          ;:guardrail  {:extra-deps {com.fulcrologic/guardrails {:mvn/version "0.0.10"}}
          ;             :jvm-opts   ["-XX:-OmitStackTraceInFastThrow" "-Dguardrails.enabled=true"]}
-         :cljsbuild  {:extra-deps {org.clojure/clojurescript    {:mvn/version "1.10.914"}
+         :cljsbuild  {:extra-deps {org.clojure/clojurescript    {:mvn/version "1.12.134"}
                                    expound/expound              {:mvn/version "0.8.9"}
-                                   thheller/shadow-cljs         {:mvn/version "2.17.0" :exclusions [expound/expound]}
+                                   thheller/shadow-cljs         {:mvn/version "3.3.6" :exclusions [expound/expound]}
                                    thheller/shadow-cljsjs       {:mvn/version "0.0.22"}
                                    clj-commons/pushy            {:mvn/version "0.3.10"}
                                    testdouble/clojurescript.csv {:mvn/version "0.4.5"}
@@ -90,7 +90,7 @@
          :nREPL      {:extra-deps {nrepl/nrepl {:mvn/version "1.0.0"}}}}
  ;["-Xms512m" "-Xmx512m" "-server" "-Dclojure.server.repl={:port,5555,:accept,clojure.core.server/repl}"]}},
  :deps
-        {org.clojure/clojure                 {:mvn/version "1.10.3"}
+        {org.clojure/clojure                 {:mvn/version "1.12.4"}
 
          ;thosmos/util                        {:local/root "../../clojure/thosmos.util"}
          thosmos/util                        {:mvn/version "0.2.1"}
@@ -124,4 +124,6 @@
 
  :mvn/repos
         {"osgeo-release"      {:url "https://repo.osgeo.org/repository/release/"}
-         "geoserver-releases" {:url "https://repo.osgeo.org/repository/Geoserver-releases/"}}}
+         "geoserver-releases" {:url "https://repo.osgeo.org/repository/Geoserver-releases/"}
+         "my.datomic.com" {:url "https://my.datomic.com/repo"}
+         "redplanetlabs"      {:url "https://nexus.redplanetlabs.com/repository/maven-public-releases"}}}
