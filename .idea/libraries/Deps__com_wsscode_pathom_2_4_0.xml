@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: com.wsscode/pathom:2.4.0">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/com/wsscode/pathom/2.4.0/pathom-2.4.0.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

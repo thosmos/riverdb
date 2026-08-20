@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: com.widdindustries/cljs.java-time:0.1.20">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/com/widdindustries/cljs.java-time/0.1.20/cljs.java-time-0.1.20.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

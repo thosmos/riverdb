@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: com.wsscode/async:2021.01.14">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/com/wsscode/async/2021.01.14/async-2021.01.14.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

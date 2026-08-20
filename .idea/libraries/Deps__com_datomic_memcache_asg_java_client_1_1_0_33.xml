@@ -1,9 +1,0 @@
-<component name="libraryTable">
-  <library name="Deps: com.datomic/memcache-asg-java-client:1.1.0.33">
-    <CLASSES>
-      <root url="jar://$MAVEN_REPOSITORY$/com/datomic/memcache-asg-java-client/1.1.0.33/memcache-asg-java-client-1.1.0.33.jar!/" />
-    </CLASSES>
-    <JAVADOC />
-    <SOURCES />
-  </library>
-</component>

@@ -2,7 +2,6 @@
 node_modules/
 resources/public/admin/js/main/cljs-runtime/
 resources/public/admin/js/main/manifest.edn
-.idea/libraries
 .env
 .nrepl-port
 .cpcache
@@ -10,3 +9,5 @@ resources/public/admin/js/main/manifest.edn
 .claude
 logs/
 
+
+.idea/
