@@ -1,0 +1,188 @@
+/* RiverDB app styles: the small amount Pico doesn't cover.
+   Pico handles everything else — this file should stay short. */
+
+/* Site visit list: every cell wraps a link so the whole row is clickable.
+   Without this the table reads as a wall of blue underlined link text. */
+table a {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+tbody tr:hover {
+  background-color: var(--pico-primary-focus, var(--pico-secondary-background));
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------------------------
+   Site visit form layout: a dense three-across field grid with a monitors rail,
+   mirroring the existing Fulcro form. Pico's own .grid gives equal auto-fit
+   columns, which isn't what we want here.
+   --------------------------------------------------------------------------- */
+.form-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2.4fr) minmax(0, 1fr);
+  gap: var(--pico-spacing);
+  align-items: start;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: var(--pico-spacing);
+}
+
+@media (max-width: 900px) {
+  .form-layout,
+  .field-grid { grid-template-columns: 1fr; }
+}
+
+/* Transaction dumps in the save status panel */
+#sv-status pre,
+details pre {
+  margin-bottom: 0;
+  max-height: 20rem;
+}
+
+/* Form actions: Pico stretches buttons to fill their container, which is right
+   for a role="group" segmented control but wrong for Save/Revert. */
+.actions {
+  display: flex;
+  gap: var(--pico-spacing);
+  margin-bottom: var(--pico-spacing);
+}
+
+.actions button {
+  width: auto;
+  margin-bottom: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Desktop data-entry density.
+
+   Pico targets content sites and scales its root font UP with viewport width
+   (100% -> 131.25% at 1536px), inflating every rem-based padding and gap with
+   it. This app is the opposite case: large forms on desktop monitors, where
+   more fields on screen beats comfortable reading measure.
+
+   These land after pico.css so they win over its media-query ramp.
+   --------------------------------------------------------------------------- */
+:root {
+  --pico-font-size: 87.5%;
+  --pico-line-height: 1.4;
+  --pico-spacing: 0.6rem;
+  --pico-typography-spacing-vertical: 0.5rem;
+  --pico-form-element-spacing-vertical: 0.35rem;
+  --pico-form-element-spacing-horizontal: 0.6rem;
+  --pico-border-radius: 0.2rem;
+}
+
+/* Labels sit tight against their control */
+.field-grid > label,
+.rail > label {
+  margin-bottom: 0.55rem;
+}
+
+.field-grid label > input,
+.field-grid label > select,
+.rail label > select {
+  margin-top: 0.15rem;
+  margin-bottom: 0;
+}
+
+h1 { margin-bottom: 0.3rem; }
+
+/* ---------------------------------------------------------------------------
+   Cardinality-many ref editor (riverdb.html.ref-list): chips + filtered menu.
+   --------------------------------------------------------------------------- */
+.field-label {
+  display: block;
+  font-size: inherit;
+  margin-bottom: 0.15rem;
+}
+
+.ref-list { position: relative; }
+
+.ref-list-box {
+  border: var(--pico-border-width) solid var(--pico-form-element-border-color);
+  border-radius: var(--pico-border-radius);
+  background: var(--pico-form-element-background-color);
+  padding: 0.3rem;
+}
+
+.ref-list-box:focus-within {
+  border-color: var(--pico-form-element-active-border-color);
+  box-shadow: 0 0 0 var(--pico-outline-width) var(--pico-form-element-focus-color);
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--pico-border-radius);
+  background: var(--pico-secondary-background);
+  color: var(--pico-secondary-inverse);
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+.chip-x {
+  width: auto;
+  margin: 0;
+  padding: 0 0.15rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 1em;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chip-x:hover { opacity: 0.6; }
+
+/* Borderless: the .ref-list-box supplies the frame */
+.ref-list-input {
+  margin: 0.25rem 0 0 0 !important;
+  border: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  height: auto !important;
+  padding: 0.1rem 0.2rem !important;
+}
+
+.menu {
+  color: var(--pico-color);
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  right: 0;
+  max-height: 14rem;
+  overflow-y: auto;
+  border: var(--pico-border-width) solid var(--pico-form-element-border-color);
+  border-radius: var(--pico-border-radius);
+  background: var(--pico-background-color);
+  box-shadow: var(--pico-card-box-shadow);
+}
+
+.menu-item {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  /* Pico rebinds --pico-color inside a button to the button's own foreground,
+     which is near-white — the same trap Basecoat's btn-outline fell into.
+     Inherit from .menu instead, which carries normal text colour. */
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-item:hover { background: var(--pico-secondary-background); color: var(--pico-secondary-inverse); }
+
+.menu-empty { padding: 0.35rem 0.5rem; color: var(--pico-muted-color); }

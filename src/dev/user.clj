@@ -14,7 +14,8 @@
     [thosmos.datomic :as tdb]
     [java-time :as jt]
     [tick.core :as t]
-    [theta.log :as log]))
+    [theta.log :as log]
+    [watch]))
 
 (set! *data-readers* (assoc *data-readers* 'fulcro/tempid #'riverdb.util/readTempid))
 
@@ -45,6 +46,30 @@
   (stop)
  ; (tools-ns/refresh :after 'user/start))
   (start))
+
+;; ---------------------------------------------------------------------------
+;; Hot reload for the Datastar HTML app on 9595.
+;;
+;; Its route table is resolved per request in dev, so reloading the handler and
+;; data namespaces is enough: Jetty keeps running, the Datomic connection is
+;; untouched, and mount state is never disturbed. Only edits to
+;; riverdb.html.server itself need a full (restart).
+;; ---------------------------------------------------------------------------
+
+(defn watch
+  "Reload riverdb.html.* on save."
+  []
+  (watch/on))
+
+(defn unwatch
+  "Stop the file watcher."
+  []
+  (watch/off))
+
+(defn reload
+  "One-shot reload of riverdb.html.*, no watcher required."
+  []
+  (watch/reload))
 
 (defn specs []
   (edn/read-string

@@ -11,3 +11,7 @@ logs/
 
 
 .idea/
+
+# Licensed front-end assets (Datastar Pro, Stellar CSS) must never be
+# committed: they may not be redistributed, and this repo is public/AGPL.
+resources/public/vendor/
