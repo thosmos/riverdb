@@ -186,3 +186,60 @@ h1 { margin-bottom: 0.3rem; }
 .menu-item:hover { background: var(--pico-secondary-background); color: var(--pico-secondary-inverse); }
 
 .menu-empty { padding: 0.35rem 0.5rem; color: var(--pico-muted-color); }
+
+/* ---------------------------------------------------------------------------
+   Field measurement grid. Dense: this is transcription from a paper sheet, so
+   the priority is fitting every parameter on screen at once.
+   --------------------------------------------------------------------------- */
+.fieldmeasure { margin-top: var(--pico-spacing); }
+
+.fieldmeasure h2 {
+  font-size: 1.1rem;
+  margin-bottom: 0.4rem;
+}
+
+/* Auto width keeps the columns as narrow as their contents, rather than
+   spreading six parameters across the full page. */
+.fieldmeasure table {
+  margin-bottom: 0;
+  width: auto;
+}
+
+.fieldmeasure th,
+.fieldmeasure td {
+  padding: 0.15rem 0.4rem;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.fieldmeasure thead th {
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+/* Derived columns are read-only output: right-align so digits line up. */
+.fieldmeasure td[id^="fm-"] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  min-width: 3.5rem;
+}
+
+/* Pico sets input { width: 100% }, which stretches these across the column. */
+.fieldmeasure .fm-cell,
+.fieldmeasure .fm-time {
+  width: 5rem !important;
+  margin: 0 !important;
+  padding: 0.1rem 0.3rem !important;
+  height: auto !important;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.fieldmeasure .fm-time { width: 4.5rem !important; text-align: left; }
+
+/* Quality exceedance: range/precision beyond the parameter's PrecisionCode, or
+   a mean outside its High/Low. Matches what the Fulcro form colours red. */
+.exc {
+  color: var(--pico-del-color, #b3261e);
+  font-weight: 600;
+}

@@ -8,6 +8,7 @@
   role=\"group\", role=\"switch\", aria-current, aria-invalid, data-theme."
   (:require [clojure.string :as str]
             [dotenv]
+            [riverdb.html.schema :as sc]
             [hiccup.page :refer [html5 include-css include-js]]
             [starfederation.datastar.clojure.api :as d*]))
 
@@ -128,53 +129,54 @@
 ;; ---------------------------------------------------------------------------
 ;; Datastar form controls
 ;;
-;; Each control binds to a signal by name via data-bind, so the whole form's
-;; state lives in one signals object that gets POSTed back on save. Labels wrap
-;; their input, which is Pico's idiom and means no id bookkeeping.
+;; Each control names the Datomic attribute it edits. The signal path and the
+;; seeded value both derive from that attribute, so a control cannot drift from
+;; the field it is bound to. Labels wrap their input, which is Pico's idiom and
+;; means no id bookkeeping.
 ;; ---------------------------------------------------------------------------
 
+(defn- bound
+  "Signal name and current wire value for an attribute, given the page signals."
+  [signals attr]
+  [(sc/signal-name attr) (sc/signal-get signals attr)])
+
 (defn text-field
-  [{:keys [label signal type placeholder value] :or {type "text"}}]
-  [:label label
-   [:input (cond-> {:type type :data-bind signal}
-             placeholder   (assoc :placeholder placeholder)
-             (some? value) (assoc :value (str value)))]])
+  [{:keys [label attr signals type placeholder] :or {type "text"}}]
+  (let [[sig v] (bound signals attr)]
+    [:label label
+     [:input (cond-> {:type type :data-bind sig}
+               placeholder (assoc :placeholder placeholder)
+               (some? v)   (assoc :value (str v)))]]))
 
 (defn date-field
-  [{:keys [label signal value]}]
-  (text-field {:label label :signal signal :type "date" :value value}))
+  [{:keys [label attr signals]}]
+  (text-field {:label label :attr attr :signals signals :type "date"}))
 
 (defn select-field
-  "Single select. `value` is the stored value, rendered as `selected` so the
-  page is correct even before Datastar hydrates the signal."
-  [{:keys [label signal options value placeholder] :or {placeholder "-- none --"}}]
-  (let [cur (str value)]
+  "Single select. The stored value is rendered as `selected` so the page is
+  correct even before Datastar hydrates the signal."
+  [{:keys [label attr signals options placeholder] :or {placeholder "-- none --"}}]
+  (let [[sig v] (bound signals attr)
+        cur     (str v)]
     [:label label
-     [:select {:data-bind signal}
+     [:select {:data-bind sig}
       [:option {:value "" :selected (str/blank? cur)} placeholder]
       (for [opt options]
         [:option {:value (:value opt) :selected (= (:value opt) cur)}
          (:label opt)])]]))
 
-(defn multi-select-field
-  [{:keys [label signal options values size] :or {size 8}}]
-  (let [selected (set (map str values))]
-    [:label label
-     [:select {:data-bind signal :multiple true :size size}
-      (for [opt options]
-        [:option {:value (:value opt) :selected (contains? selected (:value opt))}
-         (:label opt)])]]))
-
 (defn textarea-field
-  [{:keys [label signal rows value] :or {rows 4}}]
-  [:label label
-   [:textarea {:data-bind signal :rows rows} (str value)]])
+  [{:keys [label attr signals rows] :or {rows 4}}]
+  (let [[sig v] (bound signals attr)]
+    [:label label
+     [:textarea {:data-bind sig :rows rows} (str v)]]))
 
 (defn checkbox-field
   "role=\"switch\" makes Pico render this as a toggle rather than a checkbox,
   which matches what the Fulcro form used for Publish."
-  [{:keys [label signal checked]}]
-  [:label
-   [:input (cond-> {:type "checkbox" :role "switch" :data-bind signal}
-             checked (assoc :checked true))]
-   label])
+  [{:keys [label attr signals]}]
+  (let [[sig v] (bound signals attr)]
+    [:label
+     [:input (cond-> {:type "checkbox" :role "switch" :data-bind sig}
+               v (assoc :checked true))]
+     label]))

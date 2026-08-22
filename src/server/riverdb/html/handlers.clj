@@ -8,6 +8,8 @@
     [cheshire.core :as json]
     [clojure.tools.logging :refer [debug]]
     [hiccup.core :refer [html]]
+    [riverdb.html.datastar :as ds]
+    [riverdb.html.fieldmeasure :as fm]
     [riverdb.html.layout :as layout]
     [riverdb.html.ref-list :as rl]
     [riverdb.html.schema :as sc]
@@ -27,41 +29,10 @@
 
 (defn ok [body] (page 200 body))
 
-(def ^:private signals-in-query?
-  "Datastar sends signals as the `datastar` query param for methods that don't
-  carry a body, and as a JSON body for the rest. Its own source is explicit:
-
-      ot = e => ![\"GET\",\"DELETE\"].includes(e)
-      ot(method) ? body = payload : params.set(\"datastar\", payload)
-
-  Note DELETE is in that list. The SDK's get-signals only special-cases GET,
-  which is why this is spelled out here: reading the body on a DELETE yields
-  nothing, and a handler that diffs against the current selection would treat
-  it as empty and wipe everything."
-  #{:get :delete})
-
-(defn raw-signals
-  "The signals Datastar sent with this request, parsed with keyword keys."
-  [{:keys [request-method query-params body] :as _request}]
-  (try
-    (if (contains? signals-in-query? request-method)
-      (some-> (get query-params "datastar") (json/parse-string true))
-      (some-> body slurp not-empty (json/parse-string true)))
-    (catch Exception e
-      (debug "SIGNALS PARSE FAILED" (.getMessage e))
-      nil)))
-
 (defn- eid
   "The malli-coerced :id, already an int by the time a handler runs."
   [request]
   (get-in request [:parameters :path :id]))
-
-(defn- sse
-  "Run `f` against an open SSE generator and close it."
-  [request f]
-  (->sse-response request
-    {on-open (fn [gen] (d*/with-open-sse gen (f gen)))
-     on-exception (fn [_gen e _opts] (debug "SSE EXCEPTION" (ex-message e)))}))
 
 (defn- base-url [id] (str "/sitevisit/" id))
 
@@ -80,6 +51,18 @@
                  [:strong "Save failed: "] (str error)]
      nil)])
 
+(def dirty-signal
+  "Local-only signal driving the Save and Revert buttons. The leading
+  underscore keeps Datastar from sending it: it is browser state, and a closed
+  save schema would reject it.
+
+  It is set by any input or change inside the form, and by chip add/remove
+  which are round trips rather than input events. It is NOT a true diff
+  against pristine values -- typing a value and typing it back leaves the form
+  marked dirty. That is deliberate: the button is an affordance, and the server
+  still diffs on save, so a no-op save reports \"No changes to save\"."
+  :_dirty)
+
 ;; ---------------------------------------------------------------------------
 ;; Cardinality-many ref fields
 ;;
@@ -90,7 +73,7 @@
 (def ref-fields
   {:monitors
    {:field    :monitors
-    :signal   "Visitors"
+    :attr     :sitevisit/Visitors
     :label    "Monitors"
     :placeholder "type to add\u2026"
     :read     #(mapv :db/id (:sitevisit/Visitors %))
@@ -106,12 +89,90 @@
      ;; People are scoped to the visit's agency.
      :scope    (fn [db request]
                  (get-in (sv/pull-sitevisit db (eid request))
-                   [:sitevisit/AgencyCode :db/id]))}))
+                   [:sitevisit/AgencyCode :db/id]))
+     ;; Adding or removing a chip is an edit, but it arrives as a round trip
+     ;; rather than an input event, so it has to say so explicitly.
+     :touch    {dirty-signal true}}))
 
 (def search-ref  (:search  ref-handlers))
 (def add-ref     (:add     ref-handlers))
 (def add-top-ref (:add-top ref-handlers))
 (def remove-ref  (:remove  ref-handlers))
+
+;; ---------------------------------------------------------------------------
+;; Field measurements
+;; ---------------------------------------------------------------------------
+
+(defn- fm-params [db sv-]
+  (fm/params db (get-in sv- [:sitevisit/ProjectID :db/id])))
+
+(defn- clean-signals
+  "Signals that mark the form as saved/reverted."
+  []
+  {dirty-signal false})
+
+(defn page-signals
+  "Every signal the site visit page holds: the entity's own attributes, the
+  field measurement grid, and the UI-only type-ahead queries.
+
+  Used by the initial render, by save and by revert, so the three cannot
+  disagree about what the page should contain — forgetting the grid here is
+  how revert silently left edited readings on screen."
+  [db sv-]
+  (merge-with merge
+    (sv/sitevisit->signals sv-)
+    (fm/->signals (fm-params db sv-) (fm/samples-by-param sv-))
+    (sc/signals-for {(rl/query-key (:monitors ref-fields)) ""})
+    {dirty-signal false}))
+
+(defn- device-lookups [db sv-]
+  {:device-types (fm/device-types db)
+   :devices      (fm/devices-by-type db (get-in sv- [:sitevisit/AgencyCode :db/id]))})
+
+(defn change-device
+  "Device type changed on one row: re-offer that type's instruments, and drop
+  the current instrument if it doesn't belong to the new type."
+  [request]
+  (let [id      (eid request)
+        param-e (get-in request [:parameters :path :param])
+        signals (or (ds/raw-signals request) {})
+        db      (state/db)
+        sv-     (sv/pull-sitevisit db id)
+        param   (first (filter #(= param-e (:db/id %)) (fm-params db sv-)))
+        {:keys [devices]} (device-lookups db sv-)
+        chosen  (some-> (not-empty (str (fm/attr-value signals fm/devtype-attr param-e)))
+                  parse-long)
+        opts    (get devices chosen)
+        cur-id  (str (fm/attr-value signals fm/devid-attr param-e))
+        valid?  (some #(= cur-id (:value %)) opts)
+        signals (cond-> signals
+                  (not valid?) (assoc-in (conj (vec (sc/signal-path fm/devid-attr))
+                                           (fm/row-key param-e)) ""))]
+    (ds/sse request
+      (fn [gen]
+        (when param
+          (d*/patch-elements! gen (str (html (fm/devid-cell param signals opts))))
+          (when-not valid?
+            (ds/patch-signals! gen
+              (sc/signals-for {fm/devid-attr {(fm/row-key param-e) ""}}))))))))
+
+(defn recompute-stats
+  "Recompute one row's derived columns from the signals the browser sent and
+  patch just those cells. The replicate inputs are never touched, so focus
+  stays where the user is typing."
+  [request]
+  (let [id      (eid request)
+        param-e (get-in request [:parameters :path :param])
+        signals (or (ds/raw-signals request) {})
+        db      (state/db)
+        sv-     (sv/pull-sitevisit db id)
+        param   (first (filter #(= param-e (:db/id %)) (fm-params db sv-)))]
+    (ds/sse request
+      (fn [gen]
+        (when param
+          (d*/patch-elements-seq! gen
+            (map (fn [el] (str (html el)))
+              (fm/stat-cells param (fm/stats param (fm/row-values signals param))))))))))
 
 ;; ---------------------------------------------------------------------------
 ;; static pages
@@ -223,14 +284,21 @@
               [:div
                (layout/alert {:variant "warning"} [:p "No such site visit."])
                [:a {:href "/sitevisits" :role "button"} "Back to list"]])))
-        (let [{:keys [stations people visit-types fail-codes]} (sv/form-options (state/db) sv-)
-              signals (assoc (sv/sitevisit->signals sv-)
-                                :VisitorsQuery "")]
+        (let [db      (state/db)
+              {:keys [stations people visit-types fail-codes]} (sv/form-options db sv-)
+              fm-ps   (fm-params db sv-)
+              signals (page-signals db sv-)]
           (ok (layout/base-layout
                 {:title (str "Site Visit " (:sitevisit/SiteVisitID sv-))}
                 (layout/nav {:brand "RiverDB" :items (layout/nav-items :sitevisits)})
                 (layout/container
-                  [:div {:data-signals (json/encode signals)}
+                  [:div {:data-signals (json/encode signals)
+                         ;; Events bubble, so one handler covers every control.
+                         ;; The type-ahead's own box is a search field, not a
+                         ;; form edit, so it is excluded.
+                         :data-on:input  (str "!evt.target.classList.contains('ref-list-input') && ($"
+                                              (name dirty-signal) " = true)")
+                         :data-on:change (str "$" (name dirty-signal) " = true")}
                    [:hgroup
                     [:h1 "Site Visit " (:sitevisit/SiteVisitID sv-)]
                     [:p [:a {:href "/sitevisits"} "\u2190 Back to list"]]]
@@ -241,54 +309,47 @@
                    [:div.form-layout
                     [:div.field-grid
                      (layout/select-field
-                       {:label "Station" :signal "StationID" :options stations
-                        :value (:StationID signals)})
-                     (layout/date-field {:label "Site Visit Date" :signal "SiteVisitDate"
-                                         :value (:SiteVisitDate signals)})
-                     (layout/text-field {:label "Start Time" :signal "Time" :placeholder "e.g. 09:30"
-                                         :value (:Time signals)})
+                       {:signals signals :label "Station" :attr :sitevisit/StationID :options stations})
+                     (layout/date-field {:signals signals :label "Site Visit Date" :attr :sitevisit/SiteVisitDate})
+                     (layout/text-field {:signals signals :label "Start Time" :attr :sitevisit/Time :placeholder "e.g. 09:30"})
                      (layout/select-field
-                       {:label "Visit Type" :signal "VisitType" :options visit-types
-                        :value (:VisitType signals)})
+                       {:signals signals :label "Visit Type" :attr :sitevisit/VisitType :options visit-types})
                      (layout/select-field
-                       {:label "Failure?" :signal "StationFailCode" :options fail-codes
-                        :value (:StationFailCode signals)})
+                       {:signals signals :label "Failure?" :attr :sitevisit/StationFailCode :options fail-codes})
                      [:div]
                      (layout/select-field
-                       {:label "Entered By" :signal "DataEntryPersonRef" :options people
-                        :value (:DataEntryPersonRef signals)})
-                     (layout/date-field {:label "Data Entry Date" :signal "DataEntryDate"
-                                         :value (:DataEntryDate signals)})
+                       {:signals signals :label "Entered By" :attr :sitevisit/DataEntryPersonRef :options people})
+                     (layout/date-field {:signals signals :label "Data Entry Date" :attr :sitevisit/DataEntryDate})
                      (layout/select-field
-                       {:label "Checked By" :signal "CheckPersonRef" :options people
-                        :value (:CheckPersonRef signals)})
+                       {:signals signals :label "Checked By" :attr :sitevisit/CheckPersonRef :options people})
                      (layout/select-field
-                       {:label "QA'd By" :signal "QAPersonRef" :options people
-                        :value (:QAPersonRef signals)})
-                     (layout/date-field {:label "QA Date" :signal "QADate"
-                                         :value (:QADate signals)})
-                     (layout/checkbox-field {:label "Publish?" :signal "QACheck"
-                                             :checked (:QACheck signals)})]
+                       {:signals signals :label "QA'd By" :attr :sitevisit/QAPersonRef :options people})
+                     (layout/date-field {:signals signals :label "QA Date" :attr :sitevisit/QADate})
+                     (layout/checkbox-field {:signals signals :label "Publish?" :attr :sitevisit/QACheck})]
 
                     [:div.rail
                      (let [cfg (:monitors ref-fields)]
                        (rl/render (base-url id) cfg
-                         {:selected (rl/options-for (state/db) cfg
-                                      ((:read cfg) sv-))
+                         {:selected (rl/options-for (state/db) cfg ((:read cfg) sv-))
                           :matches  nil
                           :query    ""}))
-                     [:small (count (:sitevisit/Samples sv-)) " samples on this visit "
-                      "(not editable in this proof of concept)"]]]
+                     [:small (count (:sitevisit/Samples sv-)) " samples on this visit"]]]
 
-                   (layout/textarea-field {:label "Notes" :signal "Notes" :rows 3
-                                           :value (:Notes signals)})
+                   (layout/textarea-field {:signals signals :label "Notes" :attr :sitevisit/Notes :rows 3})
 
-                   [:div.actions
-                    [:button {:data-on:click (str "@post('/sitevisit/" id "/save')")}
-                     "Save"]
-                    [:button.secondary
-                     {:data-on:click (str "@get('/sitevisit/" id "/reload')")}
-                     "Revert"]]
+                   (fm/grid (base-url id) fm-ps signals (device-lookups db sv-))
+
+                   ;; Both disabled until something is edited; the server
+                   ;; clears the flag again once a save or revert lands.
+                   (let [clean (str "!$" (name dirty-signal))]
+                     [:div.actions
+                      [:button {:data-attr:disabled clean
+                                :data-on:click (str "@post('/sitevisit/" id "/save')")}
+                       "Save"]
+                      [:button.secondary
+                       {:data-attr:disabled clean
+                        :data-on:click (str "@get('/sitevisit/" id "/reload')")}
+                       "Revert"]])
 
                    [:div {:id "sv-status"}]
 
@@ -302,35 +363,44 @@
                     [:pre [:code {:data-text "JSON.stringify($, null, 2)"}]]]]))))))))
 
 
+(defn- save-with-grid!
+  "Site visit diff plus the field measurement grid, in one transaction."
+  [db id signals]
+  (let [sv-     (sv/pull-sitevisit db id)
+        params  (fm-params db sv-)
+        grid    (fm/grid-tx id params (fm/samples-by-param sv-) signals)]
+    (sv/save-sitevisit! id signals grid)))
+
 (defn save-sitevisit
   "Validate the incoming signals, transact the diff, then push a status element
   and the freshly-read signals back so the form shows what Datomic stored."
   [request]
   (let [id (eid request)
-        {:keys [value error]} (sc/decode sc/SiteVisitSignals (or (raw-signals request) {}))
+        {:keys [value error]} (sc/decode sc/SiteVisitSignals (or (ds/raw-signals request) {}))
         result (cond
                  error {:status :invalid :error error}
-                 :else (sv/save-sitevisit! id value))]
+                 :else (save-with-grid! (state/db) id value))]
     (debug "SAVE SITEVISIT" id (:status result))
-    (sse request
+    (ds/sse request
       (fn [gen]
         (d*/patch-elements! gen (str (html (status-el result))))
-        (when-let [sv- (sv/pull-sitevisit id)]
-          (d*/patch-signals! gen (json/encode (sv/sitevisit->signals sv-)))
-          (rl/patch-stored-chips! gen (base-url id) (state/db) ref-fields sv-))))))
+        (let [db (state/db)]
+          (when-let [sv- (sv/pull-sitevisit db id)]
+            (d*/patch-signals! gen (json/encode (page-signals db sv-)))
+            (rl/patch-stored-chips! gen (base-url id) db ref-fields sv-)))))))
 
 (defn reload-sitevisit
   "Push the stored values back into the signals, discarding local edits."
   [request]
   (let [id  (eid request)
-        sv- (sv/pull-sitevisit id)]
-    (sse request
+        db  (state/db)
+        sv- (sv/pull-sitevisit db id)]
+    (ds/sse request
       (fn [gen]
         (if sv-
           (do
-            (d*/patch-signals! gen (json/encode (assoc (sv/sitevisit->signals sv-)
-                                                  :VisitorsQuery "")))
-            (rl/patch-stored-chips! gen (base-url id) (state/db) ref-fields sv-)
+            (d*/patch-signals! gen (json/encode (page-signals db sv-)))
+            (rl/patch-stored-chips! gen (base-url id) db ref-fields sv-)
             (d*/patch-elements! gen (str (html [:div {:id "sv-status"}
                                                 [:article "Reverted to stored values."]]))))
           (d*/patch-elements! gen (str (html (status-el {:status :missing})))))))))

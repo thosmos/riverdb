@@ -11,7 +11,8 @@
 
     :field       keyword, unique per page. Names the route segment and the
                  element ids, so several of these can coexist.
-    :signal      signal holding the selection, e.g. \"Visitors\"
+    :attr        the Datomic attribute this edits, e.g. :sitevisit/Visitors.
+                 Its signal path derives from it, so the two cannot drift.
     :label       display label
     :placeholder input placeholder
     :search      (fn [db scope query exclude limit] -> [{:value :label}])
@@ -27,6 +28,7 @@
     [clojure.string :as str]
     [hiccup.core :refer [html]]
     [riverdb.html.datastar :as ds]
+    [riverdb.html.schema :as sc]
     [starfederation.datastar.clojure.api :as d*]))
 
 ;; ---------------------------------------------------------------------------
@@ -36,12 +38,20 @@
 (defn chips-id [{:keys [field]}] (str "chips-" (name field)))
 (defn menu-id  [{:keys [field]}] (str "menu-"  (name field)))
 
-(defn query-signal
-  "Signal holding this field's type-ahead text. Must be declared in whatever
-  malli schema validates the save payload: Datastar sends every signal on
-  every request, and a closed schema rejects undeclared keys."
-  [{:keys [signal]}]
-  (str signal "Query"))
+(defn value-signal
+  "Dotted signal name for the selection, derived from the attribute."
+  [{:keys [attr]}]
+  (sc/signal-name attr))
+
+(defn query-key
+  "The type-ahead query is UI state, not an entity attribute, so it lives under
+  the `ui` namespace. Must be declared in whatever malli schema validates the
+  save payload: Datastar sends every signal on every request and a closed
+  schema rejects undeclared keys."
+  [{:keys [field]}]
+  (keyword "ui" (str (str/capitalize (name field)) "Query")))
+
+(defn query-signal [cfg] (sc/signal-name (query-key cfg)))
 
 (defn- member-url [base {:keys [field]} eid]
   (str base "/ref/" (name field) (when eid (str "/" eid))))
@@ -125,11 +135,12 @@
   (doseq [cfg (vals registry)]
     (patch-chips! gen base db cfg ((:read cfg) entity))))
 
-(defn- patch-selection! [gen base db cfg eids]
+(defn- patch-selection! [gen base db cfg eids touch]
   (patch-chips! gen base db cfg eids)
   (d*/patch-elements! gen (str (html (menu base cfg nil))))
-  (ds/patch-signals! gen {(keyword (:signal cfg))      (mapv str eids)
-                          (keyword (query-signal cfg)) ""})
+  (ds/patch-signals! gen (merge (sc/signals-for {(:attr cfg)     (mapv str eids)
+                                                 (query-key cfg) ""})
+                           touch))
   ;; Return focus so the next value can be typed without reaching for the mouse.
   (d*/execute-script! gen
     (str "document.querySelector('#" (chips-id cfg)
@@ -149,8 +160,8 @@
         signals (or (ds/raw-signals request) {})]
     (when cfg
       {:cfg    cfg
-       :chosen (vec (keep ->eid (get signals (keyword (:signal cfg)))))
-       :query  (str (get signals (keyword (query-signal cfg)) ""))})))
+       :chosen (vec (keep ->eid (sc/signal-get signals (:attr cfg))))
+       :query  (str (or (sc/signal-get signals (query-key cfg)) ""))})))
 
 (defn make-handlers
   "Ring handlers for a registry of ref-list fields.
@@ -160,15 +171,18 @@
 
     :base   (fn [request] -> \"/sitevisit/42\")
     :scope  (fn [db request] -> value passed to each field's :search)
-    :db     (fn [] -> a Datomic db value)"
-  [{:keys [registry base scope db max-matches] :or {max-matches 8}}]
+    :db     (fn [] -> a Datomic db value)
+    :touch  signals to merge into every change, e.g. {:_dirty true}. Lets the
+            page track its own dirty state without this namespace knowing what
+            dirty means."
+  [{:keys [registry base scope db max-matches touch] :or {max-matches 8}}]
   (letfn [(add [request state person]
             (let [{:keys [cfg chosen]} state
                   eids (if (and person (not (some #{person} chosen)))
                          (conj (vec chosen) person)
                          (vec chosen))]
               (ds/sse request
-                (fn [gen] (patch-selection! gen (base request) (db) cfg eids)))))]
+                (fn [gen] (patch-selection! gen (base request) (db) cfg eids touch)))))]
     {:search
      (fn [request]
        (let [{:keys [cfg chosen query] :as state} (read-state request registry)
@@ -202,5 +216,5 @@
          (let [person (get-in request [:parameters :path :member])
                eids   (vec (remove #{person} chosen))]
            (ds/sse request
-             (fn [gen] (patch-selection! gen (base request) (db) cfg eids))))
+             (fn [gen] (patch-selection! gen (base request) (db) cfg eids touch))))
          {:status 404 :body "unknown ref field"}))}))

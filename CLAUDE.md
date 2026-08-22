@@ -144,6 +144,56 @@ transaction that is ~1000x more expensive *and permanent* — per-keystroke
 drafts would bloat history forever and serialise through the single
 transactor, destroying the audit log that is the reason to use Datomic.
 
+**Signals keep their Datomic namespace.** Datastar's expression syntax accepts
+dots as a nesting separator but not slashes, so `:sitevisit/StationID` travels
+as the nested signal `sitevisit.StationID`, and a namespace's own dots nest
+further — `:org.riverdb.db.sitevisit/gid` becomes
+`org.riverdb.db.sitevisit.gid`. Reversing is unambiguous by rule: the **last**
+segment is the name, everything before it is the namespace. No attribute name
+in specs.edn contains a dot. (Encoding `/` as `_` was the alternative, but
+`:stationlookup/GIS_latlon` already has one.) Helpers live in
+`riverdb.html.schema`: `signal-path`, `path->key`, `signal-name`,
+`signal-get`, `signal-has?`, `signals-for`. Use `signal-has?` for save diffs —
+it distinguishes "not sent" from "sent as nil", which is what makes partial
+saves work.
+
+Signals that are not entity attributes live under a `ui` namespace, so the
+entity namespaces stay a faithful mirror of Datomic.
+
+Row and replicate keys inside a signal are **keywords** server-side: JSON
+encodes them as strings going out and `raw-signals` keywordizes them coming
+back, so keywords are what both ends see. Using strings silently misses every
+lookup.
+
+**Field measurements** (`riverdb.html.fieldmeasure`). Rows are the project's
+active parameters whose `:parameter/SampleType` is `FieldMeasure`, ordered by
+`:parameter/Order`; each row shows `:parameter/ReplicatesEntry` replicate
+inputs. Derived columns (#, Range, Mean, StdDev, Prec) are recomputed
+server-side on every keystroke and patched into cells that carry their own
+ids, so the inputs are never replaced and keep focus. Exceedance rules and the
+statistics are ported from `riverdb.ui.edit.fieldmeasure` so the numbers match
+what the Fulcro form has always shown; the one deliberate difference is that a
+single reading renders blank StdDev/Prec instead of `NaN`.
+
+Device and ID are a dependent pair: `:sample/DeviceType` (a
+`samplingdevicelookup`, e.g. "ECTestr 11") and `:sample/DeviceID` (a
+`samplingdevice` with a `CommonID`, e.g. "22"). Changing the Device posts to
+`/fieldmeasure/:param/device`, which re-offers that type's instruments and
+clears the selection if it no longer belongs. A row with no sample yet
+inherits `:parameter/DeviceType` as its default, which is what that attribute
+is for.
+
+Saving folds the grid into the same single transaction as the rest of the
+form: one `sample` per parameter with readings, one `fieldresult` per non-blank
+replicate. Both are Datomic components, so clearing a reading emits
+`:db/retractEntity` rather than leaving an orphan with a nil `Result`.
+
+Per-row attributes honour **not sent vs sent blank**, via
+`fieldmeasure/row-present?` — the grid's version of `schema/signal-has?`.
+Without it a payload that merely omitted a column retracted it. Datastar always
+sends every signal so the browser never triggers this, but any partial or
+programmatic payload would, and it fails silently by deleting data.
+
 **Cardinality-many ref fields** (`riverdb.html.ref-list`). Chips + type-ahead,
 driven by config. One route set serves every field, dispatching on `:field`:
 
@@ -168,6 +218,23 @@ substring, so typing "thom" surfaces Thomas Spellman first).
 
 Remember to declare each field's `<Signal>Query` in whatever malli schema
 validates that page's save payload.
+
+**Dirty tracking.** Save and Revert start disabled and enable on the first
+edit, driven by the local-only `_dirty` signal. The leading underscore keeps
+Datastar from sending it — it is browser state, and the closed save schema
+would reject it. It is set by a single `data-on:input`/`data-on:change` pair on
+the form container (events bubble, so one handler covers every control), with
+the type-ahead's own search box excluded since searching is not editing. Chip
+add/remove arrives as a round trip rather than an input event, so `ref-list`
+takes a `:touch` map of signals to merge on every change — that is how the
+page marks itself dirty without `ref-list` knowing what dirty means.
+
+It is deliberately *not* a diff against pristine values: typing a value and
+typing it back leaves the form dirty. The button is an affordance; the server
+still diffs on save, so a no-op save reports "No changes to save".
+
+Note `data-attr:disabled` works and `data-attr-disabled` does not — the same
+colon-versus-hyphen rule as `data-on`.
 
 **Signal-derived fragments must be re-patched by hand.** A `data-bind` input
 updates itself when its signal is patched; a server-rendered fragment does

@@ -75,6 +75,15 @@
      :post   {:handler h/add-ref}
      :delete {:handler h/remove-ref}}]
 
+   ;; Field measurement grid: recompute one row's derived columns.
+   ["/sitevisit/:id/fieldmeasure/:param/stats"
+    {:parameters {:path sc/FieldMeasurePath}
+     :post {:handler h/recompute-stats}}]
+
+   ["/sitevisit/:id/fieldmeasure/:param/device"
+    {:parameters {:path sc/FieldMeasurePath}
+     :post {:handler h/change-device}}]
+
    ["/sitevisit/:id/reload"
     {:parameters {:path sc/SiteVisitPath}
      :get {:handler h/reload-sitevisit}}]])

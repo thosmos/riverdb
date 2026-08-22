@@ -43,7 +43,15 @@
     {:sitevisit/CheckPersonRef [:db/id :person/Name]}
     {:sitevisit/QAPersonRef [:db/id :person/Name]}
     {:sitevisit/Visitors [:db/id :person/Name]}
-    {:sitevisit/Samples [:db/id]}])
+    {:sitevisit/Samples
+     [:db/id
+      :sample/Time
+      {:sample/SampleTypeCode [:db/ident]}
+      {:sample/Parameter [:db/id]}
+      {:sample/DeviceType [:db/id]}
+      {:sample/DeviceID [:db/id]}
+      {:sample/FieldResults
+       [:db/id :fieldresult/Result :fieldresult/FieldReplicate]}]}])
 
 (defn pull-sitevisit
   "Nil unless `eid` names an entity that actually carries site visit attributes.
@@ -170,19 +178,23 @@
 ;; ---------------------------------------------------------------------------
 
 (def fields
-  "Drives both the outgoing signals and the save diff."
-  [{:signal :StationID          :attr :sitevisit/StationID          :kind :ref}
-   {:signal :SiteVisitDate      :attr :sitevisit/SiteVisitDate      :kind :date}
-   {:signal :Time               :attr :sitevisit/Time               :kind :string}
-   {:signal :VisitType          :attr :sitevisit/VisitType          :kind :ref}
-   {:signal :StationFailCode    :attr :sitevisit/StationFailCode    :kind :ref}
-   {:signal :DataEntryPersonRef :attr :sitevisit/DataEntryPersonRef :kind :ref}
-   {:signal :DataEntryDate      :attr :sitevisit/DataEntryDate      :kind :date}
-   {:signal :CheckPersonRef     :attr :sitevisit/CheckPersonRef     :kind :ref}
-   {:signal :QAPersonRef        :attr :sitevisit/QAPersonRef        :kind :ref}
-   {:signal :QADate             :attr :sitevisit/QADate             :kind :date}
-   {:signal :QACheck            :attr :sitevisit/QACheck            :kind :boolean}
-   {:signal :Notes              :attr :sitevisit/Notes              :kind :string}])
+  "Drives both the outgoing signals and the save diff. The attribute is the
+  single source of truth: its signal path and name derive from it, so a field
+  cannot drift from the attribute it edits."
+  [{:attr :sitevisit/StationID          :kind :ref}
+   {:attr :sitevisit/SiteVisitDate      :kind :date}
+   {:attr :sitevisit/Time               :kind :string}
+   {:attr :sitevisit/VisitType          :kind :ref}
+   {:attr :sitevisit/StationFailCode    :kind :ref}
+   {:attr :sitevisit/DataEntryPersonRef :kind :ref}
+   {:attr :sitevisit/DataEntryDate      :kind :date}
+   {:attr :sitevisit/CheckPersonRef     :kind :ref}
+   {:attr :sitevisit/QAPersonRef        :kind :ref}
+   {:attr :sitevisit/QADate             :kind :date}
+   {:attr :sitevisit/QACheck            :kind :boolean}
+   {:attr :sitevisit/Notes              :kind :string}])
+
+(def visitors-attr :sitevisit/Visitors)
 
 (defn- ->wire [kind v]
   (case kind
@@ -192,11 +204,14 @@
     :string  (or v "")))
 
 (defn sitevisit->signals
-  "Entity -> the JSON-safe signals object the form is seeded with."
+  "Entity -> the nested, namespaced signals object the form is seeded with.
+  Keys keep their Datomic namespace: :sitevisit/StationID travels as
+  sitevisit.StationID."
   [sv]
-  (into {:Visitors (mapv #(str (:db/id %)) (:sitevisit/Visitors sv))}
-    (for [{:keys [signal attr kind]} fields]
-      [signal (->wire kind (get sv attr))])))
+  (sc/signals-for
+    (into {visitors-attr (mapv #(str (:db/id %)) (visitors-attr sv))}
+      (for [{:keys [attr kind]} fields]
+        [attr (->wire kind (get sv attr))]))))
 
 ;; ---------------------------------------------------------------------------
 ;; save
@@ -210,9 +225,9 @@
       v)))
 
 (defn- scalar-tx [eid sv signals]
-  (for [{:keys [signal attr] :as f} fields
-        :when (contains? signals signal)
-        :let  [new-v (get signals signal)
+  (for [{:keys [attr] :as f} fields
+        :when (sc/signal-has? signals attr)
+        :let  [new-v (sc/signal-get signals attr)
                old-v (current sv f)]
         :when (not= new-v old-v)]
     (if (nil? new-v)
@@ -220,20 +235,25 @@
       [:db/add eid attr new-v])))
 
 (defn- visitors-tx [eid sv signals]
-  (when (contains? signals :Visitors)
-    (let [new-ids (set (:Visitors signals))
-          old-ids (set (map :db/id (:sitevisit/Visitors sv)))]
+  (when (sc/signal-has? signals visitors-attr)
+    (let [new-ids (set (sc/signal-get signals visitors-attr))
+          old-ids (set (map :db/id (visitors-attr sv)))]
       (concat
-        (for [id (set/difference new-ids old-ids)] [:db/add eid :sitevisit/Visitors id])
-        (for [id (set/difference old-ids new-ids)] [:db/retract eid :sitevisit/Visitors id])))))
+        (for [id (set/difference new-ids old-ids)] [:db/add eid visitors-attr id])
+        (for [id (set/difference old-ids new-ids)] [:db/retract eid visitors-attr id])))))
 
 (defn save-sitevisit!
   "Diff decoded `signals` against Datomic and transact only what changed.
+  `extra-tx` carries datoms computed elsewhere (the field measurement grid), so
+  the whole form lands in a single transaction.
   Returns {:status :saved|:unchanged|:missing|:error, :tx [...], :error msg}."
-  [eid signals]
-  (try
+  ([eid signals] (save-sitevisit! eid signals nil))
+  ([eid signals extra-tx]
+   (try
     (if-let [sv (pull-sitevisit eid)]
-      (let [tx (vec (concat (scalar-tx eid sv signals) (visitors-tx eid sv signals)))]
+      (let [tx (vec (concat (scalar-tx eid sv signals)
+                            (visitors-tx eid sv signals)
+                            extra-tx))]
         (if (seq tx)
           (do
             (debug "SAVE SITEVISIT" eid tx)
@@ -243,4 +263,4 @@
       {:status :missing})
     (catch Exception e
       (debug "SAVE SITEVISIT FAILED" eid e)
-      {:status :error :error (.getMessage e)})))
+      {:status :error :error (.getMessage e)}))))
