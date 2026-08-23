@@ -6,6 +6,8 @@
     [datomic.api :as d]
     [domain-spec.core :as dspec]
     [mount.core :as mount]
+    [riverdb.schema]
+    [riverdb.migrations]
     [riverdb.server]
     [riverdb.state :refer [db cx]]
     [riverdb.db :as rdb :refer [rpull pull-entities]]
@@ -55,6 +57,28 @@
 ;; untouched, and mount state is never disturbed. Only edits to
 ;; riverdb.html.server itself need a full (restart).
 ;; ---------------------------------------------------------------------------
+
+(defn schema-report
+  "Report how the database and resources/specs.edn disagree."
+  []
+  (riverdb.schema/report))
+
+(defn schema-sync!
+  "Install every attribute specs.edn declares that the database lacks.
+  Idempotent, and never retracts or alters anything."
+  []
+  (riverdb.schema/sync!))
+
+(defn migrate-status
+  "Which data migrations this database has seen, and which it has not."
+  []
+  (riverdb.migrations/status))
+
+(defn migrate!
+  "Apply outstanding data migrations. Run schema-sync! first — a norm may need
+  an attribute specs.edn declares. Idempotent."
+  []
+  (riverdb.migrations/migrate!))
 
 (defn watch
   "Reload riverdb.html.* on save."

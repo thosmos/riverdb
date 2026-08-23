@@ -243,3 +243,48 @@ h1 { margin-bottom: 0.3rem; }
   color: var(--pico-del-color, #b3261e);
   font-weight: 600;
 }
+
+/* ---------------------------------------------------------------------------
+   Field observations: one row per parameter, widget chosen by FieldObsType.
+   --------------------------------------------------------------------------- */
+.fieldobs { margin-top: var(--pico-spacing); }
+
+.fieldobs h2 { font-size: 1.1rem; margin-bottom: 0.4rem; }
+
+.fieldobs table { margin-bottom: 0; width: auto; }
+
+.fieldobs th,
+.fieldobs td { padding: 0.2rem 0.5rem; vertical-align: middle; }
+
+/* Choices sit on one line and wrap only when they must, which keeps a row
+   readable as a single question. */
+.fo-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 1rem;
+  align-items: center;
+}
+
+.fo-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.fo-choice input {
+  margin: 0 !important;
+  vertical-align: middle;
+}
+
+.fieldobs .fo-number { width: 6rem !important; }
+.fieldobs .fo-text   { width: 28rem !important; max-width: 100%; }
+
+.fieldobs .fo-number,
+.fieldobs .fo-text {
+  margin: 0 !important;
+  padding: 0.1rem 0.3rem !important;
+  height: auto !important;
+}

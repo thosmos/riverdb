@@ -23,6 +23,8 @@
             [riverdb.server-components.config]
             [riverdb.server-components.nrepl]
             [riverdb.server-components.middleware :as middle :refer [middleware]]
+            [riverdb.schema]
+            [riverdb.migrations]
             [riverdb.state :refer [start-dbs]]
             [riverdb.html.server]
             [theta.util]
@@ -312,6 +314,21 @@
 
 (defn start-service []
   (start-dbs)
+  ;; specs.edn is the source of truth for the schema; say so loudly when the
+  ;; database disagrees. Reporting only — installing is an explicit act, see
+  ;; riverdb.schema/sync!.
+  (try
+    (riverdb.schema/report)
+    (catch Exception e
+      (log/warn "Schema drift check failed:" (.getMessage e))))
+  ;; Same for data migrations: report what is outstanding, never apply it as a
+  ;; side effect of booting. Order matters — a norm may depend on an attribute
+  ;; sync! installs, so run (riverdb.schema/sync!) before (riverdb.migrations/migrate!).
+  (try
+    (when-let [ps (seq (riverdb.migrations/pending))]
+      (log/warn "Pending data migrations — run (riverdb.migrations/migrate!):" (vec ps)))
+    (catch Exception e
+      (log/warn "Migration check failed:" (.getMessage e))))
   (let [sm               (create-service-map)
         sm               (merge sm
                            {::http/not-found-interceptor (app-interceptor)

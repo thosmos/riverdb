@@ -63,6 +63,96 @@ Key client namespaces:
 - `riverdb.rad.ui.*` — RAD-generated forms (Person, User, Station, Device)
 - `riverdb.ui.upload` — Bulk data import UI
 
+### Schema and migrations
+`resources/specs.edn` is the source of truth for the Datomic schema, and
+`riverdb.schema` enforces that rather than assuming it.
+
+- `(schema-report)` — how the database and specs.edn disagree. Runs
+  automatically at server start and logs loudly.
+- `(schema-sync!)` — installs every attribute specs.edn declares that the
+  database lacks. Idempotent (Datomic attribute installs are no-ops when
+  identical), and it never retracts or alters anything.
+
+The reverse direction cannot be automated: an attribute in the database but not
+in specs.edn needs a human, because it is either something hand-transacted and
+never written back, or a typo that got installed. `report` lists those under
+"installed but NOT in specs.edn". This is not hypothetical — thirteen had
+accumulated, including `:person/isStaff` beside `:person/IsStaff`, and
+`:stationlookup/Name`, which is stationlookup's `:entity/nameKey` but was never
+created.
+
+Because schema is declarative and idempotent, **schema changes need no
+migration log**. Edit specs.edn, run `(schema-sync!)`, and dev and production
+converge on the same definitions.
+
+**Data** migrations are a different problem — backfills are not idempotent and
+must be tracked. `io.rkn/conformity` is already on the classpath for that (and
+already in use: this database records three norms from 2018). Named norms are
+applied once and recorded in the database itself, so the same artifact runs
+against dev and production safely. They live in `riverdb.migrations`, in the
+app repo beside the code that needs them, not in the wiki.
+
+- `(migrate-status)` — which norms this database has seen.
+- `(migrate!)` — apply the outstanding ones. Idempotent. **Run `(schema-sync!)`
+  first**: a norm usually needs an attribute specs.edn declares.
+
+Start-up reports pending migrations and never applies them — deploying should
+not silently rewrite data.
+
+Two traps in conformity 0.5.1, both already handled in `riverdb.migrations`:
+- A `:txes-fn` is passed the **connection**, not a db value, and must return a
+  **collection of transactions**, not one transaction. Returning an empty
+  collection is an error ("No transactions provided for norm"), so return
+  `[[]]` rather than `[]` when there is nothing to do.
+- `c/default-conformity-attribute` is `^:deprecated` and **misspelled**
+  (`:confirmity/conformed-norms`). What actually gets installed is
+  `:conformity/conformed-norms`. Ask the db with
+  `c/default-conformity-attribute-for-db`; never hard-code either spelling.
+
+`tools/obs_shape.clj` is a read-only shape report, run against `DATOMIC_URI`,
+for diffing an environment against another before migrating.
+
+### Deploying to production
+Production runs **from source**, not from an uberjar: `/home/riverdb/run.sh` does
+`cd /home/riverdb/riverdb; clojure -A:dev:rad:server:run`, as user `riverdb`.
+Four consequences.
+
+**The branch is `release`, and it has diverged from `master`.** Prod sits at
+`60bbdee` ("v1.2.0 release", 2026-03-23), which is not in the local clone; the
+local `release` branch is stale at `1fd9be3` (2023-09) and `v1.2.0` is not an
+ancestor of `master`. A deploy is not a fast-forward pull — reconcile the
+lineages first.
+
+**The Clojure CLI there is 1.10.1.536, from 2019.** `-M` did not exist until
+1.10.1.697, so `clj -M:server` silently starts a REPL with the base classpath
+and none of the alias deps — no datomic, and no error. Use `-A:server` on that
+box. `clj -Sdescribe` reports the version and is worth checking first whenever
+a classpath behaves differently there than on a laptop.
+
+**`:dev` is on the production classpath**, so `src/dev/user.clj` — which Clojure
+auto-loads, being `user.clj` at a classpath root — is loaded in the running
+process. `(user/schema-report)`, `(user/schema-sync!)`, `(user/migrate-status)`
+and `(user/migrate!)` are therefore available on prod's nREPL (127.0.0.1:5959,
+so tunnel in over ssh), operating on the live connection. That is the intended
+way to run a migration: deploy, read the log, then sync and migrate
+deliberately.
+
+**The authoritative log** is logback's FILE appender,
+`logs/riverdb-graphql-<date>.<n>.log` **relative to the working directory** —
+`/home/riverdb/riverdb/logs/`. `~/riverdb.log` catches only the console
+appender. Note `run.sh` redirects `2>&1 >> file`, which sends stderr to the
+terminal rather than the file, because the duplication happens before stdout is
+redirected; a start-up crash that dies before logback is up leaves nothing in
+either file. `>> file 2>&1` would fix it.
+
+Deploy sequence:
+
+    git pull && restart
+    # read logs/ for the schema drift report and pending migrations
+    (user/schema-report)  ; via nREPL — read it before changing anything
+    (user/schema-sync!)   ; installs what specs.edn declares
+    (user/migrate!)       ; then the data norms
+
 ### Data Model
 All entity types are defined in `resources/specs.edn` using `thosmos/domain-spec`. This single file drives GraphQL schema generation, Datomic schema migration, and RAD form generation. Key entities: Project, Station, SiteVisit, Sample, FieldResult, LabResult, User, Account.
 
@@ -193,6 +283,48 @@ Per-row attributes honour **not sent vs sent blank**, via
 Without it a payload that merely omitted a column retracted it. Datastar always
 sends every signal so the browser never triggers this, but any partial or
 programmatic payload would, and it fails silently by deleting data.
+
+**Field observations** (`riverdb.html.fieldobs`). Rows are the project's active
+parameters whose SampleType is `FieldObs`. Unlike the measurement grid, each
+row's widget differs: `:parameter/FieldObsType` selects it — `:ref` a radio
+group, `:refs` a checkbox group, `:bigdec` a number, `:text` free text
+(`:long` is legacy data that renders like `:bigdec`). Choices come from
+`fieldobsvarlookup` rows sharing the parameter's analyte name, reached via
+`:parameter/Constituent` → `AnalyteCode` → `AnalyteName`. The value lands on
+whichever of `RefResult` / `RefResults` / `BigDecResult` / `TextResult` matches
+the widget.
+
+**Checkbox groups are positional.** Datastar writes a checkbox group *by
+index* — clicking the third box sets element 3 — while reading it by
+containment. Seeding a compact array like `["foam"]` therefore means clicking
+any other box overwrites slot 0 and the original selection is silently lost.
+`fieldobs/->signals` seeds an array as long as the option list with `""` in
+every unchecked position, and `checked-values` drops the blanks before they
+become bogus refs. This one destroys data rather than erroring, so it is worth
+re-checking whenever a new multi-select appears.
+
+**Option order and "not recorded" come from IntCode.** `fieldobsvarlookup` has
+no display-order column other than `:fieldobsvarlookup/IntCode`, and
+`FieldObsVarRowId` is a legacy import id that sorts nonsensically
+(BeaufortScale comes out 0,2,5,4,1,3). Options are ordered by IntCode and
+filtered to `IntCode > 0`: 0 and nil mark rows that must not be offered —
+OtherPresence's "none" is IntCode 0, and the assorted "Not Recorded" /
+"not recorded" spellings have no IntCode at all.
+
+"NR" is **synthesised**, not stored: it is `{:value "" :label "NR"}` prepended
+to single-choice rows only, because selecting it means clearing the value.
+Multi-choice rows get no NR — unchecking everything already says that. This
+mirrors `riverdb.ui.edit.fieldobs` exactly, so both UIs offer the same choices
+in the same order.
+
+**specs.edn was missing five attributes** the field observations UI needs:
+`:parameter/FieldObsType`, `:fieldobsresult/RefResult`,
+`:fieldobsresult/RefResults`, `:fieldobsresult/BigDecResult` and
+`:fieldobsvarlookup/IntCode`. They exist in the production database (45
+parameters use FieldObsType) but were absent from
+the file that generates schema and GraphQL, so a fresh deployment would have
+omitted them. Added to match the database exactly. Worth checking whether
+anything else has drifted the same way.
 
 **Cardinality-many ref fields** (`riverdb.html.ref-list`). Chips + type-ahead,
 driven by config. One route set serves every field, dispatching on `:field`:

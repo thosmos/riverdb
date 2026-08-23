@@ -183,11 +183,21 @@
   [:map {:closed true}
    [:Result {:optional true} GridCells]])
 
+(def FieldObsAttrs
+  "Field observation values, keyed by parameter eid. Which key a row uses is
+  decided by its :parameter/FieldObsType."
+  [:map {:closed true}
+   [:RefResult    {:optional true} PerRow]
+   [:RefResults   {:optional true} [:map-of :keyword [:sequential [:maybe :string]]]]
+   [:BigDecResult {:optional true} PerRow]
+   [:TextResult   {:optional true} PerRow]])
+
 (def SiteVisitSignals
   [:map {:closed true}
    [:sitevisit   {:optional true} SiteVisitAttrs]
    [:sample      {:optional true} SampleAttrs]
    [:fieldresult {:optional true} FieldResultAttrs]
+   [:fieldobsresult {:optional true} FieldObsAttrs]
    [:ui          {:optional true} UiSignals]])
 
 (def FieldMeasurePath

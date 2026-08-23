@@ -10,6 +10,7 @@
     [hiccup.core :refer [html]]
     [riverdb.html.datastar :as ds]
     [riverdb.html.fieldmeasure :as fm]
+    [riverdb.html.fieldobs :as fo]
     [riverdb.html.layout :as layout]
     [riverdb.html.ref-list :as rl]
     [riverdb.html.schema :as sc]
@@ -106,6 +107,9 @@
 (defn- fm-params [db sv-]
   (fm/params db (get-in sv- [:sitevisit/ProjectID :db/id])))
 
+(defn- fo-params [db sv-]
+  (fo/params db (get-in sv- [:sitevisit/ProjectID :db/id])))
+
 (defn- clean-signals
   "Signals that mark the form as saved/reverted."
   []
@@ -122,6 +126,7 @@
   (merge-with merge
     (sv/sitevisit->signals sv-)
     (fm/->signals (fm-params db sv-) (fm/samples-by-param sv-))
+    (fo/->signals (fo-params db sv-) (fo/samples-by-param sv-) (fo/options-by-analyte db))
     (sc/signals-for {(rl/query-key (:monitors ref-fields)) ""})
     {dirty-signal false}))
 
@@ -339,6 +344,8 @@
 
                    (fm/grid (base-url id) fm-ps signals (device-lookups db sv-))
 
+                   (fo/section (fo-params db sv-) signals (fo/options-by-analyte db))
+
                    ;; Both disabled until something is edited; the server
                    ;; clears the flag again once a save or revert lands.
                    (let [clean (str "!$" (name dirty-signal))]
@@ -366,10 +373,10 @@
 (defn- save-with-grid!
   "Site visit diff plus the field measurement grid, in one transaction."
   [db id signals]
-  (let [sv-     (sv/pull-sitevisit db id)
-        params  (fm-params db sv-)
-        grid    (fm/grid-tx id params (fm/samples-by-param sv-) signals)]
-    (sv/save-sitevisit! id signals grid)))
+  (let [sv-  (sv/pull-sitevisit db id)
+        grid (fm/grid-tx id (fm-params db sv-) (fm/samples-by-param sv-) signals)
+        obs  (fo/tx id (fo-params db sv-) (fo/samples-by-param sv-) signals)]
+    (sv/save-sitevisit! id signals (concat grid obs))))
 
 (defn save-sitevisit
   "Validate the incoming signals, transact the diff, then push a status element

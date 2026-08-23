@@ -51,7 +51,13 @@
       {:sample/DeviceType [:db/id]}
       {:sample/DeviceID [:db/id]}
       {:sample/FieldResults
-       [:db/id :fieldresult/Result :fieldresult/FieldReplicate]}]}])
+       [:db/id :fieldresult/Result :fieldresult/FieldReplicate]}
+      {:sample/FieldObsResults
+       [:db/id
+        :fieldobsresult/TextResult
+        :fieldobsresult/BigDecResult
+        {:fieldobsresult/RefResult [:db/id]}
+        {:fieldobsresult/RefResults [:db/id]}]}]}])
 
 (defn pull-sitevisit
   "Nil unless `eid` names an entity that actually carries site visit attributes.
