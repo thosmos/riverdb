@@ -9,4 +9,9 @@
   :start
   (let [nrepl-port (Long/parseLong (or (dotenv/env :NREPL_PORT) "5959"))
         nrepl-bind (or (dotenv/env :NREPL_BIND) "127.0.0.1")]
-    (start-server :bind nrepl-bind :port nrepl-port)))
+    (start-server :bind nrepl-bind :port nrepl-port))
+  ;; Without this, (mount/stop) leaves the socket bound and the next
+  ;; (mount/start) dies with "Address already in use" on 5959 — before any
+  ;; later state, including the HTTP servers, gets a chance to start.
+  :stop
+  (stop-server nrepl))

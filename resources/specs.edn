@@ -578,6 +578,10 @@
           :cardinality :one,
           :type :bigdec
           :doc "resolution, exs: 10, 0.1, 0.05"}
+   #:attr{:name "ident",
+          :key :samplingdevicelookup/ident,
+          :cardinality :one,
+          :type :string}
    #:attr{:name "SampleDevice",
           :key :samplingdevicelookup/SampleDevice,
           :position 2,
@@ -738,6 +742,25 @@
           :type :ref,
           :ref #:entity{:ns :entity.ns/constituentlookup},
           :refKey :entity.ns/constituentlookup}
+   #:attr{:name "RefResult",
+          :key :fieldobsresult/RefResult,
+          :cardinality :one,
+          :type :ref,
+          :ref #:entity{:ns :entity.ns/fieldobsvarlookup},
+          :refKey :entity.ns/fieldobsvarlookup,
+          :doc "Single-choice observation value"}
+   #:attr{:name "RefResults",
+          :key :fieldobsresult/RefResults,
+          :cardinality :many,
+          :type :ref,
+          :ref #:entity{:ns :entity.ns/fieldobsvarlookup},
+          :refKey :entity.ns/fieldobsvarlookup,
+          :doc "Multi-choice observation values"}
+   #:attr{:name "BigDecResult",
+          :key :fieldobsresult/BigDecResult,
+          :cardinality :one,
+          :type :bigdec,
+          :doc "Numeric observation value"}
    #:attr{:name "Int Result",
           :key :fieldobsresult/IntResult,
           :position 6,
@@ -803,6 +826,23 @@
           :identity true,
           :cardinality :one,
           :type :long}
+   #:attr{:name "Analyte",
+          :key :fieldobsvarlookup/Analyte,
+          :cardinality :one,
+          :type :ref,
+          :ref #:entity{:ns :entity.ns/analytelookup},
+          :refKey :entity.ns/analytelookup,
+          :doc "The analyte this option describes. Prefer this over matching on the AnalyteName string."}
+   #:attr{:name "Order",
+          :key :fieldobsvarlookup/Order,
+          :cardinality :one,
+          :type :long,
+          :doc "Display order within an analyte. Presence means the option is configured and offered; absence means it is not. Replaces the IntCode > 0 convention, which conflated ordering with inclusion."}
+   #:attr{:name "IntCode",
+          :key :fieldobsvarlookup/IntCode,
+          :cardinality :one,
+          :type :long,
+          :doc "Display order within an analyte. Only options with IntCode > 0 are offered; 0 and nil are legacy or placeholder rows."}
    #:attr{:name "ValueCode",
           :key :fieldobsvarlookup/ValueCode,
           :position 3,
@@ -1381,14 +1421,7 @@
           :ref #:entity{:ns :entity.ns/stationlookup}
           :refKey :entity.ns/stationlookup
           :doc "The logger's station"}
-   #:attr{:name "name",
-          :key :logger/name,
-          :cardinality :one,
-          :type :string}
-   #:attr{:name "name",
-          :key :logger/name,
-          :cardinality :one,
-          :type :string}]}
+   ]}
  {:db/id "logsample"
   :entity/name "Logger Sample"
   :entity/ns :entity.ns/logsample
@@ -1400,7 +1433,7 @@
   [#:attr{:name "Date",
           :key :logsample/inst,
           :cardinality :one,
-          :type :inst
+          :type :instant
           :doc "moment of sample"}
    #:attr{:name "Value",
           :key :logsample/value,
@@ -1637,6 +1670,11 @@
                           :ref         #:entity{:ns :entity.ns/samplingdevicelookup},
                           :doc         "The default device type to use in the data entry form",
                           :refKey      :entity.ns/samplingdevicelookup}
+                   #:attr{:name        "Field Obs Type",
+                          :key         :parameter/FieldObsType,
+                          :cardinality :one,
+                          :type        :keyword,
+                          :doc         "Widget for a field observation parameter: :ref single choice, :refs multi choice, :bigdec number, :text free text"}
                    #:attr{:name        "High",
                           :key         :parameter/High,
                           :cardinality :one,
@@ -1663,6 +1701,13 @@
                           :cardinality :one,
                           :type        :string,
                           :doc         "a short name used for import/export and compact table columns"}
+                   #:attr{:name        "Observation Options",
+                          :key         :parameter/ObsOptions,
+                          :cardinality :many,
+                          :type        :ref,
+                          :ref         #:entity{:ns :entity.ns/fieldobsvarlookup},
+                          :refKey      :entity.ns/fieldobsvarlookup,
+                          :doc         "Which of the analyte's options this parameter offers. Empty means all configured ones."}
                    #:attr{:name        "Order",
                           :key         :parameter/Order,
                           :cardinality :one,
@@ -1979,6 +2024,10 @@
           :cardinality :one,
           :type :string,
           :strlen 250}
+   #:attr{:name "Project Type Str",
+          :key :projectslookup/ProjectTypeStr,
+          :cardinality :one,
+          :type :string}
    #:attr{:name "Parameters",
           :key :projectslookup/Parameters,
           :cardinality :many,
@@ -2927,12 +2976,6 @@
           :type :ref,
           :ref #:entity{:ns :entity.ns/sitevisittype},
           :refKey :entity.ns/sitevisittype}
-   #:attr{:name "Visitors",
-          :key :sitevisit/Visitors,
-          :type :ref,
-          :ref #:entity{:ns :entity.ns/person},
-          :cardinality :many,
-          :refKey :entity.ns/person}
    #:attr{:name "Water Depth",
           :key :sitevisit/WaterDepth,
           :position 11,
@@ -3458,7 +3501,11 @@
   :entity/enumField :sitevisittype/name,
   :entity/nameKey :sitevisittype/name,
   :entity/attrs
-  [#:attr{:name "name",
+  [   #:attr{:name "id",
+          :key :sitevisittype/id,
+          :cardinality :one,
+          :type :long}
+#:attr{:name "name",
           :key :sitevisittype/name,
           :identity true,
           :position 2,

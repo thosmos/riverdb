@@ -1,0 +1,290 @@
+/* RiverDB app styles: the small amount Pico doesn't cover.
+   Pico handles everything else — this file should stay short. */
+
+/* Site visit list: every cell wraps a link so the whole row is clickable.
+   Without this the table reads as a wall of blue underlined link text. */
+table a {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+tbody tr:hover {
+  background-color: var(--pico-primary-focus, var(--pico-secondary-background));
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------------------------
+   Site visit form layout: a dense three-across field grid with a monitors rail,
+   mirroring the existing Fulcro form. Pico's own .grid gives equal auto-fit
+   columns, which isn't what we want here.
+   --------------------------------------------------------------------------- */
+.form-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2.4fr) minmax(0, 1fr);
+  gap: var(--pico-spacing);
+  align-items: start;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: var(--pico-spacing);
+}
+
+@media (max-width: 900px) {
+  .form-layout,
+  .field-grid { grid-template-columns: 1fr; }
+}
+
+/* Transaction dumps in the save status panel */
+#sv-status pre,
+details pre {
+  margin-bottom: 0;
+  max-height: 20rem;
+}
+
+/* Form actions: Pico stretches buttons to fill their container, which is right
+   for a role="group" segmented control but wrong for Save/Revert. */
+.actions {
+  display: flex;
+  gap: var(--pico-spacing);
+  margin-bottom: var(--pico-spacing);
+}
+
+.actions button {
+  width: auto;
+  margin-bottom: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Desktop data-entry density.
+
+   Pico targets content sites and scales its root font UP with viewport width
+   (100% -> 131.25% at 1536px), inflating every rem-based padding and gap with
+   it. This app is the opposite case: large forms on desktop monitors, where
+   more fields on screen beats comfortable reading measure.
+
+   These land after pico.css so they win over its media-query ramp.
+   --------------------------------------------------------------------------- */
+:root {
+  --pico-font-size: 87.5%;
+  --pico-line-height: 1.4;
+  --pico-spacing: 0.6rem;
+  --pico-typography-spacing-vertical: 0.5rem;
+  --pico-form-element-spacing-vertical: 0.35rem;
+  --pico-form-element-spacing-horizontal: 0.6rem;
+  --pico-border-radius: 0.2rem;
+}
+
+/* Labels sit tight against their control */
+.field-grid > label,
+.rail > label {
+  margin-bottom: 0.55rem;
+}
+
+.field-grid label > input,
+.field-grid label > select,
+.rail label > select {
+  margin-top: 0.15rem;
+  margin-bottom: 0;
+}
+
+h1 { margin-bottom: 0.3rem; }
+
+/* ---------------------------------------------------------------------------
+   Cardinality-many ref editor (riverdb.html.ref-list): chips + filtered menu.
+   --------------------------------------------------------------------------- */
+.field-label {
+  display: block;
+  font-size: inherit;
+  margin-bottom: 0.15rem;
+}
+
+.ref-list { position: relative; }
+
+.ref-list-box {
+  border: var(--pico-border-width) solid var(--pico-form-element-border-color);
+  border-radius: var(--pico-border-radius);
+  background: var(--pico-form-element-background-color);
+  padding: 0.3rem;
+}
+
+.ref-list-box:focus-within {
+  border-color: var(--pico-form-element-active-border-color);
+  box-shadow: 0 0 0 var(--pico-outline-width) var(--pico-form-element-focus-color);
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--pico-border-radius);
+  background: var(--pico-secondary-background);
+  color: var(--pico-secondary-inverse);
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+.chip-x {
+  width: auto;
+  margin: 0;
+  padding: 0 0.15rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 1em;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chip-x:hover { opacity: 0.6; }
+
+/* Borderless: the .ref-list-box supplies the frame */
+.ref-list-input {
+  margin: 0.25rem 0 0 0 !important;
+  border: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  height: auto !important;
+  padding: 0.1rem 0.2rem !important;
+}
+
+.menu {
+  color: var(--pico-color);
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  right: 0;
+  max-height: 14rem;
+  overflow-y: auto;
+  border: var(--pico-border-width) solid var(--pico-form-element-border-color);
+  border-radius: var(--pico-border-radius);
+  background: var(--pico-background-color);
+  box-shadow: var(--pico-card-box-shadow);
+}
+
+.menu-item {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  /* Pico rebinds --pico-color inside a button to the button's own foreground,
+     which is near-white — the same trap Basecoat's btn-outline fell into.
+     Inherit from .menu instead, which carries normal text colour. */
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-item:hover { background: var(--pico-secondary-background); color: var(--pico-secondary-inverse); }
+
+.menu-empty { padding: 0.35rem 0.5rem; color: var(--pico-muted-color); }
+
+/* ---------------------------------------------------------------------------
+   Field measurement grid. Dense: this is transcription from a paper sheet, so
+   the priority is fitting every parameter on screen at once.
+   --------------------------------------------------------------------------- */
+.fieldmeasure { margin-top: var(--pico-spacing); }
+
+.fieldmeasure h2 {
+  font-size: 1.1rem;
+  margin-bottom: 0.4rem;
+}
+
+/* Auto width keeps the columns as narrow as their contents, rather than
+   spreading six parameters across the full page. */
+.fieldmeasure table {
+  margin-bottom: 0;
+  width: auto;
+}
+
+.fieldmeasure th,
+.fieldmeasure td {
+  padding: 0.15rem 0.4rem;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.fieldmeasure thead th {
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+/* Derived columns are read-only output: right-align so digits line up. */
+.fieldmeasure td[id^="fm-"] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  min-width: 3.5rem;
+}
+
+/* Pico sets input { width: 100% }, which stretches these across the column. */
+.fieldmeasure .fm-cell,
+.fieldmeasure .fm-time {
+  width: 5rem !important;
+  margin: 0 !important;
+  padding: 0.1rem 0.3rem !important;
+  height: auto !important;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.fieldmeasure .fm-time { width: 4.5rem !important; text-align: left; }
+
+/* Quality exceedance: range/precision beyond the parameter's PrecisionCode, or
+   a mean outside its High/Low. Matches what the Fulcro form colours red. */
+.exc {
+  color: var(--pico-del-color, #b3261e);
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------------
+   Field observations: one row per parameter, widget chosen by FieldObsType.
+   --------------------------------------------------------------------------- */
+.fieldobs { margin-top: var(--pico-spacing); }
+
+.fieldobs h2 { font-size: 1.1rem; margin-bottom: 0.4rem; }
+
+.fieldobs table { margin-bottom: 0; width: auto; }
+
+.fieldobs th,
+.fieldobs td { padding: 0.2rem 0.5rem; vertical-align: middle; }
+
+/* Choices sit on one line and wrap only when they must, which keeps a row
+   readable as a single question. */
+.fo-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem 1rem;
+  align-items: center;
+}
+
+.fo-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin: 0;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.fo-choice input {
+  margin: 0 !important;
+  vertical-align: middle;
+}
+
+.fieldobs .fo-number { width: 6rem !important; }
+.fieldobs .fo-text   { width: 28rem !important; max-width: 100%; }
+
+.fieldobs .fo-number,
+.fieldobs .fo-text {
+  margin: 0 !important;
+  padding: 0.1rem 0.3rem !important;
+  height: auto !important;
+}
